@@ -5114,8 +5114,13 @@ class Settings(QtWidgets.QWidget):
         self._row("rumble", "Rumble", "bool", describe=lambda v: "A short buzz on the controller when something is saved")
         self._row("sounds", "Sounds", "bool", describe=lambda v: "A short sound when something is saved")
         add(SectionTitle("LIBRARY"))
+        # a folder Windows refused shows where captures really go (the setting itself is kept)
+        in_use = lambda v: str(self.ctl.clips_dir) if self.ctl.blocked and v == str(self.ctl.blocked) else v
         folder = self._row("clips_dir", "Clips folder", "action",
-                           describe=lambda v: "Clips and recordings, a folder per game. Press Enter to change")
+                           describe=lambda v: "Windows Security protects the folder you picked, so captures "
+                                              "are saved here. Press Enter to change"
+                           if in_use(v) != v else "Clips and recordings, a folder per game. Press Enter to change",
+                           display=in_use)
         folder.on_activate = self._pick_folder
         shots = self._row("screenshots_dir", "Screenshots folder", "action",
                           describe=lambda v: "A folder per game here too. Press Enter to change",
@@ -5490,15 +5495,15 @@ def main():
     problems: list[str] = []
 
     ctl = Controller(cfg)
-    if ctl.blocked:
-        problems.append(
-            tr("Windows Security blocked {folder} · captures are saved in {fallback} for now. To use "
-               "{folder}, open Windows Security → Virus & threat protection → Manage ransomware protection "
-               "→ Allow an app through Controlled folder access, and add CaptureMenu.exe and obs64.exe",
-               folder=ctl.blocked, fallback=ctl.clips_dir)
-            if controlled_folder_access_on() else
-            tr("Can't save in {folder} · captures are saved in {fallback} for now. "
-               "Pick another folder in Settings", folder=ctl.blocked, fallback=ctl.clips_dir))
+    # Where captures went instead, said once and calmly: it all works, there's nothing to do.
+    # (Windows Security's settings stay the user's: we don't ask anyone to change them.)
+    moved_notice = None
+    if ctl.blocked and load_state().get("fallback_told") != str(ctl.blocked):
+        moved_notice = (tr("Your captures are saved in {fallback} · Windows Security protects {folder}",
+                           fallback=ctl.clips_dir, folder=ctl.blocked.parent)
+                        if controlled_folder_access_on() else
+                        tr("Your captures are saved in {fallback} · {folder} can't be used",
+                           fallback=ctl.clips_dir, folder=ctl.blocked))
     viewer = Viewer(ctl)
     menu = Menu(ctl, viewer)
     gallery = Gallery(ctl, viewer)
@@ -5624,6 +5629,11 @@ def main():
     else:
         toast.show_running(tr("Settings saved") if restarted else tr("Capture Menu is running"),
                            tr("Press {keys} or {button} to open", keys=keys, button=pad_name))
+    if moved_notice:
+        def tell_moved():
+            toast.show_message(moved_notice, "info")
+            save_state(load_state() | {"fallback_told": str(ctl.blocked)})
+        QtCore.QTimer.singleShot(7000, tell_moved)   # after the notice above has been read
     # once everything has been closed for a while, trim memory (once per idle stretch)
     idle = {"armed": True}
 

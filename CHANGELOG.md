@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- When Windows Security protects the Videos folder, nothing needs changing: Capture Menu says once, calmly, where your captures are saved instead (`C:\Users\<you>\Capture Menu`), without asking you to change Windows' settings. Settings → Clips folder shows the folder actually in use.
+
 ## 0.0.5 · 2026-10-17
 
 - Fixed: Capture Menu crashed on start ("The system cannot find the file specified: …\Videos\Clips") on PCs where Windows Security's Controlled folder access (ransomware protection) blocks unknown apps from Videos. It now starts anyway, saves captures in `C:\Users\<you>\Capture Menu` for the time being, points OBS there too, and says how to allow CaptureMenu.exe and obs64.exe so Videos can be used. Your chosen folder is kept and used again as soon as it's allowed.

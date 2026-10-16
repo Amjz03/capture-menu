@@ -5,8 +5,8 @@ import json, sys, tempfile
 from pathlib import Path
 sys.path.insert(0, sys.argv[1])
 import capture_menu as cm
-from PySide6 import QtCore
-app = QtCore.QCoreApplication([])
+from PySide6 import QtWidgets
+app = QtWidgets.QApplication([])
 
 work = Path(tempfile.mkdtemp())
 cm.STATE_PATH = work / "state.json"
@@ -24,6 +24,16 @@ assert ctl.clips_dir == cm.FALLBACK_CLIPS_DIR == ctl.shots_dir and ctl.clips_dir
 assert ctl.thumbs_dir.is_dir() and ctl.folder_for("Overwatch").is_dir()
 assert json.loads(cm.CONFIG_PATH.read_text())["clips_dir"] == str(blocked)   # used again once allowed
 print("blocked clips folder: no crash, captures go to the fallback PASS")
+
+settings = cm.Settings(ctl)
+row = next(r for r in settings.rows if r.key == "clips_dir")
+row.set_value(str(blocked))
+assert row.display(row.value) == str(ctl.clips_dir), row.display(row.value)   # where captures really go
+assert "Windows Security" in row.describe(row.value)
+assert settings.values()["clips_dir"] == str(blocked)                       # the choice itself is kept
+row.set_value(str(work / "Elsewhere"))
+assert row.display(row.value) == str(work / "Elsewhere") and "Windows" not in row.describe(row.value)
+print("Settings shows the folder in use PASS")
 
 ctl2 = cm.Controller(dict(cm.DEFAULTS, clips_dir=str(work / "Clips"), screenshots_dir=str(blocked)))
 assert ctl2.blocked == blocked and ctl2.clips_dir == work / "Clips" and ctl2.shots_dir == ctl2.clips_dir
