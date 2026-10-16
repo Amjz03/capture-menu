@@ -28,7 +28,7 @@ jobs:
         run: |
           mkdir -p out/CaptureMenu
           cp -r assets capture_menu.py config.json requirements.txt README.md \
-                Setup.cmd setup.ps1 build_exe.bat preview.png out/CaptureMenu/
+                Setup.cmd setup.ps1 Uninstall.cmd uninstall.ps1 build_exe.bat preview.png out/CaptureMenu/
           cd out && zip -r -q ../CaptureMenu.zip CaptureMenu
           cd .. && unzip -l CaptureMenu.zip | tail -1
 
@@ -44,9 +44,12 @@ jobs:
             echo "Release $TAG already exists, nothing to do"; exit 0
           fi
           cat > notes.md <<'NOTES'
-          **Install:** download `CaptureMenu.zip` below, extract it somewhere permanent (for example `Documents\CaptureMenu`), then double-click `Setup.cmd`.
+          **Install in 3 steps**
+          1. Download `CaptureMenu.zip` below.
+          2. Right-click it → **Extract All** → **Extract**.
+          3. Double-click `Setup.cmd` in the extracted folder and wait for **All set!**
 
-          If Windows shows "Windows protected your PC", choose **More info → Run anyway**. Setup installs Python, OBS Studio and FFmpeg, connects OBS, and starts Capture Menu with Windows.
+          If Windows shows "Windows protected your PC", choose **More info → Run anyway**. Setup installs Python, OBS Studio and FFmpeg, copies Capture Menu to its own folder, connects OBS, starts it with Windows and checks that everything works. Already installed? Run the new `Setup.cmd` to update; your settings are kept.
 
           Press **Alt + C** (or **Create** on the controller) to open the menu.
           NOTES

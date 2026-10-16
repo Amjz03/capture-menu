@@ -1,5 +1,7 @@
 # Capture Menu: a PS5-style Create button for Windows
 
+**[Download](https://github.com/Amjz03/capture-menu/releases/latest)** · [Install in 3 steps](#install)
+
 Press **Alt + C** while gaming or anywhere on the desktop. A bar appears along the bottom of the screen, like the PS5 Create menu, so the game stays visible above it:
 
 - **Create:** Save recent, Screenshot, Record
@@ -118,14 +120,27 @@ Capture Menu starts with Windows and runs in the background. It has no window an
 
 Only one copy runs at a time: starting it again does nothing. If something needs attention at start-up (OBS not running, the shortcut taken by another app), that same notice says so instead of opening a window.
 
-## Install: one click
-1. Unzip the folder somewhere permanent (e.g. `Documents\CaptureMenu`).
-2. Double-click **`Setup.cmd`**. It:
-   - installs Python, OBS Studio and FFmpeg (skips what you already have)
-   - turns on OBS's WebSocket with a random password and saves it to `config.json`
-   - adds Capture Menu to the Start menu and to Windows startup
-   - starts it
-3. The first time it runs, Capture Menu **sets up OBS for your PC by itself** and restarts OBS once:
+## Install
+1. Download **`CaptureMenu.zip`** from the [latest release](https://github.com/Amjz03/capture-menu/releases/latest).
+2. Right-click it → **Extract All** → **Extract**.
+3. Open the extracted folder and double-click **`Setup.cmd`**. Leave the window open until it says **All set!** (a few minutes the first time).
+
+That's it: press **Alt + C** in a game. You can delete the zip and the extracted folder afterwards.
+
+> **"Windows protected your PC"?** Click **More info → Run anyway**. Windows shows this for any app that isn't from the Store.
+
+Setup does everything else by itself:
+- installs Python, OBS Studio and FFmpeg (skips what you already have)
+- copies Capture Menu to `%LOCALAPPDATA%\Programs\CaptureMenu`, so it keeps working wherever you downloaded it
+- turns on OBS's WebSocket with a random password and saves it to `config.json`
+- adds Capture Menu to the Start menu and to Windows startup, and starts it
+- checks that everything is ready and tells you exactly what to fix if something isn't
+
+**Updating:** download the new zip and run its `Setup.cmd` the same way. Your settings are kept.
+
+**Removing:** double-click **`Uninstall.cmd`** (in the extracted folder or in `%LOCALAPPDATA%\Programs\CaptureMenu`). Your captures, OBS and FFmpeg stay.
+
+The first time it runs, Capture Menu **sets up OBS for your PC by itself** and restarts OBS once:
    - your main screen's resolution at **60 FPS**
    - the best encoder for your graphics card (RTX 40/50: **AV1**, older NVIDIA: HEVC, AMD/Intel: their hardware encoder)
    - a bitrate that suits the resolution (8000 Kbps AV1 at 1440p)

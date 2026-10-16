@@ -353,7 +353,18 @@ def wait_until_written(path: Path, timeout: float = 30):
 
 def find_tool(name: str) -> str | None:
     local = APP_DIR / f"{name}.exe"
-    return str(local) if local.exists() else shutil.which(name)
+    if local.exists():
+        return str(local)
+    found = shutil.which(name)
+    if found or not IS_WINDOWS:
+        return found
+    # winget puts ffmpeg in its own folder and only adds it to PATH for new sign-ins
+    winget = Path(os.environ.get("LOCALAPPDATA", "")) / "Microsoft" / "WinGet"
+    for exe in [winget / "Links" / f"{name}.exe",
+                *sorted((winget / "Packages").glob(f"Gyan.FFmpeg*/*/bin/{name}.exe"), reverse=True)]:
+        if exe.exists():
+            return str(exe)
+    return None
 
 
 # Helper processes (ffmpeg, PowerShell) run without a window and below normal priority,
