@@ -5,17 +5,17 @@ import capture_menu as cm
 from PySide6 import QtWidgets, QtGui, QtCore
 from PySide6.QtCore import Qt
 app = QtWidgets.QApplication([])
-sys.path.insert(0, str(Path(__file__).resolve().parent)); from scene import draw_scene
+sys.path.insert(0, str(Path(__file__).resolve().parent)); from scene import draw_scene, game_name
 W, H = 1920, 1080
-GAME = "Neon Highway"
+GAME = game_name("Neon Highway")
 root = Path(tempfile.mkdtemp()); work = Path(tempfile.mkdtemp())
 game_bg = QtGui.QPixmap.fromImage(draw_scene(W, H, "dusk", 7))
 shots = [(GAME, "Clip_2026-10-16_21-04-33_60s.mp4", "dusk", 7, 60, 30),
          (GAME, "Screenshot_2026-10-16_21-00-10.png", "neon", 3, 0, 140),
          (GAME, "Clip_2026-10-16_20-50-00_300s.mp4", "ember", 5, 300, 900),
-         ("Ridge Racer X", "Recording_2026-10-16_20-00-00.mp4", "desert", 11, 754, 7200),
-         ("Frostfall", "Clip_2026-10-16_19-10-00_30s.mp4", "snow", 2, 30, 9000),
-         ("Wildwood", "Clip_2026-10-16_18-00-00_180s.mp4", "forest", 9, 180, 20000)]
+         (game_name("Ridge Racer X"), "Recording_2026-10-16_20-00-00.mp4", "desert", 11, 754, 7200),
+         (game_name("Frostfall"), "Clip_2026-10-16_19-10-00_30s.mp4", "snow", 2, 30, 9000),
+         (game_name("Wildwood"), "Clip_2026-10-16_18-00-00_180s.mp4", "forest", 9, 180, 20000)]
 now = time.time()
 for game, name, pal, seed, secs, ago in shots:
     d = root / game; d.mkdir(exist_ok=True); dst = d / name

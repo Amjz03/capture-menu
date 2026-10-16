@@ -4,7 +4,7 @@ sys.path.insert(0, sys.argv[1]); out = Path(sys.argv[2])
 import capture_menu as cm
 from PySide6 import QtWidgets, QtGui
 app = QtWidgets.QApplication([])
-sys.path.insert(0, str(Path(__file__).resolve().parent)); from scene import draw_scene
+sys.path.insert(0, str(Path(__file__).resolve().parent)); from scene import draw_scene, game_name
 W, H = 1920, 1080
 canvas = QtGui.QPixmap.fromImage(draw_scene(W, H, "dusk", 7))
 r = cm.RecIndicator("top-right"); r.sync({"online": True, "recording": True, "record_ms": 754_000})

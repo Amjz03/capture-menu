@@ -5,7 +5,7 @@ import capture_menu as cm
 from PySide6 import QtWidgets, QtGui, QtCore
 from PySide6.QtCore import Qt
 app = QtWidgets.QApplication([])
-sys.path.insert(0, str(Path(__file__).resolve().parent)); from scene import draw_scene
+sys.path.insert(0, str(Path(__file__).resolve().parent)); from scene import draw_scene, game_name
 W, H = 1920, 1080
 bg = QtGui.QPixmap.fromImage(draw_scene(W, H, "dusk", 7))
 cm.CONFIG_PATH = Path(tempfile.mkdtemp()) / "config.json"

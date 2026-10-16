@@ -1,7 +1,31 @@
-"""Draws a stylised game frame (sky, mountains, city, road, HUD) for mockups."""
-import random, math
+"""Draws a stylised game frame (sky, mountains, city, road, HUD) for mockups.
+
+Set CAPTURE_MENU_SHOTS to a folder of real game screenshots to use those instead. Files are
+picked by palette and seed: "dusk7_nohud.jpg" (a frame without a HUD), then "dusk7.jpg", then
+"dusk.jpg". Game names then come from that folder's games.json, e.g. {"Neon Highway": "Elden Ring"}.
+"""
+import json, os, random, math
+from pathlib import Path
 from PySide6 import QtGui, QtCore
 from PySide6.QtCore import Qt, QPointF, QRectF
+
+SHOTS = Path(os.environ["CAPTURE_MENU_SHOTS"]) if os.environ.get("CAPTURE_MENU_SHOTS") else None
+GAMES = json.loads((SHOTS / "games.json").read_text(encoding="utf-8")) if SHOTS and (SHOTS / "games.json").exists() else {}
+
+
+def game_name(name):
+    """The game name to show: the mockup name, or the real one when real screenshots are used."""
+    return GAMES.get(name, name)
+
+
+def real_shot(w, h, pal, seed, hud):
+    for stem in ([] if hud else [f"{pal}{seed}_nohud"]) + [f"{pal}{seed}", pal]:
+        for ext in (".jpg", ".png"):
+            f = SHOTS / f"{stem}{ext}"
+            if f.exists():
+                img = QtGui.QImage(str(f)).scaled(w, h, Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation)
+                return img.copy((img.width() - w) // 2, (img.height() - h) // 2, w, h)
+    return None
 
 PALETTES = {
     "dusk":   dict(sky=["#0b1033", "#3a1c5c", "#c2456b", "#f6a35c"], sun="#ffd38a", far="#2a1840", mid="#1a1030", city="#120a22", road="#16121f", glow="#ffb36b"),
@@ -22,6 +46,10 @@ def ridge(p, w, h, base, amp, color, seed, step=40):
     p.fillPath(path, QtGui.QColor(color))
 
 def draw_scene(w, h, pal="dusk", seed=1, hud=True, title="Reach the safehouse"):
+    if SHOTS:
+        real = real_shot(w, h, pal, seed, hud)
+        if real is not None:
+            return real
     P = PALETTES[pal]; rnd = random.Random(seed)
     img = QtGui.QImage(w, h, QtGui.QImage.Format_ARGB32_Premultiplied)
     p = QtGui.QPainter(img); p.setRenderHint(QtGui.QPainter.Antialiasing)

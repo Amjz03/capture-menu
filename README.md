@@ -18,7 +18,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/preview.png" alt="The Capture Menu bar over a game">
+  <img src="docs/preview.jpg" alt="The Capture Menu bar over a game">
 </p>
 
 ## Features
@@ -35,8 +35,8 @@
 
 | | | |
 |---|---|---|
-| ![Save recent](docs/screenshots/save-recent.png) | ![Viewer](docs/screenshots/viewer.png) | ![Trim](docs/screenshots/trim.png) |
-| ![Gallery](docs/screenshots/gallery.png) | ![Settings](docs/screenshots/settings.png) | ![Notifications](docs/screenshots/notifications.png) |
+| ![Save recent](docs/screenshots/save-recent.jpg) | ![Viewer](docs/screenshots/viewer.jpg) | ![Trim](docs/screenshots/trim.jpg) |
+| ![Gallery](docs/screenshots/gallery.jpg) | ![Settings](docs/screenshots/settings.jpg) | ![Notifications](docs/screenshots/notifications.jpg) |
 
 ## Contents
 
@@ -174,7 +174,7 @@ Copies go into a `Shared` folder in the game's folder and are **copied to the cl
 - **S** sorts by Newest or **Largest**, which also puts the biggest games first.
 - **Space** (▢ / X, or Ctrl+click) marks captures, **Ctrl+A** marks all, **Del** deletes them to the Recycle Bin after a confirmation that mentions any favorites.
 
-Titles like "Clutch 1v4 on the bridge" show in the viewer, Recent row and gallery, and name the copies you share; the file keeps its name.
+Titles like "Boss down on the first try" show in the viewer, Recent row and gallery, and name the copies you share; the file keeps its name.
 
 ### More
 

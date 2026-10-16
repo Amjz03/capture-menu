@@ -5,21 +5,21 @@ import capture_menu as cm
 from PySide6 import QtWidgets, QtGui, QtCore
 from PySide6.QtCore import Qt
 app = QtWidgets.QApplication([])
-sys.path.insert(0, str(Path(__file__).resolve().parent)); from scene import draw_scene
+sys.path.insert(0, str(Path(__file__).resolve().parent)); from scene import draw_scene, game_name
 cm.STATE_PATH = Path(tempfile.mkdtemp()) / "state.json"
 W, H = 1920, 1080
 root = Path(tempfile.mkdtemp()); work = Path(tempfile.mkdtemp())
 game_bg = QtGui.QPixmap.fromImage(draw_scene(W, H, "dusk", 7))
-specs = [("Neon Highway", "Clip_2026-10-16_21-04-33_60s.mp4", "dusk", 7, 60, 30, True),
-         ("Neon Highway", "Screenshot_2026-10-16_21-00-10.png", "neon", 3, 0, 140, False),
-         ("Neon Highway", "Clip_2026-10-16_20-50-00_300s.mp4", "ember", 5, 300, 900, False),
-         ("Neon Highway", "Clip_2026-10-16_20-10-00_30s.mp4", "neon", 8, 30, 3000, True),
-         ("Ridge Racer X", "Recording_2026-10-16_20-00-00.mp4", "desert", 11, 754, 7200, False),
-         ("Ridge Racer X", "Clip_2026-10-15_22-00-00_180s.mp4", "desert", 4, 180, 90000, False),
-         ("Frostfall", "Clip_2026-10-16_19-10-00_30s.mp4", "snow", 2, 30, 9000, True),
-         ("Frostfall", "Screenshot_2026-10-14_19-10-00.png", "snow", 6, 0, 200000, False),
-         ("Wildwood", "Clip_2026-10-16_18-00-00_180s.mp4", "forest", 9, 180, 20000, False),
-         ("Wildwood", "Clip_2026-10-13_18-00-00_60s.mp4", "forest", 12, 60, 300000, False)]
+specs = [(game_name("Neon Highway"), "Clip_2026-10-16_21-04-33_60s.mp4", "dusk", 7, 60, 30, True),
+         (game_name("Neon Highway"), "Screenshot_2026-10-16_21-00-10.png", "neon", 3, 0, 140, False),
+         (game_name("Neon Highway"), "Clip_2026-10-16_20-50-00_300s.mp4", "ember", 5, 300, 900, False),
+         (game_name("Neon Highway"), "Clip_2026-10-16_20-10-00_30s.mp4", "neon", 8, 30, 3000, True),
+         (game_name("Ridge Racer X"), "Recording_2026-10-16_20-00-00.mp4", "desert", 11, 754, 7200, False),
+         (game_name("Ridge Racer X"), "Clip_2026-10-15_22-00-00_180s.mp4", "desert", 4, 180, 90000, False),
+         (game_name("Frostfall"), "Clip_2026-10-16_19-10-00_30s.mp4", "snow", 2, 30, 9000, True),
+         (game_name("Frostfall"), "Screenshot_2026-10-14_19-10-00.png", "snow", 6, 0, 200000, False),
+         (game_name("Wildwood"), "Clip_2026-10-16_18-00-00_180s.mp4", "forest", 9, 180, 20000, False),
+         (game_name("Wildwood"), "Clip_2026-10-13_18-00-00_60s.mp4", "forest", 12, 60, 300000, False)]
 now = time.time()
 for game, name, pal, seed, secs, ago, fav in specs:
     d = root / game; d.mkdir(exist_ok=True); dst = d / name
@@ -44,7 +44,7 @@ def compose(name, *layers):
     for pm, x, y in layers: p.drawPixmap(x, y, pm)
     p.end(); canvas.save(str(out / name))
 cm.INPUT.set("playstation")
-m.show_menu("Neon Highway"); BH = m.BAR_H + m.HEADROOM
+m.show_menu(game_name("Neon Highway")); BH = m.BAR_H + m.HEADROOM
 m.setGeometry(0, 0, W, BH); m._place(); m.refresh_recent()
 m._on_status({"online": True, "buffer": True, "buffer_seconds": 1800, "buffered_ms": 1_160_000, "recording": False, "record_ms": 0, "mic_muted": False})
 m.show_storage(ctl.last_storage)
@@ -63,7 +63,7 @@ t = cm.Toast(); t.thumbs_dir = ctl.thumbs_dir
 t.show_shared("Discord · 10 MB · 9.1 MB · without your voice", str(items[0])); pump()
 compose("n3_shared.png", (t.grab(), W - t.width() - 28, 28))
 # gallery
-gallery.open("Neon Highway"); GW, GH = W, H; gallery.resize(GW, GH); gallery._load("Neon Highway"); pump(10)
+gallery.open(game_name("Neon Highway")); GW, GH = W, H; gallery.resize(GW, GH); gallery._load(game_name("Neon Highway")); pump(10)
 gallery.grid.setCurrentRow(0); pump(5)
 compose("n4_gallery.png", (gallery.grab(), (W - GW) // 2, (H - GH) // 2))
 gallery.games.setCurrentRow(1); pump(10)

@@ -5,21 +5,21 @@ import capture_menu as cm
 from PySide6 import QtWidgets, QtGui, QtCore
 from PySide6.QtCore import Qt
 app = QtWidgets.QApplication([])
-sys.path.insert(0, str(Path(__file__).resolve().parent)); from scene import draw_scene
+sys.path.insert(0, str(Path(__file__).resolve().parent)); from scene import draw_scene, game_name
 cm.STATE_PATH = Path(tempfile.mkdtemp()) / "state.json"
 W, H = 1920, 1080
 root = Path(tempfile.mkdtemp()); work = Path(tempfile.mkdtemp())
 game_bg = QtGui.QPixmap.fromImage(draw_scene(W, H, "dusk", 7))
-specs = [("Neon Highway", "Clip_2026-10-16_21-04-33_60s.mp4", "dusk", 7, 60, 30, True),
-         ("Neon Highway", "Screenshot_2026-10-16_21-00-10.png", "neon", 3, 0, 140, False),
-         ("Neon Highway", "Clip_2026-10-16_20-50-00_300s.mp4", "ember", 5, 300, 900, False),
-         ("Neon Highway", "Clip_2026-10-16_20-10-00_30s.mp4", "neon", 8, 30, 3000, True),
-         ("Ridge Racer X", "Recording_2026-10-16_20-00-00.mp4", "desert", 11, 754, 7200, False),
-         ("Ridge Racer X", "Clip_2026-10-15_22-00-00_180s.mp4", "desert", 4, 180, 90000, False),
-         ("Frostfall", "Clip_2026-10-16_19-10-00_30s.mp4", "snow", 2, 30, 9000, True),
-         ("Frostfall", "Screenshot_2026-10-14_19-10-00.png", "snow", 6, 0, 200000, False),
-         ("Wildwood", "Clip_2026-10-16_18-00-00_180s.mp4", "forest", 9, 180, 20000, False),
-         ("Wildwood", "Clip_2026-10-13_18-00-00_60s.mp4", "forest", 12, 60, 300000, False)]
+specs = [(game_name("Neon Highway"), "Clip_2026-10-16_21-04-33_60s.mp4", "dusk", 7, 60, 30, True),
+         (game_name("Neon Highway"), "Screenshot_2026-10-16_21-00-10.png", "neon", 3, 0, 140, False),
+         (game_name("Neon Highway"), "Clip_2026-10-16_20-50-00_300s.mp4", "ember", 5, 300, 900, False),
+         (game_name("Neon Highway"), "Clip_2026-10-16_20-10-00_30s.mp4", "neon", 8, 30, 3000, True),
+         (game_name("Ridge Racer X"), "Recording_2026-10-16_20-00-00.mp4", "desert", 11, 754, 7200, False),
+         (game_name("Ridge Racer X"), "Clip_2026-10-15_22-00-00_180s.mp4", "desert", 4, 180, 90000, False),
+         (game_name("Frostfall"), "Clip_2026-10-16_19-10-00_30s.mp4", "snow", 2, 30, 9000, True),
+         (game_name("Frostfall"), "Screenshot_2026-10-14_19-10-00.png", "snow", 6, 0, 200000, False),
+         (game_name("Wildwood"), "Clip_2026-10-16_18-00-00_180s.mp4", "forest", 9, 180, 20000, False),
+         (game_name("Wildwood"), "Clip_2026-10-13_18-00-00_60s.mp4", "forest", 12, 60, 300000, False)]
 now = time.time()
 for game, name, pal, seed, secs, ago, fav in specs:
     d = root / game; d.mkdir(exist_ok=True); dst = d / name
@@ -45,8 +45,8 @@ def compose(name, *layers):
     p.end(); canvas.save(str(out / name))
 cm.INPUT.set("keyboard")
 items = ctl.all_captures()
-ctl.set_meta(items[0], "Clutch 1v4 on the bridge", "first try, no damage taken")
-ctl.set_meta(items[2], "Sunset drift", "")
+ctl.set_meta(items[0], "Boss down on the first try", "no damage taken")
+ctl.set_meta(items[2], "Boss fight, phase 2", "")
 # toast with the Trim button
 t = cm.Toast(); t.thumbs_dir = ctl.thumbs_dir; t.hotkey = "ALT+C"
 t.show_capture("Last 1 minute", str(items[0])); pump()
