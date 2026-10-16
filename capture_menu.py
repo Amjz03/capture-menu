@@ -1125,14 +1125,35 @@ def find_obs_exe() -> str | None:
     return str(exe) if exe.exists() else None
 
 
+def launch_outside(cmd: list[str], cwd: str | None = None, flags: int = 0) -> subprocess.Popen:
+    """Starts a program that isn't ours (OBS, Explorer, the update installer) without handing it Capture
+    Menu's own DLL folder. The .exe build puts _internal on the DLL search path, ahead of System32, and a
+    child process inherits that: OBS then loaded _internal\\VCRUNTIME140.dll and held it open, so the next
+    update couldn't replace it."""
+    if not (IS_WINDOWS and FROZEN):
+        return subprocess.Popen(cmd, cwd=cwd, creationflags=flags)
+    k32 = ctypes.windll.kernel32
+    buf = ctypes.create_unicode_buffer(1024)
+    ours = buf.value if k32.GetDllDirectoryW(1024, buf) else None
+    bundle = os.path.normcase(str(BUNDLE_DIR))
+    env = dict(os.environ)
+    env["PATH"] = os.pathsep.join(p for p in env.get("PATH", "").split(os.pathsep)
+                                  if p and not os.path.normcase(p).startswith(bundle))
+    k32.SetDllDirectoryW(None)        # the child gets Windows' normal search order
+    try:
+        return subprocess.Popen(cmd, cwd=cwd, env=env, creationflags=flags)
+    finally:
+        k32.SetDllDirectoryW(ours)    # and we keep ours
+
+
 def start_obs() -> bool:
     """Starts OBS hidden in the tray with the replay buffer on."""
     exe = find_obs_exe()
     if not exe:
         log.warning("OBS not found")
         return False
-    subprocess.Popen([exe, "--startreplaybuffer", "--minimize-to-tray", "--disable-shutdown-check"],
-                     cwd=str(Path(exe).parent), creationflags=0x00000008 | 0x00000200)
+    launch_outside([exe, "--startreplaybuffer", "--minimize-to-tray", "--disable-shutdown-check"],
+                   cwd=str(Path(exe).parent), flags=0x00000008 | 0x00000200)
     log.info("started OBS: %s", exe)
     return True
 
@@ -1434,7 +1455,7 @@ class Controller(QtCore.QObject):
     @staticmethod
     def reveal(path: Path):
         if IS_WINDOWS:
-            subprocess.Popen(["explorer", f"/select,{path}"])
+            launch_outside(["explorer", f"/select,{path}"])
         else:
             QtGui.QDesktopServices.openUrl(QtCore.QUrl.fromLocalFile(str(path.parent)))
 
@@ -1524,9 +1545,8 @@ class Controller(QtCore.QObject):
                 break
         else:
             return False
-        subprocess.Popen([path, "--startreplaybuffer", "--minimize-to-tray", "--disable-shutdown-check"],
-                         cwd=str(Path(path).parent),
-                         creationflags=0x00000008 | 0x00000200)  # DETACHED, NEW_PROCESS_GROUP
+        launch_outside([path, "--startreplaybuffer", "--minimize-to-tray", "--disable-shutdown-check"],
+                       cwd=str(Path(path).parent), flags=0x00000008 | 0x00000200)  # DETACHED, NEW_PROCESS_GROUP
         for _ in range(60):
             time.sleep(0.5)
             try:
@@ -4566,7 +4586,7 @@ def restart_app():
 
 # ---------------------------------------------------------------- updates (only when asked)
 
-APP_VERSION = "0.0.3"     # the release workflow stamps this from the version being released
+APP_VERSION = "0.0.4"     # the release workflow stamps this from the version being released
 REPO = "Amjz03/capture-menu"
 
 
@@ -4609,7 +4629,7 @@ def download_update(url: str, size: int, out: Path, on_progress=None):
 
 def run_update_installer(exe: Path):
     """The installer stops this copy, installs over it (settings kept) and starts the new one."""
-    subprocess.Popen([str(exe), "/SILENT", "/SUPPRESSMSGBOXES", "/NORESTART"], creationflags=0x00000008)
+    launch_outside([str(exe), "/SILENT", "/SUPPRESSMSGBOXES", "/NORESTART"], flags=0x00000008)
     QtWidgets.QApplication.quit()
 
 

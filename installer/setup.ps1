@@ -156,9 +156,10 @@ if ($frozen) {
 # ---------------------------------------------------------------- 4. OBS websocket
 Step "Connecting OBS"
 # OBS rewrites its settings when it exits, so close it politely first
+# (taskkill without /F asks it to close like clicking ✕; that also reaches OBS when it sits in the tray)
 $obs = Get-Process obs64 -ErrorAction SilentlyContinue
 if ($obs) {
-    $obs | ForEach-Object { $_.CloseMainWindow() | Out-Null }
+    taskkill /IM obs64.exe *> $null
     $obs | Wait-Process -Timeout 20 -ErrorAction SilentlyContinue
 }
 $wsDir = Join-Path $env:APPDATA "obs-studio\plugin_config\obs-websocket"

@@ -59,7 +59,9 @@ procedure StopCaptureMenu;
 var
   Code: Integer;
 begin
-  Exec('powershell.exe', '-NoProfile -Command "Get-CimInstance Win32_Process | ? { $_.Name -eq ''CaptureMenu.exe'' -or ($_.Name -like ''python*.exe'' -and $_.CommandLine -like ''*capture_menu.py*'') } | % { Stop-Process -Id $_.ProcessId -Force }"',
+  // Capture Menu stops; OBS is asked to close like clicking X (it may have loaded files from this folder,
+  // and Capture Menu starts it again). Then wait until both are really gone before files are replaced.
+  Exec('powershell.exe', '-NoProfile -Command "Get-CimInstance Win32_Process | ? { $_.Name -eq ''CaptureMenu.exe'' -or ($_.Name -like ''python*.exe'' -and $_.CommandLine -like ''*capture_menu.py*'') } | % { Stop-Process -Id $_.ProcessId -Force }; taskkill /IM obs64.exe *> $null; foreach ($i in 1..80) { if (-not (Get-Process obs64, CaptureMenu -ErrorAction SilentlyContinue)) { break }; Start-Sleep -Milliseconds 250 }"',
        '', SW_HIDE, ewWaitUntilTerminated, Code);
 end;
 
