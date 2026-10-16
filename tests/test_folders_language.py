@@ -43,10 +43,10 @@ assert cm.tr("Save recent") == "Save recent" and not cm.is_rtl() and cm.forward(
 cm.set_language("ar")
 assert cm.LANG == "ar" and cm.is_rtl()
 assert cm.tr("Save recent") == "حفظ الأخير"
-assert cm.tr("Keeping the last {length}", length="30 min") == "يحتفظ بآخر 30 min"
-assert cm.duration_label(None) == "كل المسجَّل" and cm.chip_label(30) == "آخر 30 ث"
+assert cm.tr("Keeping the last {length}", length="30 min") == "يحفظ آخر 30 min من اللعب"
+assert cm.duration_label(None) == "كل اللعب المحفوظ" and cm.chip_label(30) == "آخر 30 ث"
 assert cm.forward(Qt.Key_Right) == -1 and cm.lead() == Qt.AlignRight   # mirrored
-assert cm.time_ago(time.time()) == "الآن"
+assert cm.time_ago(time.time()) == "الحين"
 assert cm.tr("Not a known text") == "Not a known text"      # anything new falls back to English
 cm.set_language("xx")                                        # unknown: follow Windows (en or ar)
 assert cm.LANG in cm.LANGUAGES

@@ -25,6 +25,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 from datetime import datetime
@@ -882,10 +883,10 @@ def remix_audio(src: Path, voice: int, game: int, out: Path, seconds: float | No
 
 def human_size(nbytes: float) -> str:
     if nbytes >= 1024 ** 3:
-        return f"{nbytes / 1024 ** 3:.1f} GB"
+        return f"{nbytes / 1024 ** 3:.1f} {tr('GB')}"     # units are translated too ("2 ميجا")
     if nbytes >= 1024 ** 2:
-        return f"{nbytes / 1024 ** 2:.0f} MB"
-    return f"{max(1, round(nbytes / 1024))} KB"
+        return f"{nbytes / 1024 ** 2:.0f} {tr('MB')}"
+    return f"{max(1, round(nbytes / 1024))} {tr('KB')}"
 
 
 def file_size(path: Path) -> int:
@@ -1566,6 +1567,9 @@ class Controller(QtCore.QObject):
                     self.toast.emit(tr("Recording this screen · {name}", name=name), "info")
             except ObsOffline:
                 pass
+            except OBSSDKRequestError as e:
+                if e.code != 207:    # 207: OBS is still starting; the next check (2 s later) works
+                    log.exception("could not follow the game's screen")
             except Exception:
                 log.exception("could not follow the game's screen")
             finally:
@@ -3584,6 +3588,7 @@ class Viewer(QtWidgets.QWidget):
         self._set_editing(False)
         self._set_sound(False)
         path = self.current
+        log.info("viewer: %s (%s) on %s", path.name, path.parent.name, self.screen().name() if self.screen() else "?")
         self._show_title()
         self.sub.setToolTip(str(path))
         self.counter.setText(tr("{n} of {total}", n=self.index + 1, total=len(self.items)))
@@ -3648,7 +3653,8 @@ class Viewer(QtWidgets.QWidget):
     # ---- the built-in player can't decode this clip: make a light preview copy
     def _on_error(self, *_):
         path = self.current if self.items else None
-        log.warning("preview failed: %s", self.player.errorString() if self.player else "no player")
+        log.warning("playback failed for %s: %s", path.name if path else "?",
+                    self.player.errorString() if self.player else "no player")
         if path is None or path in self._tried_preview or self.ctl.preview_path(path).exists():
             self._show_msg("This clip can't be previewed here.\nIt's saved fine. Use “Open in player” to watch it.")
             return
@@ -4545,6 +4551,55 @@ def restart_app():
     QtWidgets.QApplication.quit()
 
 
+# ---------------------------------------------------------------- updates (only when asked)
+
+APP_VERSION = "0.0.3"     # the release workflow stamps this from the version being released
+REPO = "Amjz03/capture-menu"
+
+
+def version_tuple(v: str) -> tuple[int, ...]:
+    return tuple(int(x) for x in re.findall(r"\d+", v)[:3])
+
+
+def latest_release(timeout: float = 10) -> dict:
+    """The newest release on GitHub: its version, page, and the Setup.exe to download."""
+    import urllib.request
+    req = urllib.request.Request(f"https://api.github.com/repos/{REPO}/releases/latest",
+                                 headers={"User-Agent": f"CaptureMenu/{APP_VERSION}",
+                                          "Accept": "application/vnd.github+json"})
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+        data = json.load(r)
+    asset = next((a for a in data.get("assets", []) if a.get("name") == "CaptureMenu-Setup.exe"), None)
+    return {"version": str(data.get("tag_name", "")).lstrip("v"), "page": data.get("html_url", ""),
+            "url": asset["browser_download_url"] if asset else None, "size": asset["size"] if asset else 0}
+
+
+def download_update(url: str, size: int, out: Path, on_progress=None):
+    """Downloads Setup.exe to `out`, reporting 0-99 %; a short download is thrown away."""
+    import urllib.request
+    tmp = out.with_suffix(".part")
+    req = urllib.request.Request(url, headers={"User-Agent": f"CaptureMenu/{APP_VERSION}"})
+    done, shown = 0, -1
+    with urllib.request.urlopen(req, timeout=30) as r, open(tmp, "wb") as f:
+        while chunk := r.read(1 << 16):
+            f.write(chunk)
+            done += len(chunk)
+            pct = min(99, done * 100 // size) if size else 0
+            if on_progress and pct != shown:
+                shown = pct
+                on_progress(pct)
+    if size and tmp.stat().st_size != size:
+        tmp.unlink(missing_ok=True)
+        raise RuntimeError("the download was incomplete")
+    os.replace(tmp, out)
+
+
+def run_update_installer(exe: Path):
+    """The installer stops this copy, installs over it (settings kept) and starts the new one."""
+    subprocess.Popen([str(exe), "/SILENT", "/SUPPRESSMSGBOXES", "/NORESTART"], creationflags=0x00000008)
+    QtWidgets.QApplication.quit()
+
+
 def hotkey_from_event(e: QtGui.QKeyEvent) -> str | None:
     """A key press -> "ctrl+shift+f9" style text for config.json, or None for a lone modifier."""
     names = {Qt.Key_Space: "space", Qt.Key_Tab: "tab", Qt.Key_Pause: "pause", Qt.Key_Insert: "insert",
@@ -4834,6 +4889,7 @@ class Settings(QtWidgets.QWidget):
     Nothing is written until Save; then the app restarts itself (and OBS if recording changed)."""
 
     encoder_ready = QtCore.Signal(str)
+    update_event = QtCore.Signal(dict)       # what the update check / download is doing
 
     def __init__(self, ctl: Controller):
         super().__init__(None, Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool)
@@ -4900,7 +4956,10 @@ class Settings(QtWidgets.QWidget):
         lay.addLayout(foot)
 
         self.rows: list[SettingRow] = []
+        self.update: dict = {"state": "idle"}
+        self.install = run_update_installer     # tests swap this out
         self._build_rows()
+        self.update_event.connect(self._on_update_event)
         self.encoder_ready.connect(self._on_encoder)
         INPUT.changed.connect(lambda _: self.update_hints())
         self.update_hints()
@@ -4973,6 +5032,10 @@ class Settings(QtWidgets.QWidget):
         self._row("language", "Language", "choice",
                   [("auto", "Same as Windows"), *LANGUAGES.items()],
                   lambda v: "Capture Menu restarts in the new language when you save")
+        # not a setting: "_" keeps it out of config.json
+        self.update_row = self._row("_update", "Updates", "action", describe=lambda v: self._update_describe(),
+                                    display=lambda v: self._update_value())
+        self.update_row.on_activate = lambda row: self.check_or_install()
         self.rows_layout.addStretch()
 
     def _plan_cfg(self) -> dict:
@@ -5003,7 +5066,81 @@ class Settings(QtWidgets.QWidget):
         return tr("The longest clip you can save. Uses about {gb} GB of RAM", gb=f"{mb / 1024:.1f}")
 
     def values(self) -> dict:
-        return {r.key: r.value for r in self.rows}
+        return {r.key: r.value for r in self.rows if not r.key.startswith("_")}
+
+    # ---- updates: checked and installed only when the player asks
+    def _update_value(self) -> str:
+        u, state = self.update, self.update["state"]
+        if state == "checking":
+            return tr("Checking…")
+        if state == "available":
+            return tr("Version {version} is available", version=u["version"])
+        if state in ("downloading", "ready"):
+            return tr("Downloading… {pct}%", pct=u.get("pct", 99))
+        if state == "latest":
+            return tr("Up to date")
+        return tr("Version {version}", version=APP_VERSION)
+
+    def _update_describe(self) -> str:
+        state = self.update["state"]
+        if state == "available":
+            return (tr("Press Enter to download and install it. Your settings and captures stay") if FROZEN
+                    else tr("Press Enter to open the download page"))
+        if state == "latest":
+            return tr("You have the newest version, {version}", version=APP_VERSION)
+        if state == "error":
+            return tr("Couldn't reach GitHub · check your internet, then press Enter to try again")
+        if state in ("downloading", "ready"):
+            return tr("Capture Menu closes and installs it when the download finishes")
+        if state == "checking":
+            return ""
+        return tr("Press Enter to look for a new version. Nothing is installed unless you say so")
+
+    def check_or_install(self):
+        state = self.update["state"]
+        if state in ("checking", "downloading", "ready"):
+            return
+        if state == "available":
+            self._install_update()
+            return
+        self.update = {"state": "checking"}
+        self._refresh()
+
+        def run():
+            try:
+                rel = latest_release()
+                newer = version_tuple(rel["version"]) > version_tuple(APP_VERSION)
+                safe_emit(self.update_event, dict(rel, state="available" if newer else "latest"))
+            except Exception:
+                log.exception("update check failed")
+                safe_emit(self.update_event, {"state": "error"})
+        threading.Thread(target=run, daemon=True).start()
+
+    def _install_update(self):
+        rel = dict(self.update)
+        if not FROZEN or not rel.get("url"):   # the Python version updates from the zip on GitHub
+            QtGui.QDesktopServices.openUrl(QtCore.QUrl(rel.get("page") or f"https://github.com/{REPO}/releases/latest"))
+            return
+        self.update = dict(rel, state="downloading", pct=0)
+        self._refresh()
+        out = Path(tempfile.gettempdir()) / f"CaptureMenu-Setup-{rel['version']}.exe"
+
+        def run():
+            try:
+                download_update(rel["url"], rel["size"], out,
+                                lambda pct: safe_emit(self.update_event, dict(rel, state="downloading", pct=pct)))
+                safe_emit(self.update_event, dict(rel, state="ready", file=str(out)))
+            except Exception:
+                log.exception("update download failed")
+                safe_emit(self.update_event, {"state": "error"})
+        threading.Thread(target=run, daemon=True).start()
+
+    def _on_update_event(self, info: dict):
+        self.update = info
+        self._refresh()
+        if info["state"] == "ready":
+            log.info("installing version %s from %s", info.get("version"), info["file"])
+            self.install(Path(info["file"]))
 
     def _refresh(self):
         for r in self.rows:
@@ -5200,6 +5337,36 @@ def install_crash_log():
         pass
 
 
+def watch_for_freezes(app: QtWidgets.QApplication, seconds: float = 6.0) -> QtCore.QTimer:
+    """If the interface stops responding, writes where it is stuck to crash.log (once per freeze),
+    so a freeze that can't be reproduced on demand can still be found."""
+    import faulthandler
+    beat = [time.monotonic()]
+    timer = QtCore.QTimer(app, interval=500, timeout=lambda: beat.__setitem__(0, time.monotonic()))
+    timer.start()
+
+    def run():
+        written = False
+        while True:
+            time.sleep(1)
+            stale = time.monotonic() - beat[0]
+            if stale > seconds and not written:
+                written = True
+                log.error("the interface hasn't responded for %.0f s; where it's stuck is in crash.log", stale)
+                try:
+                    with open(APP_DIR / "crash.log", "a", encoding="utf-8") as f:
+                        f.write(f"\n--- not responding for {stale:.0f} s, {datetime.now():%Y-%m-%d %H:%M:%S}\n")
+                        faulthandler.dump_traceback(f, all_threads=True)
+                except OSError:
+                    pass
+            elif stale < 2:
+                if written:
+                    log.info("the interface responds again")
+                written = False
+    threading.Thread(target=run, daemon=True, name="freeze-watch").start()
+    return timer
+
+
 def main():
     install_crash_log()
     log.info("starting: %s %s", sys.executable, " ".join(sys.argv))
@@ -5209,6 +5376,7 @@ def main():
     if is_rtl():
         app.setLayoutDirection(Qt.RightToLeft)   # Arabic: the whole interface mirrors, like the PS5 does
     app.setQuitOnLastWindowClosed(False)
+    app._freeze_watch = watch_for_freezes(app)
     app.setWindowIcon(tray_icon())
     restarted = "--restarted" in sys.argv
 
@@ -5267,6 +5435,12 @@ def main():
     tm.addAction(tr("Open gallery"), lambda: gallery.open())
     tm.addAction(tr("Open clips folder"), ctl.open_folder)
     tm.addAction(tr("Settings"), lambda: settings.open(ctl.screen_px))
+
+    def check_updates():
+        settings.open(ctl.screen_px)
+        settings.update_row.setFocus()
+        settings.check_or_install()
+    tm.addAction(tr("Check for updates"), check_updates)
     tm.addSeparator()
     tm.addAction(tr("Quit"), app.quit)
     tray.setContextMenu(tm)

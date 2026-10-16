@@ -69,7 +69,7 @@ Setup does the rest by itself:
 
 **First start.** Capture Menu sets up OBS for your PC and restarts it once: your main screen's resolution at 60 FPS, the best encoder for your graphics card (RTX 40/50: AV1, older NVIDIA: HEVC, AMD/Intel: their hardware encoder), a bitrate that suits the resolution, the 30-minute replay buffer, MP4 recordings and a Display Capture source. You'll see *Setting up OBS · 2560×1440 · 60 FPS · NVENC AV1 8000 Kbps*, then *OBS is ready*. It only runs again if your main monitor or graphics card changes.
 
-**Update:** run the new `CaptureMenu-Setup.exe`. Your settings are kept.
+**Update:** Settings → General → **Updates** (or right-click the tray icon → Check for updates). It asks GitHub for a newer version; press again to download and install it, and Capture Menu restarts on its own. Nothing is downloaded or installed unless you press. Your settings and captures are kept.
 **Remove:** Windows **Settings → Apps → Installed apps → Capture Menu → Uninstall**. Your captures, OBS and FFmpeg stay.
 
 **Always on, out of the way.** Capture Menu starts with Windows and runs in the background with no window or taskbar button. A notice says *Capture Menu is running* when the PC starts, and its icon sits next to the clock: click it to open the bar, right-click for the gallery, Settings or Quit. OBS starts minimized to the tray too. Only one copy runs at a time.
@@ -213,7 +213,7 @@ Open it from the **Settings** tile at the end of the bar, **,** on the keyboard,
 - **Recording:** resolution (Native, 1440p, 1080p, 720p), frame rate (30, 60, 120), quality (Light, Balanced, High, Max), video format (Auto, AV1, HEVC, H.264), replay buffer (5 to 60 min), voice on its own track, follow the game's screen, REC indicator (top left, top right, off).
 - **Controls:** keyboard shortcut, controller button, press or hold, double-press to save, rumble, sounds.
 - **Library:** clips folder, screenshots folder (the clips folder unless you pick another), storage warning.
-- **General:** start with Windows, language (same as Windows, English or العربية).
+- **General:** start with Windows, language (same as Windows, English or العربية), updates.
 
 The page shows how much RAM the buffer will use. Saving restarts Capture Menu; a changed recording setting also updates OBS and restarts it once. The video format never asks for more than your graphics card can do (AV1 on an older card falls back to HEVC).
 
@@ -274,7 +274,8 @@ Clips are AV1 on recent cards. VLC, Chrome and Discord play them; the Windows Ph
 - **"Alt + C is taken by another app".** Pick another shortcut in Settings, or use the controller or the tray icon.
 - **Clips record twice.** Turn off the NVIDIA app's Instant Replay (`Alt + Z` → Settings).
 - **1080p monitor?** Recording at 1440p adds no detail; choose 1080p in Settings.
-- **Logs.** `capture_menu.log` and `setup.log` are in `%LOCALAPPDATA%\Programs\CaptureMenu`.
+- **It froze.** If Capture Menu stops responding for more than 6 seconds, it writes where it was stuck to `crash.log`. Send that file with your report.
+- **Logs.** `capture_menu.log`, `crash.log` and `setup.log` are in `%LOCALAPPDATA%\Programs\CaptureMenu`.
 
 <details>
 <summary><b>Set up OBS by hand</b> (only if the automatic setup can't)</summary>
