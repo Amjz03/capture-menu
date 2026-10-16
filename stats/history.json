@@ -1,5 +1,62 @@
 {
- "clones": {},
+ "clones": {
+  "2026-10-03": {
+   "count": 0,
+   "uniques": 0
+  },
+  "2026-10-04": {
+   "count": 0,
+   "uniques": 0
+  },
+  "2026-10-05": {
+   "count": 0,
+   "uniques": 0
+  },
+  "2026-10-06": {
+   "count": 0,
+   "uniques": 0
+  },
+  "2026-10-07": {
+   "count": 0,
+   "uniques": 0
+  },
+  "2026-10-08": {
+   "count": 0,
+   "uniques": 0
+  },
+  "2026-10-09": {
+   "count": 0,
+   "uniques": 0
+  },
+  "2026-10-10": {
+   "count": 0,
+   "uniques": 0
+  },
+  "2026-10-11": {
+   "count": 0,
+   "uniques": 0
+  },
+  "2026-10-12": {
+   "count": 0,
+   "uniques": 0
+  },
+  "2026-10-13": {
+   "count": 0,
+   "uniques": 0
+  },
+  "2026-10-14": {
+   "count": 0,
+   "uniques": 0
+  },
+  "2026-10-15": {
+   "count": 0,
+   "uniques": 0
+  },
+  "2026-10-16": {
+   "count": 0,
+   "uniques": 0
+  }
+ },
  "downloads": {
   "2026-10-16": {
    "by_release": {
@@ -16,21 +73,82 @@
      "CaptureMenu.zip": 1
     },
     "v0.0.4": {
-     "CaptureMenu-Setup.exe": 0,
-     "CaptureMenu.zip": 0
+     "CaptureMenu-Setup.exe": 1,
+     "CaptureMenu.zip": 1
     }
    },
-   "setup_exe": 6,
-   "total": 9
+   "setup_exe": 7,
+   "total": 11
   }
  },
- "paths": {},
- "referrers": {},
+ "paths": {
+  "2026-10-16": []
+ },
+ "referrers": {
+  "2026-10-16": []
+ },
  "repo": {
   "forks": 0,
   "stars": 0,
   "watchers": 0
  },
- "updated": "2026-10-16T19:42:34+00:00",
- "views": {}
+ "updated": "2026-10-16T20:03:00+00:00",
+ "views": {
+  "2026-10-03": {
+   "count": 0,
+   "uniques": 0
+  },
+  "2026-10-04": {
+   "count": 0,
+   "uniques": 0
+  },
+  "2026-10-05": {
+   "count": 0,
+   "uniques": 0
+  },
+  "2026-10-06": {
+   "count": 0,
+   "uniques": 0
+  },
+  "2026-10-07": {
+   "count": 0,
+   "uniques": 0
+  },
+  "2026-10-08": {
+   "count": 0,
+   "uniques": 0
+  },
+  "2026-10-09": {
+   "count": 0,
+   "uniques": 0
+  },
+  "2026-10-10": {
+   "count": 0,
+   "uniques": 0
+  },
+  "2026-10-11": {
+   "count": 0,
+   "uniques": 0
+  },
+  "2026-10-12": {
+   "count": 0,
+   "uniques": 0
+  },
+  "2026-10-13": {
+   "count": 0,
+   "uniques": 0
+  },
+  "2026-10-14": {
+   "count": 0,
+   "uniques": 0
+  },
+  "2026-10-15": {
+   "count": 0,
+   "uniques": 0
+  },
+  "2026-10-16": {
+   "count": 0,
+   "uniques": 0
+  }
+ }
 }
