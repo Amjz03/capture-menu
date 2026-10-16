@@ -1,0 +1,36 @@
+{
+ "clones": {},
+ "downloads": {
+  "2026-10-16": {
+   "by_release": {
+    "v0.0.1": {
+     "CaptureMenu-Setup.exe": 0,
+     "CaptureMenu.zip": 1
+    },
+    "v0.0.2": {
+     "CaptureMenu-Setup.exe": 4,
+     "CaptureMenu.zip": 1
+    },
+    "v0.0.3": {
+     "CaptureMenu-Setup.exe": 2,
+     "CaptureMenu.zip": 1
+    },
+    "v0.0.4": {
+     "CaptureMenu-Setup.exe": 0,
+     "CaptureMenu.zip": 0
+    }
+   },
+   "setup_exe": 6,
+   "total": 9
+  }
+ },
+ "paths": {},
+ "referrers": {},
+ "repo": {
+  "forks": 0,
+  "stars": 0,
+  "watchers": 0
+ },
+ "updated": "2026-10-16T19:42:34+00:00",
+ "views": {}
+}
