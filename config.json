@@ -1,0 +1,33 @@
+{
+  "hotkey": "alt+c",
+  "obs_host": "localhost",
+  "obs_port": 4455,
+  "obs_password": "",
+  "clips_dir": "",
+  "durations_seconds": [
+    15,
+    30,
+    60,
+    180,
+    300,
+    900,
+    1800
+  ],
+  "buffer_minutes": 30,
+  "game_names": {},
+  "controller_button": "create",
+  "controller_hold_ms": 0,
+  "capture_follow_game": true,
+  "obs_display_source": "",
+  "obs_auto_setup": true,
+  "double_press_seconds": 30,
+  "sounds": true,
+  "rumble": true,
+  "storage_warn_gb": 200,
+  "voice_track": true,
+  "resolution": "native",
+  "fps": 60,
+  "quality": "balanced",
+  "video_codec": "auto",
+  "start_with_windows": true
+}

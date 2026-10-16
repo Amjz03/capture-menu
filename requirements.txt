@@ -1,0 +1,4 @@
+PySide6>=6.6
+obsws-python>=1.7
+pysdl2>=0.9.16
+pysdl2-dll>=2.30
