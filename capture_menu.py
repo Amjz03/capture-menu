@@ -930,6 +930,38 @@ def folder_size_gb(folder: Path) -> float:
 MEDIA_EXTS = {".mp4", ".mkv", ".mov", ".flv", ".png"}
 SKIP_DIRS = {".thumbs", "Shared"}   # thumbnails and share copies aren't captures
 
+# Where captures go when Windows won't let us use the chosen folder. Windows Security's
+# "Controlled folder access" guards Videos, Documents, Pictures, Music and Desktop from apps it
+# doesn't know, but not the user folder itself.
+FALLBACK_CLIPS_DIR = Path.home() / "Capture Menu"
+
+
+def usable_folder(path: Path) -> bool:
+    """Whether we can create this folder and write a file in it. Controlled folder access answers a
+    blocked folder with "file not found" or "access denied", so any OSError counts as blocked."""
+    try:
+        path.mkdir(parents=True, exist_ok=True)
+        probe = path / f".capture-menu-{os.getpid()}.tmp"
+        probe.write_bytes(b"")
+        probe.unlink()
+        return True
+    except OSError as e:
+        log.warning("can't use %s: %s", path, e)
+        return False
+
+
+def controlled_folder_access_on() -> bool:
+    """Windows Security's ransomware protection (blocks unknown apps from Videos, Documents…)."""
+    if not IS_WINDOWS:
+        return False
+    try:
+        import winreg
+        key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Microsoft\Windows Defender"
+                             r"\Windows Defender Exploit Guard\Controlled Folder Access")
+        return winreg.QueryValueEx(key, "EnableControlledFolderAccess")[0] == 1
+    except OSError:
+        return False
+
 
 def make_thumb(path: Path, thumbs_dir: Path) -> Path | None:
     """A small JPEG of the clip's last moment (or the screenshot itself)."""
@@ -1199,10 +1231,18 @@ class Controller(QtCore.QObject):
         self.obs = Obs(cfg)
         self.best_encoder: str | None = None     # found during OBS setup; Settings uses it
         self.screen_px: tuple[int, int] | None = None
+        # A folder Windows won't let us use (Controlled folder access, a missing drive) never stops the
+        # app: captures go to FALLBACK_CLIPS_DIR for now, and `blocked` says which folder was refused.
+        # Nothing is written to config.json, so the chosen folder is used again once it's allowed.
+        self.blocked: Path | None = None
         self.clips_dir = Path(cfg["clips_dir"])
-        self.clips_dir.mkdir(parents=True, exist_ok=True)
+        if not usable_folder(self.clips_dir):
+            self.blocked, self.clips_dir = self.clips_dir, FALLBACK_CLIPS_DIR
+            self.clips_dir.mkdir(parents=True, exist_ok=True)
         self.shots_dir = Path(cfg["screenshots_dir"]) if cfg.get("screenshots_dir") else self.clips_dir
-        self.shots_dir.mkdir(parents=True, exist_ok=True)
+        if self.shots_dir != self.clips_dir and not usable_folder(self.shots_dir):
+            self.blocked = self.blocked or self.shots_dir
+            self.shots_dir = self.clips_dir
         # where captures live: the clips folder, plus the screenshots folder when it's somewhere else
         self.roots = [self.clips_dir] + ([self.shots_dir] if self.clips_dir not in
                                          (self.shots_dir, *self.shots_dir.parents) else [])
@@ -1524,6 +1564,13 @@ class Controller(QtCore.QObject):
         self.best_encoder = encoder
         version = self.obs.raw("GetVersion").get("obsVersion", "0")
         plan = obs_plan(self.cfg, width, height, encoder, version)
+        if self.blocked:
+            # OBS writes its replays to Videos by default, which Controlled folder access blocks for
+            # OBS too: let it write next to our captures (the files are moved into place afterwards)
+            incoming = self.thumbs_dir / "incoming"
+            incoming.mkdir(parents=True, exist_ok=True)
+            plan["profile"].append(("SimpleOutput", "FilePath", str(incoming)))
+            plan["summary"] += f" · {incoming}"
         state = load_state()
         if state.get("obs_setup") == plan["summary"]:
             return
@@ -5443,6 +5490,15 @@ def main():
     problems: list[str] = []
 
     ctl = Controller(cfg)
+    if ctl.blocked:
+        problems.append(
+            tr("Windows Security blocked {folder} · captures are saved in {fallback} for now. To use "
+               "{folder}, open Windows Security → Virus & threat protection → Manage ransomware protection "
+               "→ Allow an app through Controlled folder access, and add CaptureMenu.exe and obs64.exe",
+               folder=ctl.blocked, fallback=ctl.clips_dir)
+            if controlled_folder_access_on() else
+            tr("Can't save in {folder} · captures are saved in {fallback} for now. "
+               "Pick another folder in Settings", folder=ctl.blocked, fallback=ctl.clips_dir))
     viewer = Viewer(ctl)
     menu = Menu(ctl, viewer)
     gallery = Gallery(ctl, viewer)

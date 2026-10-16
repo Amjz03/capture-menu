@@ -283,5 +283,7 @@
   "{n} unsaved changes": "تغييرات ما انحفظت: {n}",
   "{open}&nbsp; then &nbsp;{view}&nbsp; to view": "{open}&nbsp; بعدها &nbsp;{view}&nbsp; للعرض",
   "{problem} · pick another controller button in Settings": "{problem} · اختر زر ثاني من الإعدادات",
-  "{used} GB used in total": "{used} جيجابايت مستخدمة"
+  "{used} GB used in total": "{used} جيجابايت مستخدمة",
+  "Windows Security blocked {folder} · captures are saved in {fallback} for now. To use {folder}, open Windows Security → Virus & threat protection → Manage ransomware protection → Allow an app through Controlled folder access, and add CaptureMenu.exe and obs64.exe": "أمان Windows منع البرنامج من {folder} · المقاطع واللقطات بتنحفظ في {fallback} مؤقتاً. عشان تستخدم {folder}: افتح أمان Windows ← الحماية من الفيروسات والمخاطر ← إدارة الحماية من برامج الفدية ← السماح لتطبيق عبر الوصول إلى المجلدات الخاضعة للتحكم، وأضف CaptureMenu.exe و obs64.exe",
+  "Can't save in {folder} · captures are saved in {fallback} for now. Pick another folder in Settings": "ما قدرت أحفظ في {folder} · المقاطع واللقطات بتنحفظ في {fallback} مؤقتاً. اختر مجلد ثاني من الإعدادات"
 }
