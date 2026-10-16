@@ -65,6 +65,8 @@
   "Close": "إغلاق",
   "Close (Esc)": "إغلاق (Esc)",
   "Controller button": "زر يد التحكم",
+  "Controller connected · {name}": "اتصلت يد التحكم · {name}",
+  "Controller disconnected · {name}": "انفصلت يد التحكم · {name}",
   "Copied · paste it with Ctrl+V": "تم النسخ · الصقه بـ Ctrl+V",
   "Copied · paste it with Ctrl+V · {name}": "تم النسخ · الصقه بـ Ctrl+V · {name}",
   "Copy file": "نسخ الملف",

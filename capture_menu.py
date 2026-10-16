@@ -1789,6 +1789,7 @@ class Gamepad(QtCore.QObject):
     activated = QtCore.Signal()
     pressed = QtCore.Signal(int)
     used = QtCore.Signal(str)        # "playstation" or "xbox": the pad that was just pressed
+    connected = QtCore.Signal(str, bool)   # controller name, connected (False: it went away)
 
     STICK = 20000   # left stick acts as a d-pad past this deflection
 
@@ -1818,7 +1819,8 @@ class Gamepad(QtCore.QObject):
         if sdl2.SDL_Init(sdl2.SDL_INIT_GAMECONTROLLER) != 0:
             log.warning("controller support off: %s", sdl2.SDL_GetError())
             return
-        pads, kinds, last = {}, {}, {}
+        log.info("controller support on, waiting for a controller")
+        pads, kinds, last, names = {}, {}, {}, {}
         busy_until = 0.0
         playstation = {sdl2.SDL_CONTROLLER_TYPE_PS3, sdl2.SDL_CONTROLLER_TYPE_PS4,
                        sdl2.SDL_CONTROLLER_TYPE_PS5}
@@ -1832,11 +1834,17 @@ class Gamepad(QtCore.QObject):
                         pads[jid] = pad
                         kinds[jid] = ("playstation" if sdl2.SDL_GameControllerGetType(pad) in playstation
                                       else "xbox")
-                        log.info("controller connected: %s", sdl2.SDL_GameControllerName(pad))
+                        name = (sdl2.SDL_GameControllerName(pad) or b"Controller").decode(errors="replace")
+                        names[jid] = name
+                        log.info("controller connected: %s", name)
+                        self.connected.emit(name, True)
                 elif event.type == sdl2.SDL_CONTROLLERDEVICEREMOVED:
                     pad = pads.pop(event.cdevice.which, None)
                     if pad:
                         sdl2.SDL_GameControllerClose(pad)
+                        name = names.pop(event.cdevice.which, "Controller")
+                        log.info("controller disconnected: %s", name)
+                        self.connected.emit(name, False)
             held, fresh_kind = set(), None
             for jid, pad in pads.items():
                 mine = {b for b in range(21) if sdl2.SDL_GameControllerGetButton(pad, b)}
@@ -5488,6 +5496,9 @@ def main():
                                   else None)
         gamepad.pressed.connect(pad_press)
         gamepad.used.connect(INPUT.set)
+        gamepad.connected.connect(lambda name, on: toast.show_message(
+            tr("Controller connected · {name}", name=name) if on else
+            tr("Controller disconnected · {name}", name=name), "ok" if on else "info"))
         gamepad.start()
     except ValueError as e:
         problems.append(tr("{problem} · pick another controller button in Settings", problem=e))
