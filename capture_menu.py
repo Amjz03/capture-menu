@@ -19,6 +19,7 @@ import ctypes
 import hashlib
 import json
 import logging
+import math
 import os
 import re
 import shutil
@@ -833,23 +834,36 @@ def export_for_share(src: Path, out: Path, size_mb: int | None, without_voice: b
 
 # ---------------------------------------------------------------- sound levels
 
-VOICE_LEVELS = list(range(-12, 25, 3))    # dB, for the player's voice in one clip
-GAME_LEVELS = list(range(-24, 13, 3))     # dB, for the game's sound in one clip
+# Levels are how loud something sounds, in %: 100 = as recorded, 200 = twice as loud (+10 dB),
+# 50 = half as loud, 0 = muted. A volume bar in the viewer sets them, in steps of 25.
+VOICE_MAX, GAME_MAX, LEVEL_STEP = 400, 200, 25
 
 
-def remix_audio(src: Path, voice_db: int, game_db: int, out: Path, seconds: float | None = None,
+def level_gain(percent: int) -> float:
+    """The amplitude factor for a loudness in %: loudness doubles every 10 dB."""
+    return 0.0 if percent <= 0 else 10 ** (10 * math.log2(percent / 100) / 20)
+
+
+def level_text(percent: int) -> str:
+    if percent == 100:
+        return tr("100% · as recorded")
+    return tr("Muted") if percent <= 0 else f"\u200e{percent}%"   # LRM keeps "150%" in order in Arabic
+
+
+def remix_audio(src: Path, voice: int, game: int, out: Path, seconds: float | None = None,
                 start: float = 0.0, picture: Path | None = None):
     """Rebuilds track 1 (what players play) from track 2 (game only) and track 3 (mic only) at new
-    levels. The video and those two tracks are copied untouched, so any level can be picked again later.
-    `start` / `seconds` make a short piece to listen to; otherwise the whole clip. `picture` takes the
-    video from another file (the 720p preview copy, for clips the built-in player can't show)."""
+    levels (in %, 100 = as recorded). The video and those two tracks are copied untouched, so any level
+    can be picked again later. `start` / `seconds` make a short piece to listen to; otherwise the whole
+    clip. `picture` takes the video from another file (the 720p preview copy, for clips the built-in
+    player can't show)."""
     ffmpeg = find_tool("ffmpeg")
     if not ffmpeg:
         raise FileNotFoundError("ffmpeg is not installed")
     seek = ["-ss", f"{start:.3f}"] if start else []
     inputs = [*seek, "-i", str(picture or src)] + ([*seek, "-i", str(src)] if picture else [])
     a = "1" if picture else "0"     # the input that has the sound tracks
-    mix = (f"[{a}:a:1]volume={game_db}dB[g];[{a}:a:2]volume={voice_db}dB[v];"
+    mix = (f"[{a}:a:1]volume={level_gain(game):.4f}[g];[{a}:a:2]volume={level_gain(voice):.4f}[v];"
            f"[g][v]amix=inputs=2:normalize=0:duration=longest,alimiter=limit=0.95:level=disabled[mix]")
     cmd = [ffmpeg, "-y", "-v", "error", *inputs, "-filter_complex", mix,
            "-map", "0:v:0", "-map", "[mix]", "-map", f"{a}:a:1", "-map", f"{a}:a:2",
@@ -862,8 +876,6 @@ def remix_audio(src: Path, voice_db: int, game_db: int, out: Path, seconds: floa
         raise RuntimeError(r.stderr.strip()[-300:] or "couldn't change the sound")
 
 
-def level_label(db: int) -> str:
-    return tr("As recorded") if db == 0 else f"‎{db:+d} dB"   # LRM: "+9 dB" stays in order in Arabic
 
 
 # ---------------------------------------------------------------- storage
@@ -1227,29 +1239,39 @@ class Controller(QtCore.QObject):
 
     # ---- voice and game levels of one clip (the clip keeps its separate game and mic tracks)
     def mix_of(self, path: Path) -> tuple[int, int]:
-        m = load_state().get("mix", {}).get(self._fav_key(path), {})
-        return int(m.get("voice", 0)), int(m.get("game", 0))
+        """Voice and game loudness of a clip in %, 100 = as recorded."""
+        state, key = load_state(), self._fav_key(path)
+        if key in state.get("levels", {}):
+            m = state["levels"][key]
+            return int(m.get("voice", 100)), int(m.get("game", 100))
+        old = state.get("mix", {}).get(key)   # 0.0.2 kept dB; same loudness, nearest step
+        if old:
+            pct = lambda db: int(round(100 * 2 ** (db / 10) / LEVEL_STEP) * LEVEL_STEP)
+            return pct(old.get("voice", 0)), pct(old.get("game", 0))
+        return 100, 100
 
-    def set_mix(self, path: Path, voice_db: int, game_db: int):
-        self._bg(self._set_mix, path, voice_db, game_db)
+    def set_mix(self, path: Path, voice: int, game: int):
+        self._bg(self._set_mix, path, voice, game)
 
-    def _set_mix(self, path: Path, voice_db: int, game_db: int):
+    def _set_mix(self, path: Path, voice: int, game: int):
         tmp = path.with_name(path.name + ".part")   # not a capture, so the gallery never lists it
         try:
-            remix_audio(path, voice_db, game_db, tmp)
+            remix_audio(path, voice, game, tmp)
             st = path.stat()
             os.replace(tmp, path)
             os.utime(path, (st.st_atime, st.st_mtime))     # same place in Recent and the gallery
             self.preview_path(path).unlink(missing_ok=True)   # a 720p preview copy has the old sound
             state = load_state()
-            mixes = state.setdefault("mix", {})
-            if voice_db or game_db:
-                mixes[self._fav_key(path)] = {"voice": voice_db, "game": game_db}
+            key = self._fav_key(path)
+            state.get("mix", {}).pop(key, None)
+            levels = state.setdefault("levels", {})
+            if (voice, game) != (100, 100):
+                levels[key] = {"voice": voice, "game": game}
             else:
-                mixes.pop(self._fav_key(path), None)
+                levels.pop(key, None)
             save_state(state)
             self.toast.emit(tr("Sound saved · your voice {voice} · game {game}",
-                               voice=level_label(voice_db), game=level_label(game_db)), "ok")
+                               voice=level_text(voice), game=level_text(game)), "ok")
         finally:
             tmp.unlink(missing_ok=True)
             self.remixed.emit(str(path))   # the viewer reloads the clip, saved or not
@@ -2424,6 +2446,11 @@ QLabel {{ color: {INK}; background: transparent; }}
 #caption {{ color: {INK}; font-size: 17px; font-weight: 600; }}
 #focusInfo {{ color: {FAINT}; font-size: 14px; }}
 #storage {{ color: {AMBER}; font-size: 14px; }}
+QPushButton#back {{
+    color: {INK}; font-size: 14px; font-weight: 600; border: none; border-radius: 8px;
+    background: rgba(255,255,255,16); padding: 0 16px 0 10px; min-height: 38px;
+}}
+QPushButton#back:hover {{ background: rgba(255,255,255,40); }}
 """
 
 
@@ -2563,6 +2590,8 @@ class Menu(QtWidgets.QWidget):
         pl.addWidget(self.pick_caption)
         chips = QtWidgets.QHBoxLayout()
         chips.setSpacing(4)
+        chips.addWidget(back_button(self.close_picker), 0, Qt.AlignVCenter)
+        chips.addSpacing(12)
         self.chips: list[Chip] = []
         for sec in self.options:
             c = Chip(chip_label(sec))
@@ -2730,19 +2759,21 @@ class Menu(QtWidgets.QWidget):
             return
         game = self.game
         self.hide_menu()
-        self.gallery.open(game)
+        self.gallery.open(game, back_to=lambda: self.show_menu(game))
 
     def open_settings(self):
         if self.settings is None:
             return
+        game = self.game
         self.hide_menu()
-        self.settings.open(self.ctl.screen_px)
+        self.settings.open(self.ctl.screen_px, back_to=lambda: self.show_menu(game))
 
     def _view(self, index: int, trim: bool = False):
         items = self.ctl.recent_items()
         if index < len(items):
+            game = self.game
             self.hide_menu()
-            self.viewer.open(items, index, trim=trim)
+            self.viewer.open(items, index, trim=trim, back_to=lambda: self.show_menu(game))
 
     def _on_status(self, st: dict):
         if not st.get("online"):
@@ -3088,6 +3119,8 @@ QPushButton:disabled {{ color: rgba(244,244,246,0.25); }}
 QPushButton#primary {{ background: {INK}; color: #111114; font-weight: 600; padding: 0 18px; }}
 QPushButton#primary:hover {{ background: #ffffff; }}
 QPushButton#icon {{ padding: 0; min-width: 38px; max-width: 38px; }}
+QPushButton#back {{ background: rgba(255,255,255,16); font-weight: 600; padding: 0 16px 0 10px; }}
+QPushButton#back:hover {{ background: rgba(255,255,255,40); }}
 QPushButton[danger="true"] {{ background: rgba(255,69,58,38); color: #ff6961; font-weight: 600; }}
 QLineEdit {{
     color: {INK}; background: rgba(255,255,255,10); border: 1px solid rgba(255,255,255,36);
@@ -3262,6 +3295,8 @@ class Viewer(QtWidgets.QWidget):
             return b
 
         head = QtWidgets.QHBoxLayout()
+        head.addWidget(back_button(self.go_back), 0, Qt.AlignTop)
+        head.addSpacing(18)
         titles = QtWidgets.QVBoxLayout()
         titles.setSpacing(2)
         self.title = QtWidgets.QLabel(objectName="vTitle")
@@ -3385,13 +3420,11 @@ class Viewer(QtWidgets.QWidget):
         srows = QtWidgets.QHBoxLayout()
         level_rows = QtWidgets.QVBoxLayout()
         level_rows.setSpacing(0)
-        self.voice_row = SettingRow("voice", "Your voice", "choice", [(v, level_label(v)) for v in VOICE_LEVELS],
-                                    lambda v: "How loud you are in this clip")
-        self.game_row = SettingRow("game", "Game", "choice", [(v, level_label(v)) for v in GAME_LEVELS],
-                                   lambda v: "The game's sound in this clip")
+        self.voice_row = LevelRow("Your voice", "How loud you are in this clip", VOICE_MAX)
+        self.game_row = LevelRow("Game", "The game's sound in this clip", GAME_MAX)
         for r in (self.voice_row, self.game_row):
-            r.setMinimumWidth(720)
-            r.setMaximumWidth(860)
+            r.setMinimumWidth(860)
+            r.setMaximumWidth(980)
             level_rows.addWidget(r)
         srows.addLayout(level_rows)
         srows.addStretch(1)     # the buttons stay together at the far end
@@ -3473,7 +3506,8 @@ class Viewer(QtWidgets.QWidget):
         return bool(self.items) and self.current.suffix.lower() != ".png"
 
     # ---- open / close
-    def open(self, items: list[Path], index: int = 0, trim: bool = False):
+    def open(self, items: list[Path], index: int = 0, trim: bool = False, back_to=None):
+        self.back_to = back_to      # what Back returns to once no panel is open (None: just close)
         self._drop_timer.stop()
         self.items, self.index = list(items), index
         self._pending_trim = trim and items[index].suffix.lower() != ".png"
@@ -3481,6 +3515,22 @@ class Viewer(QtWidgets.QWidget):
         self.show()
         bring_to_front(self)
         self.show_item()
+
+    def go_back(self):
+        """One step back: an open panel first, then wherever the viewer was opened from."""
+        if self.editing:
+            self.cancel_edit()
+        elif self.sounding:
+            self.exit_sound()
+        elif self.sharing:
+            self._set_sharing(False)
+        elif self.trimming:
+            self.exit_trim()
+        else:
+            back, self.back_to = getattr(self, "back_to", None), None
+            self.close_viewer()
+            if back:
+                back()
 
     def close_viewer(self):
         self._release()
@@ -3882,15 +3932,15 @@ class Viewer(QtWidgets.QWidget):
         elif self.is_video():
             self.keys_hint.set_items(
                 [("A", "Play/pause"), ("L1R1", "Newer/older"), ("X", "Trim"), ("L3", "Sound"), ("OPT", "Share"),
-                 ("DPAD_U", "Favorite"), ("B", "Close")] if pad
+                 ("DPAD_U", "Favorite"), ("B", "Back")] if pad
                 else [("k:Space", "Play/pause"), ("k:A D", "Newer/older"), ("k:T", "Trim"), ("k:V", "Sound"),
-                      ("k:E", "Share"), ("k:F", "Favorite"), ("k:N", "Rename"), ("k:Esc", "Close")], mode)
+                      ("k:E", "Share"), ("k:F", "Favorite"), ("k:N", "Rename"), ("k:Esc", "Back")], mode)
         else:
             self.keys_hint.set_items(
                 [("L1R1", "Newer/older"), ("OPT", "Share"), ("DPAD_U", "Favorite"), ("Y", "Delete"),
-                 ("B", "Close")] if pad
+                 ("B", "Back")] if pad
                 else [("k:A D", "Newer/older"), ("k:E", "Share"), ("k:F", "Favorite"),
-                      ("k:N", "Rename"), ("k:Del", "Delete"), ("k:Esc", "Close")], mode)
+                      ("k:N", "Rename"), ("k:Del", "Delete"), ("k:Esc", "Back")], mode)
 
     def _timeline_seek(self, ms: int):
         if self.player:
@@ -3981,11 +4031,11 @@ class Viewer(QtWidgets.QWidget):
             return
         if self.sounding:
             rows = [self.voice_row, self.game_row]
-            row = self.focusWidget() if self.focusWidget() in rows else self.voice_row
+            row = next((r for r in rows if r.slider.hasFocus()), self.voice_row)
             if k in (Qt.Key_Up, Qt.Key_Down):
                 rows[1 if k == Qt.Key_Down else 0].setFocus()
-            elif k in (Qt.Key_Left, Qt.Key_Right):
-                row.step(1 if k == Qt.Key_Right else -1)
+            elif k in (Qt.Key_Left, Qt.Key_Right):   # only when a bar doesn't have the keys itself
+                row.step(1 if k == Qt.Key_Right else -1)   # the bars run left to right everywhere
             elif k == Qt.Key_P:
                 self.preview_sound()
             elif k in (Qt.Key_Return, Qt.Key_Enter):
@@ -4017,7 +4067,7 @@ class Viewer(QtWidgets.QWidget):
             }
         else:
             handlers = {
-                Qt.Key_Escape: self.close_viewer,
+                Qt.Key_Escape: self.go_back,
                 Qt.Key_A: lambda: self.step(1 if is_rtl() else -1),   # A / D (L1 / R1) go the way the arrows point
                 Qt.Key_D: lambda: self.step(-1 if is_rtl() else 1),
                 Qt.Key_T: self.enter_trim,
@@ -4162,6 +4212,8 @@ class Gallery(QtWidgets.QWidget):
         lay.setSpacing(24)
         head = QtWidgets.QHBoxLayout()
         head.setSpacing(6)
+        head.addWidget(back_button(self.go_back), 0, Qt.AlignTop)
+        head.addSpacing(18)
         titles = QtWidgets.QVBoxLayout()
         titles.setSpacing(2)
         titles.addWidget(QtWidgets.QLabel(tr("Captures"), objectName="vTitle"))
@@ -4234,12 +4286,23 @@ class Gallery(QtWidgets.QWidget):
         p.fillRect(self.rect(), QtGui.QColor(11, 11, 14, 250))
 
     # ---- open / close
-    def open(self, game: str | None = None):
+    def open(self, game: str | None = None, back_to=None):
+        self.back_to = back_to      # what Back returns to (None: just close)
         self.setGeometry(game_screen().geometry())
         self._load(select=game)
         self.show()
         bring_to_front(self)
         self.grid.setFocus()
+
+    def go_back(self):
+        """A selection is let go first; then back to wherever the gallery was opened from."""
+        if self.marked:
+            self.clear_marks()
+            return
+        back, self.back_to = getattr(self, "back_to", None), None
+        self.close_gallery()
+        if back:
+            back()
 
     def close_gallery(self):
         self.clear_marks()
@@ -4420,9 +4483,9 @@ class Gallery(QtWidgets.QWidget):
         pad = INPUT.mode != "keyboard"
         self.hints.set_items(
             [("DPAD_LR", "Move"), ("A", "Open"), ("X", "Select"), ("OPT", "Delete selected"),
-             ("L1R1", "Game"), ("Y", "Favorite"), ("B", "Close")] if pad
+             ("L1R1", "Game"), ("Y", "Favorite"), ("B", "Back")] if pad
             else [("k:← →", "Move"), ("k:Enter", "Open"), ("k:Space", "Select"), ("k:Del", "Delete selected"),
-                  ("k:[ ]", "Game"), ("k:S", "Sort"), ("k:F", "Favorite"), ("k:Esc", "Close")], INPUT.mode)
+                  ("k:[ ]", "Game"), ("k:S", "Sort"), ("k:F", "Favorite"), ("k:Esc", "Back")], INPUT.mode)
 
     def eventFilter(self, obj, event):
         if obj is self.grid and event.type() == QtCore.QEvent.KeyPress:
@@ -4437,7 +4500,7 @@ class Gallery(QtWidgets.QWidget):
             super().keyPressEvent(e)
 
     def _key(self, k: int) -> bool:
-        actions = {Qt.Key_Escape: self.clear_marks if self.marked else self.close_gallery,
+        actions = {Qt.Key_Escape: self.go_back,
                    Qt.Key_Return: self.open_selected,
                    Qt.Key_Enter: self.open_selected, Qt.Key_BracketLeft: lambda: self.step_game(-1),
                    Qt.Key_BracketRight: lambda: self.step_game(1), Qt.Key_F: self.toggle_favorite,
@@ -4660,6 +4723,106 @@ class SettingRow(QtWidgets.QWidget):
             p.drawText(v, (Qt.AlignLeft if is_rtl() else Qt.AlignRight) | Qt.AlignVCenter, text)
 
 
+def back_button(on_click) -> QtWidgets.QPushButton:
+    """"Back": one step back to where you came from (Esc and ◯ / B do the same)."""
+    b = QtWidgets.QPushButton(" " + tr("Back"), objectName="back")
+    b.setIcon(qicon("right" if is_rtl() else "left"))   # points to where the line starts
+    b.setIconSize(QtCore.QSize(18, 18))
+    b.setFocusPolicy(Qt.NoFocus)
+    b.setCursor(Qt.PointingHandCursor)
+    b.setToolTip(tr("Back (Esc)"))
+    b.clicked.connect(on_click)
+    return b
+
+
+class LevelSlider(QtWidgets.QSlider):
+    """A volume bar. ← → (and the mouse) move it; every other key goes on to the window."""
+
+    def keyPressEvent(self, e):
+        if e.key() in (Qt.Key_Left, Qt.Key_Right, Qt.Key_Home, Qt.Key_End):
+            super().keyPressEvent(e)
+        else:
+            e.ignore()
+
+    def focusInEvent(self, e):
+        super().focusInEvent(e)
+        self.parent().update()
+
+    def focusOutEvent(self, e):
+        super().focusOutEvent(e)
+        self.parent().update()
+
+
+class LevelRow(QtWidgets.QWidget):
+    """One line of the Sound panel: what it is, a volume bar, and how loud (100% = as recorded)."""
+
+    changed = QtCore.Signal()
+
+    def __init__(self, label: str, describe: str, maximum: int):
+        super().__init__()
+        self.setFixedHeight(76)
+        lay = QtWidgets.QHBoxLayout(self)
+        lay.setContentsMargins(18, 0, 18, 0)
+        lay.setSpacing(24)
+        names = QtWidgets.QVBoxLayout()
+        names.setSpacing(2)
+        self.name = QtWidgets.QLabel(tr(label))
+        self.name.setFont(font(15, QtGui.QFont.DemiBold))
+        self.desc = QtWidgets.QLabel(tr(describe))
+        self.desc.setFont(font(13))
+        self.desc.setStyleSheet(f"color: {MUTED};")
+        names.addStretch()
+        names.addWidget(self.name)
+        names.addWidget(self.desc)
+        names.addStretch()
+        lay.addLayout(names, 1)
+        self.slider = LevelSlider(Qt.Horizontal)
+        self.slider.setLayoutDirection(Qt.LeftToRight)   # louder to the right in every language, like the video bar
+        self.slider.setRange(0, maximum)
+        self.slider.setSingleStep(LEVEL_STEP)
+        self.slider.setPageStep(LEVEL_STEP * 2)
+        self.slider.setFixedWidth(380)
+        self.slider.setCursor(Qt.PointingHandCursor)
+        self.slider.valueChanged.connect(self._on_value)
+        lay.addWidget(self.slider)
+        self.amount = QtWidgets.QLabel()
+        self.amount.setFont(font(15, QtGui.QFont.DemiBold))
+        self.amount.setFixedWidth(170)
+        self.amount.setAlignment(Qt.AlignCenter)
+        lay.addWidget(self.amount)
+
+    @property
+    def value(self) -> int:
+        return self.slider.value()
+
+    def set_value(self, percent: int):
+        self.slider.setValue(percent)
+        self._on_value(self.slider.value())
+
+    def step(self, delta: int):
+        self.slider.setValue(self.slider.value() + delta * LEVEL_STEP)
+
+    def _on_value(self, v: int):
+        snapped = round(v / LEVEL_STEP) * LEVEL_STEP     # a drag lands on the nearest 25 %
+        if snapped != v:
+            self.slider.setValue(snapped)
+            return
+        self.amount.setText(level_text(v))
+        self.amount.setStyleSheet(f"color: {RED if v == 0 else INK};")
+        self.changed.emit()
+
+    def setFocus(self, *args):
+        self.slider.setFocus(*args)
+
+    def paintEvent(self, _):
+        if self.slider.hasFocus():
+            p = QtGui.QPainter(self)
+            p.setRenderHint(QtGui.QPainter.Antialiasing)
+            p.setPen(Qt.NoPen)
+            p.setBrush(QtGui.QColor(255, 255, 255, 22))
+            p.drawRoundedRect(QtCore.QRectF(self.rect()).adjusted(0, 3, 0, -3), 10, 10)
+
+
 class SectionTitle(QtWidgets.QLabel):
     def __init__(self, text: str):
         super().__init__(tr(text))
@@ -4690,6 +4853,8 @@ class Settings(QtWidgets.QWidget):
         lay.setSpacing(18)
         head = QtWidgets.QHBoxLayout()
         head.setSpacing(6)
+        head.addWidget(back_button(self.go_back), 0, Qt.AlignTop)
+        head.addSpacing(18)
         titles = QtWidgets.QVBoxLayout()
         titles.setSpacing(2)
         titles.addWidget(QtWidgets.QLabel(tr("Settings"), objectName="vTitle"))
@@ -4860,7 +5025,8 @@ class Settings(QtWidgets.QWidget):
         return {k: v for k, v in self.values().items() if current.get(k) != v}
 
     # ---- open / close
-    def open(self, screen_px: tuple[int, int] | None = None):
+    def open(self, screen_px: tuple[int, int] | None = None, back_to=None):
+        self.back_to = back_to      # what Back returns to (None: just close)
         if screen_px:
             self.screen_px = screen_px
         w, h = self.screen_px
@@ -4885,6 +5051,13 @@ class Settings(QtWidgets.QWidget):
     def _on_encoder(self, enc: str):
         self.encoder = enc
         self._refresh()
+
+    def go_back(self):
+        """Leaves without saving, back to wherever Settings was opened from."""
+        back, self.back_to = getattr(self, "back_to", None), None
+        self.close_settings()
+        if back:
+            back()
 
     def close_settings(self):
         self.hide()
@@ -4931,9 +5104,9 @@ class Settings(QtWidgets.QWidget):
         pad = INPUT.mode != "keyboard"
         self.hints.set_items(
             [("DPAD_UD", "Move"), ("DPAD_LR", "Change"), ("A", "Select"), ("Y", "Save"),
-             ("X", "Defaults"), ("B", "Cancel")] if pad
+             ("X", "Defaults"), ("B", "Back")] if pad
             else [("k:↑ ↓", "Move"), ("k:← →", "Change"), ("k:Enter", "Select"), ("k:S", "Save"),
-                  ("k:Esc", "Cancel")], INPUT.mode)
+                  ("k:Esc", "Back")], INPUT.mode)
 
     def keyPressEvent(self, e):
         row = self.focusWidget() if isinstance(self.focusWidget(), SettingRow) else None
@@ -4961,7 +5134,7 @@ class Settings(QtWidgets.QWidget):
         elif k == Qt.Key_R:
             self.restore_defaults()
         elif k == Qt.Key_Escape:
-            self.close_settings()
+            self.go_back()
         else:
             super().keyPressEvent(e)
 

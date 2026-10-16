@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.0.3 · 2026-10-16
+
+- **Volume bars.** The Sound panel in the viewer has two simple bars, Your voice and Game, in % (100% = as recorded, 0% = muted, your voice up to 400%). Drag them or use the arrows.
+- **Back, everywhere.** The viewer, the gallery, Settings and the Save recent row have a Back button. It goes one step back: an open panel first, then to where you came from (the bar or the gallery). Esc and ◯ / B do the same, and the hints say Back.
+
 ## 0.0.2 · 2026-10-16
 
 - **Arabic.** The whole interface is translated and mirrored right to left. Settings → General → Language: same as Windows, English or العربية. Translations live in `assets/lang/`, so adding a language is one JSON file.

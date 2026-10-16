@@ -76,6 +76,8 @@ Setup does the rest by itself:
 
 ## Using it
 
+**Back, everywhere.** The viewer, the gallery, Settings and the Save recent row all have a **Back** button at the top. It goes one step back: a panel closes first, then you return to where you came from (the bar or the gallery). **Esc** and **◯ / B** on the controller do the same.
+
 ### The bar
 
 Press **Alt + C** in a game or on the desktop. A bar slides up along the bottom of the screen, like the PS5 Create menu, so the game stays visible above it. **Create** has Save recent, Screenshot, Record and Mic; **Recent** has your last 4 captures plus All captures.
@@ -158,17 +160,17 @@ Press **T**. A filmstrip appears with two handles:
 
 ### Sound
 
-Too quiet next to the game, or too loud? In the viewer press **V** (L3 on the controller) or **Sound**:
+Too quiet next to the game, or too loud? In the viewer press **V** (L3 on the controller) or **Sound**. Two volume bars appear, **Your voice** and **Game**: drag them, or use the arrows. **100%** is how it was recorded, 200% sounds twice as loud, 50% half as loud, 0% is muted (your voice goes up to 400%).
 
 | Key | In Sound |
 |---|---|
 | ↑ ↓ | Your voice / Game |
-| ← → | Quieter / louder, in 3 dB steps (your voice up to +24 dB, the game down to -24 dB) |
+| ← → | Quieter / louder, 25% at a time |
 | P | Listen to 12 seconds from where you are, before saving |
 | Enter | Save |
-| Esc | Cancel |
+| Esc | Back |
 
-Only the sound that players play (track 1) is rebuilt; the video and your separate voice and game tracks stay as they were recorded, so you can change it again any time, or set both back to **As recorded**. The clip keeps its name and its place in the gallery, and share copies use the new balance. Clips recorded with "Voice on its own track" off have no separate voice to change.
+Only the sound that players play (track 1) is rebuilt; the video and your separate voice and game tracks stay as they were recorded, so you can change it again any time, or set both back to **100%**. The clip keeps its name and its place in the gallery, and share copies use the new balance. Clips recorded with "Voice on its own track" off have no separate voice to change.
 
 ### Share
 

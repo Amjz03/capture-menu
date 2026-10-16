@@ -36,6 +36,8 @@ for n in ast.walk(tree):
             keys.add(const(a[1]))
         elif name in ("Chip", "SectionTitle", "_show_msg") and a and const(a[0]):
             keys.add(const(a[0]))
+        elif name == "LevelRow":
+            keys.update(filter(None, map(const, a[:2])))
         elif name == "ActionCard":
             keys.update(filter(None, map(const, a[1:3])))
         elif name == "set_state" and len(a) >= 2 and const(a[1]):
