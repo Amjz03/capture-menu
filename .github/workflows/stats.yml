@@ -1,0 +1,44 @@
+name: Stats
+
+# Once a day, adds downloads (and, with the TRAFFIC_TOKEN secret, page views, visitors, clones and
+# referrers) to stats/history.json on the "stats" branch. GitHub only keeps traffic for 14 days;
+# this keeps all of it. Run it by hand from the Actions tab too.
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency: stats
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: src
+
+      - name: Get the stats branch (made on the first run)
+        run: |
+          git clone --quiet --branch stats "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" data \
+            || { git init --quiet -b stats data && git -C data remote add origin \
+                 "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"; }
+
+      - name: Collect
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TRAFFIC_TOKEN: ${{ secrets.TRAFFIC_TOKEN }}
+        run: python src/tools/collect_stats.py data/stats/history.json "${{ github.repository }}"
+
+      - name: Save
+        working-directory: data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add stats/history.json
+          git diff --cached --quiet && { echo "no change"; exit 0; }
+          git commit --quiet -m "Stats for $(date -u +%F)"
+          git push --quiet origin stats
