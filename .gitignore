@@ -8,3 +8,4 @@ dist/
 *.spec
 CaptureMenu.zip
 crash.log
+Output/

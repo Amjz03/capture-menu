@@ -1,7 +1,8 @@
 name: Release
 
-# Builds CaptureMenu.zip (the app only, no tests or screenshots) and publishes it as a release.
-# Three ways to start it: change the VERSION file on main (e.g. to v1.1.0), run it from the
+# Builds CaptureMenu-Setup.exe (CaptureMenu.exe + installer, no Python needed) and
+# CaptureMenu.zip (the Python version, no tests or screenshots), and publishes them as a release.
+# Three ways to start it: change the VERSION file on main (e.g. to v1.2.0), run it from the
 # Actions tab with a version, or push a tag that starts with "v".
 on:
   workflow_dispatch:
@@ -20,19 +21,15 @@ permissions:
 
 jobs:
   release:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build CaptureMenu.zip
-        run: |
-          mkdir -p out/CaptureMenu
-          cp -r assets capture_menu.py config.json requirements.txt README.md \
-                Setup.cmd setup.ps1 Uninstall.cmd uninstall.ps1 build_exe.bat preview.png out/CaptureMenu/
-          cd out && zip -r -q ../CaptureMenu.zip CaptureMenu
-          cd .. && unzip -l CaptureMenu.zip | tail -1
-
-      - name: Publish the release
+      - name: Pick the version
+        id: version
         env:
           GH_TOKEN: ${{ github.token }}
           INPUT_VERSION: ${{ inputs.version }}
@@ -40,18 +37,58 @@ jobs:
           if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then TAG="$INPUT_VERSION"
           elif [ "$GITHUB_REF_TYPE" = "tag" ]; then TAG="$GITHUB_REF_NAME"
           else TAG="$(tr -d '[:space:]' < VERSION)"; fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           if gh release view "$TAG" >/dev/null 2>&1; then
-            echo "Release $TAG already exists, nothing to do"; exit 0
+            echo "Release $TAG already exists, nothing to do"; echo "skip=true" >> "$GITHUB_OUTPUT"
           fi
-          cat > notes.md <<'NOTES'
-          **Install in 3 steps**
-          1. Download `CaptureMenu.zip` below.
-          2. Right-click it → **Extract All** → **Extract**.
-          3. Double-click `Setup.cmd` in the extracted folder and wait for **All set!**
 
-          If Windows shows "Windows protected your PC", choose **More info → Run anyway**. Setup installs Python, OBS Studio and FFmpeg, copies Capture Menu to its own folder, connects OBS, starts it with Windows and checks that everything works. Already installed? Run the new `Setup.cmd` to update; your settings are kept.
+      - uses: actions/setup-python@v5
+        if: steps.version.outputs.skip != 'true'
+        with:
+          python-version: "3.12"
+
+      - name: Build CaptureMenu.exe
+        if: steps.version.outputs.skip != 'true'
+        run: |
+          python -m pip install --disable-pip-version-check -q -r requirements.txt pyinstaller
+          python -m PyInstaller --noconfirm --windowed --name CaptureMenu --icon assets/icon.ico \
+            --add-data "assets;assets" --collect-all sdl2dll --collect-all obsws_python capture_menu.py
+          test -f dist/CaptureMenu/CaptureMenu.exe
+
+      - name: Build CaptureMenu-Setup.exe
+        if: steps.version.outputs.skip != 'true'
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          ISCC="/c/Program Files (x86)/Inno Setup 6/ISCC.exe"
+          [ -f "$ISCC" ] || choco install innosetup -y --no-progress
+          "$ISCC" //Q "//DAppVersion=${TAG#v}" installer.iss
+          ls -la Output/CaptureMenu-Setup.exe
+
+      - name: Build CaptureMenu.zip
+        if: steps.version.outputs.skip != 'true'
+        run: |
+          mkdir -p out/CaptureMenu
+          cp -r assets capture_menu.py config.json requirements.txt README.md \
+                Setup.cmd setup.ps1 Uninstall.cmd uninstall.ps1 build_exe.bat preview.png out/CaptureMenu/
+          cd out && 7z a -bso0 ../CaptureMenu.zip CaptureMenu
+
+      - name: Publish the release
+        if: steps.version.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          cat > notes.md <<'NOTES'
+          **Install:** download **`CaptureMenu-Setup.exe`** below and double-click it. That's it.
+
+          It installs Capture Menu, plus OBS Studio and FFmpeg if you don't have them, connects OBS and starts Capture Menu with Windows. No Python needed. Already installed? Run the new Setup to update; your settings are kept. To remove it: Windows Settings → Apps → Capture Menu → Uninstall.
+
+          If Windows shows "Windows protected your PC", choose **More info → Run anyway**.
 
           Press **Alt + C** (or **Create** on the controller) to open the menu.
+
+          <sub>`CaptureMenu.zip` is the Python version for tinkering: extract it and run `Setup.cmd`.</sub>
           NOTES
-          gh release create "$TAG" CaptureMenu.zip --target "$GITHUB_SHA" \
+          gh release create "$TAG" Output/CaptureMenu-Setup.exe CaptureMenu.zip --target "$GITHUB_SHA" \
             --title "Capture Menu $TAG" --notes-file notes.md

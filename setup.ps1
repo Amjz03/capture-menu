@@ -90,6 +90,9 @@ Write-Host ""
 Write-Host "  Capture Menu setup" -ForegroundColor White
 Write-Host "  This takes a few minutes the first time. Leave this window open." -ForegroundColor Gray
 
+New-Item -ItemType Directory -Force $InstallDir | Out-Null
+Start-Transcript -Path (Join-Path $InstallDir "setup.log") -Force | Out-Null   # CaptureMenu-Setup.exe shows it if something's off
+
 if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
     Fail "winget isn't available. Install 'App Installer' from the Microsoft Store, then run Setup again."
 }
@@ -264,3 +267,5 @@ if ($problems -eq 0) {
     Write-Host "  Almost there: fix the item(s) marked !! above, then run Setup again." -ForegroundColor Yellow
 }
 Write-Host "  Installed in $InstallDir. You can delete the downloaded folder." -ForegroundColor Gray
+Stop-Transcript | Out-Null
+exit $problems

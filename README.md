@@ -121,24 +121,29 @@ Capture Menu starts with Windows and runs in the background. It has no window an
 Only one copy runs at a time: starting it again does nothing. If something needs attention at start-up (OBS not running, the shortcut taken by another app), that same notice says so instead of opening a window.
 
 ## Install
-1. Download **`CaptureMenu.zip`** from the [latest release](https://github.com/Amjz03/capture-menu/releases/latest).
-2. Right-click it → **Extract All** → **Extract**.
-3. Open the extracted folder and double-click **`Setup.cmd`**. Leave the window open until it says **All set!** (a few minutes the first time).
+1. Download **`CaptureMenu-Setup.exe`** from the [latest release](https://github.com/Amjz03/capture-menu/releases/latest).
+2. Double-click it and press **Install**. Wait a few minutes the first time.
 
-That's it: press **Alt + C** in a game. You can delete the zip and the extracted folder afterwards.
+That's it: press **Alt + C** in a game. No Python needed.
 
 > **"Windows protected your PC"?** Click **More info → Run anyway**. Windows shows this for any app that isn't from the Store.
 
 Setup does everything else by itself:
-- installs Python, OBS Studio and FFmpeg (skips what you already have)
-- copies Capture Menu to `%LOCALAPPDATA%\Programs\CaptureMenu`, so it keeps working wherever you downloaded it
+- installs Capture Menu to `%LOCALAPPDATA%\Programs\CaptureMenu` (no admin rights needed)
+- installs OBS Studio and FFmpeg (skips what you already have)
 - turns on OBS's WebSocket with a random password and saves it to `config.json`
 - adds Capture Menu to the Start menu and to Windows startup, and starts it
-- checks that everything is ready and tells you exactly what to fix if something isn't
+- checks that everything is ready, and if something isn't, offers to open a log that says what to fix
 
-**Updating:** download the new zip and run its `Setup.cmd` the same way. Your settings are kept.
+**Updating:** download the new `CaptureMenu-Setup.exe` and run it. Your settings are kept.
 
-**Removing:** double-click **`Uninstall.cmd`** (in the extracted folder or in `%LOCALAPPDATA%\Programs\CaptureMenu`). Your captures, OBS and FFmpeg stay.
+**Removing:** Windows **Settings → Apps → Installed apps → Capture Menu → Uninstall**. Your captures, OBS and FFmpeg stay.
+
+### Python version (for tinkering)
+The release also has `CaptureMenu.zip`: the same app as Python source. Extract it and double-click **`Setup.cmd`**, which installs Python and the libraries too. It updates the same way, and **`Uninstall.cmd`** removes it.
+
+### Building Setup.exe yourself
+`build_exe.bat` builds `dist\CaptureMenu\CaptureMenu.exe`. Then compile the installer with [Inno Setup 6](https://jrsoftware.org/isinfo.php): `iscc /DAppVersion=1.2.0 installer.iss` makes `Output\CaptureMenu-Setup.exe`. Releases do this automatically on GitHub.
 
 The first time it runs, Capture Menu **sets up OBS for your PC by itself** and restarts OBS once:
    - your main screen's resolution at **60 FPS**
@@ -149,9 +154,6 @@ The first time it runs, Capture Menu **sets up OBS for your PC by itself** and r
    You'll see "Setting up OBS · 2560×1440 · 60 FPS · NVENC AV1 8000 Kbps", then "OBS is ready". If OBS offers its Auto-Configuration Wizard, choose **No**.
 
 It runs again only if something changes (a new main monitor or graphics card). Turn it off with `"obs_auto_setup": false`.
-
-### Optional: a standalone .exe
-After Setup, double-click **`build_exe.bat`** once. It builds `dist\CaptureMenu\CaptureMenu.exe`, which runs without Python. Run `Setup.cmd` in that folder once so it starts with Windows; it starts OBS by itself.
 
 ### Manual OBS setup (only if the automatic one can't)
 1. **Sources → + → Display Capture.**
