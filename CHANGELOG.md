@@ -1,0 +1,14 @@
+# Changelog
+
+## 0.0.1 · 2026-10-16
+
+First public build.
+
+- **Capture bar** on Alt + C or the controller's Create button: save recent gameplay (15 s to 30 min), screenshot, record, mic on/off.
+- **Per-game folders**, a viewer with frame-exact trim, titles and notes, favorites, and a gallery with sizes, sorting and multi-delete.
+- **Share copies** for phones and Discord (10 / 50 / 500 MB), with or without your voice.
+- **Follows the game's screen** across monitors and TVs, a REC timer, double-press to save, sounds and controller rumble.
+- **Settings page** for recording quality, buffer length, shortcuts and controls.
+- **One-click install:** `CaptureMenu-Setup.exe` installs the app with its icon, plus OBS Studio and FFmpeg, connects OBS and sets it up for the PC. Uninstall from Windows Settings → Apps.
+- Fixed: OBS auto-setup no longer fails on a fresh OBS where the replay buffer is off.
+- Fixed: clips save right after install, even before FFmpeg is on the PATH.

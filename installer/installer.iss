@@ -1,6 +1,6 @@
-; CaptureMenu-Setup.exe: installs the built CaptureMenu.exe (dist\CaptureMenu from build_exe.bat),
+; CaptureMenu-Setup.exe: installs the built CaptureMenu.exe (dist\CaptureMenu from installer\build_exe.bat),
 ; then runs setup.ps1 to install OBS and FFmpeg, connect OBS, add the shortcuts and start it.
-; Build: iscc /DAppVersion=1.2.0 installer.iss   ->   Output\CaptureMenu-Setup.exe
+; Build (from the repo root): iscc /DAppVersion=0.0.1 installer\installer.iss   ->   Output\CaptureMenu-Setup.exe
 ; Test switch: CaptureMenu-Setup.exe /NOSETUP copies the files only (no OBS, shortcuts or start).
 
 #ifndef AppVersion
@@ -18,6 +18,7 @@ DisableDirPage=yes
 DisableProgramGroupPage=yes
 DisableReadyPage=yes
 PrivilegesRequired=lowest
+SourceDir=..
 OutputDir=Output
 OutputBaseFilename=CaptureMenu-Setup
 SetupIconFile=assets\icon.ico
@@ -34,7 +35,7 @@ FinishedLabel=Capture Menu is installed and running (its icon is next to the clo
 
 [Files]
 Source: "dist\CaptureMenu\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "setup.ps1"; DestDir: "{app}"; Flags: ignoreversion
+Source: "installer\setup.ps1"; DestDir: "{app}"; Flags: ignoreversion
 Source: "README.md"; DestDir: "{app}"; Flags: ignoreversion
 ; keep a friend's settings (and the OBS password) when they update
 Source: "config.json"; DestDir: "{app}"; Flags: onlyifdoesntexist

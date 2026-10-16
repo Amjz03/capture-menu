@@ -2,7 +2,7 @@ name: Release
 
 # Builds CaptureMenu-Setup.exe (CaptureMenu.exe + installer, no Python needed) and
 # CaptureMenu.zip (the Python version, no tests or screenshots), and publishes them as a release.
-# Three ways to start it: change the VERSION file on main (e.g. to v1.2.0), run it from the
+# Three ways to start it: change the VERSION file on main (e.g. to v0.0.2), run it from the
 # Actions tab with a version, or push a tag that starts with "v".
 on:
   workflow_dispatch:
@@ -62,15 +62,15 @@ jobs:
         run: |
           ISCC="/c/Program Files (x86)/Inno Setup 6/ISCC.exe"
           [ -f "$ISCC" ] || choco install innosetup -y --no-progress
-          "$ISCC" //Q "//DAppVersion=${TAG#v}" installer.iss
+          "$ISCC" //Q "//DAppVersion=${TAG#v}" installer/installer.iss
           ls -la Output/CaptureMenu-Setup.exe
 
       - name: Build CaptureMenu.zip
         if: steps.version.outputs.skip != 'true'
         run: |
           mkdir -p out/CaptureMenu
-          cp -r assets capture_menu.py config.json requirements.txt README.md \
-                Setup.cmd setup.ps1 Uninstall.cmd uninstall.ps1 build_exe.bat preview.png out/CaptureMenu/
+          cp -r assets capture_menu.py config.json requirements.txt README.md LICENSE \
+                installer/Setup.cmd installer/setup.ps1 installer/Uninstall.cmd installer/uninstall.ps1 out/CaptureMenu/
           cd out && 7z a -bso0 ../CaptureMenu.zip CaptureMenu
 
       - name: Publish the release

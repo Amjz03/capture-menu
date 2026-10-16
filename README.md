@@ -1,56 +1,129 @@
-# Capture Menu: a PS5-style Create button for Windows
+<p align="center">
+  <img src="docs/icon.png" width="96" alt="">
+</p>
 
-**[Download](https://github.com/Amjz03/capture-menu/releases/latest)** · [Install in 3 steps](#install)
+<h1 align="center">Capture Menu</h1>
 
-Press **Alt + C** while gaming or anywhere on the desktop. A bar appears along the bottom of the screen, like the PS5 Create menu, so the game stays visible above it:
+<p align="center">
+  A PS5-style Create button for Windows.<br>
+  Press <b>Alt + C</b> (or <b>Create</b> on your controller) to save the last minutes of gameplay, take a screenshot or record, without leaving the game.
+</p>
 
-- **Create:** Save recent, Screenshot, Record
-- **Recent:** your latest captures with their length, plus All captures
+<p align="center">
+  <a href="https://github.com/Amjz03/capture-menu/releases/latest"><b>Download</b></a> ·
+  <a href="#install">Install</a> ·
+  <a href="#using-it">Using it</a> ·
+  <a href="#settings">Settings</a> ·
+  <a href="#troubleshooting">Troubleshooting</a>
+</p>
+
+<p align="center">
+  <img src="docs/preview.png" alt="The Capture Menu bar over a game">
+</p>
+
+## Features
+
+- **Save recent gameplay** from a 30-minute replay buffer: the last 15 s, 30 s, 1, 3, 5, 15 or 30 minutes, or everything.
+- **Screenshot and record** from the same bar, with a small REC timer while you record.
+- **A folder per game**, detected automatically, like the PS5.
+- **Check it right away:** a viewer with play, skip and frame-exact trim.
+- **Share in one step:** copies for phones and Discord (10 / 50 / 500 MB) go straight to the clipboard, with or without your voice.
+- **Gallery** with favorites, titles, notes, sizes, sorting and multi-delete.
+- **Works with a controller:** DualSense, Xbox and most others, with on-screen hints that match.
+- **Follows your game** across monitors and TVs, and never shows up in your recordings.
+- **One-click install:** OBS Studio and FFmpeg are installed and set up for your PC automatically.
+
+| | | |
+|---|---|---|
+| ![Save recent](docs/screenshots/save-recent.png) | ![Viewer](docs/screenshots/viewer.png) | ![Trim](docs/screenshots/trim.png) |
+| ![Gallery](docs/screenshots/gallery.png) | ![Settings](docs/screenshots/settings.png) | ![Notifications](docs/screenshots/notifications.png) |
+
+## Contents
+
+- [Install](#install)
+- [Using it](#using-it): [the bar](#the-bar) · [controller](#with-a-controller) · [viewer](#viewer) · [trim](#trim) · [share](#share) · [gallery](#gallery) · [more](#more)
+- [Settings](#settings): [Settings page](#settings-page) · [`config.json`](#configjson)
+- [Performance](#performance)
+- [Troubleshooting](#troubleshooting)
+- [Development](#development)
+- [Credits and license](#credits-and-license)
+
+## Install
+
+1. Download **`CaptureMenu-Setup.exe`** from the [latest release](https://github.com/Amjz03/capture-menu/releases/latest).
+2. Double-click it and press **Install**. The first time takes a few minutes.
+
+That's it: press **Alt + C** in a game. No admin rights and no Python needed.
+
+> **"Windows protected your PC"?** Click **More info → Run anyway**. Windows shows this for any app that isn't from the Store.
+
+Setup does the rest by itself:
+
+- installs Capture Menu to `%LOCALAPPDATA%\Programs\CaptureMenu`
+- installs **OBS Studio** and **FFmpeg** if you don't have them
+- turns on OBS's WebSocket with a random password and saves it to `config.json`
+- adds Capture Menu to the Start menu and to Windows startup, and starts it
+- checks everything, and if something isn't ready, offers a log that says what to fix
+
+**First start.** Capture Menu sets up OBS for your PC and restarts it once: your main screen's resolution at 60 FPS, the best encoder for your graphics card (RTX 40/50: AV1, older NVIDIA: HEVC, AMD/Intel: their hardware encoder), a bitrate that suits the resolution, the 30-minute replay buffer, MP4 recordings and a Display Capture source. You'll see *Setting up OBS · 2560×1440 · 60 FPS · NVENC AV1 8000 Kbps*, then *OBS is ready*. It only runs again if your main monitor or graphics card changes.
+
+**Update:** run the new `CaptureMenu-Setup.exe`. Your settings are kept.
+**Remove:** Windows **Settings → Apps → Installed apps → Capture Menu → Uninstall**. Your captures, OBS and FFmpeg stay.
+
+**Always on, out of the way.** Capture Menu starts with Windows and runs in the background with no window or taskbar button. A notice says *Capture Menu is running* when the PC starts, and its icon sits next to the clock: click it to open the bar, right-click for the gallery, Settings or Quit. OBS starts minimized to the tray too. Only one copy runs at a time.
+
+## Using it
+
+### The bar
+
+Press **Alt + C** in a game or on the desktop. A bar slides up along the bottom of the screen, like the PS5 Create menu, so the game stays visible above it. **Create** has Save recent, Screenshot, Record and Mic; **Recent** has your last 4 captures plus All captures.
 
 | Key | Action |
 |---|---|
 | ← → | Move between tiles (hovering with the mouse works too) |
 | Enter | Select |
-| ↑ or Enter on **Save recent** | Opens the PS5-style row: Full video, Last 15s, 30s, 1m, 3m, 5m, 15m, 30m |
-| 1–8 | Save that option instantly (1 = Full video, 2 = Last 15s, …) |
+| ↑, or Enter on **Save recent** | Pick a length: Full video, Last 15 s, 30 s, 1 m, 3 m, 5 m, 15 m, 30 m |
+| 1–8 | Save that length right away (1 = Full video, 2 = Last 15 s, …) |
 | S / R | Screenshot / start or stop recording |
-| V | View the latest capture |
-| T | Trim the latest capture |
+| V / T | View / trim the latest capture |
 | M | Mic on / off |
 | O | Open the gallery |
+| , | Settings |
 | Esc | Close (clicking back into the game closes it too) |
 
-**With a controller.** Press **Create** on a DualSense (the small button left of the touchpad), just like on the PS5. Xbox and most other controllers work too.
+**Save recent** shows how much is recorded right now, e.g. `19:20 / 30:00`. Longer options are dimmed; picking one saves everything recorded so far. **Picked too short?** Open the bar again and pick a longer one: the new clip still has the moment, and both clips are kept.
 
-| Button (DualSense / Xbox) | In the bar | In the viewer | While trimming |
-|---|---|---|---|
-| D-pad or left stick | Move / pick a duration | ← → skip 5 sec | ← → skip 5 sec |
-| ✕ / A | Select | Play / pause | Save as new clip |
-| ◯ / B | Back / close | Close | Cancel |
-| ▢ / X | Screenshot | Trim | Set start |
-| △ / Y | View latest | Delete | Set end |
-| L1 R1 / LB RB | | Newer / older | Preview |
+**Double-press to save.** Press Alt + C or Create twice quickly to save the last 30 seconds without opening the bar.
 
-The on-screen hints follow whatever you're holding: ✕ ◯ ▢ △ for a PlayStation controller, A B X Y for Xbox, and keys as soon as you touch the keyboard.
-
-Change the button in **Settings**, or in `config.json` with `controller_button`: `create`, `ps`, `options`, `touchpad`, `mute`, `share` (Xbox Series), `view`, or a combo like `l1+r1`.
-If your game already uses that button (some use Create/View for the map), set `controller_hold_ms` to `400`: then only a press-and-hold opens the bar, and a quick tap still goes to the game.
-
-> Steam opens Big Picture on the PS button, so `ps` only works when Steam isn't running or its Guide button chord is turned off.
-
-**A folder per game, like the PS5.** Capture Menu checks which game (or app) is on screen when you press the hotkey and saves there automatically:
+**A folder per game.** Captures are saved by the game (or app) on screen when you press the shortcut:
 
 ```
 Videos\Clips\
 ├── Cyberpunk 2077\
 ├── Elden Ring\
-├── Valorant\
 └── Desktop\        ← captures taken outside a game
 ```
 
-The menu shows the detected name next to the title. A recording goes to the game it **started** in, even if you stop it from somewhere else.
+A recording goes to the game it **started** in, even if you stop it somewhere else.
 
-**Check it right away, like the PS5.** After every capture a notification shows its thumbnail. Open the menu: the **Recent** row has your last 4 captures. Click one, or press **V** for the latest, to open the viewer:
+### With a controller
+
+Press **Create** on a DualSense (the small button left of the touchpad), just like on the PS5. Xbox and most other controllers work too.
+
+| Button (DualSense / Xbox) | In the bar | In the viewer | While trimming |
+|---|---|---|---|
+| D-pad or left stick | Move / pick a length | ← → skip 5 s | ← → skip 5 s |
+| ✕ / A | Select | Play / pause | Save as a new clip |
+| ◯ / B | Back / close | Close | Cancel |
+| ▢ / X | Screenshot | Trim | Set start |
+| △ / Y | View latest | Delete | Set end |
+| L1 R1 / LB RB | | Newer / older | Preview |
+
+On-screen hints follow what you're holding: ✕ ◯ ▢ △ for PlayStation, A B X Y for Xbox, keys as soon as you touch the keyboard. Change the button in [Settings](#settings).
+
+### Viewer
+
+Every capture shows a notification with its thumbnail; click it to open the capture, or its **Trim** button to trim it. In the bar, click a Recent capture or press **V**.
 
 | Key | In the viewer |
 |---|---|
@@ -58,169 +131,97 @@ The menu shows the detected name next to the title. A recording goes to the game
 | ← → | Skip 5 seconds |
 | A / D | Newer / older capture |
 | T | Trim |
+| E | Share |
+| N | Title and note |
+| F | Favorite |
 | Del | Delete (press twice; it goes to the Recycle Bin) |
 | Esc | Close |
 
-Two small buttons next to them show the file in its folder and open it in your own video player.
+Two small buttons show the file in its folder or open it in your own player. If the built-in player can't show a clip's picture (for example AV1 without GPU decoding), a light 720p preview plays instead; the original is untouched.
 
-If the built-in player can't show a clip's picture (for example AV1 without GPU decoding), Capture Menu notices within about 2 seconds and plays a light 720p preview copy instead. Your original clip is untouched.
+### Trim
 
-**Trim, like the PS5.** Press **T** (or ✂ Trim). A filmstrip of the clip appears with two blue handles:
+Press **T**. A filmstrip appears with two handles:
 
 | Key | While trimming |
 |---|---|
 | Drag the handles | Set start and end (the video shows that frame) |
 | I / O | Set start / end at the playhead |
-| P | Preview just the selection |
+| P | Preview the selection |
 | Enter | Save as a new clip (the original stays) |
 | Esc | Cancel |
 
-You can also pick **Replace original**, which keeps the trimmed part and sends the full clip to the Recycle Bin. Trims are cut frame-exact on the GPU (NVENC) in the same format as the original, so they look the same.
+**Replace original** keeps only the trimmed part and sends the full clip to the Recycle Bin. Trims are frame-exact, encoded on the GPU in the same format as the original. When that isn't possible, Capture Menu makes a fast lossless cut instead, which may start a second or two early.
 
-**Save recent gameplay** shows how much is recorded right now, e.g. `19:20 / 30:00`. Options longer than that are dimmed; picking one saves everything recorded so far. The row remembers your last choice.
+### Share
 
-**Picked too short?** Open the menu again and pick a longer duration. The new clip still contains the earlier moment, and **both clips are kept**. Nothing is ever deleted for you.
-
-**Share it.** In the viewer press **E** (Options on the controller, or the Share button):
+In the viewer press **E** (Options on the controller):
 
 | Option | What you get |
 |---|---|
 | Copy file | The capture itself on the clipboard: paste it anywhere with Ctrl+V |
 | Phone & WhatsApp | MP4 (H.264, up to 1080p) that plays on every phone |
 | Discord · 10 / 50 / 500 MB | Shrunk to fit Discord's limit (free / Nitro Basic / Nitro). Long clips drop to 720p or 480p; a clip too long for the limit asks you to trim it first |
-| Without my voice | Shown when the clip has your voice on its own track (see below): the copy keeps the game sound only |
+| Without my voice | The same, with the game sound only (when the clip has your voice on its own track) |
 
-Converted copies go into a `Shared` folder inside the game's folder and are **copied to the clipboard**, so you paste them straight into Discord or WhatsApp Desktop. Your original stays as it is.
+Copies go into a `Shared` folder in the game's folder and are **copied to the clipboard**, so you can paste them straight into Discord or WhatsApp.
 
-**Trim right after saving.** The save notification is clickable: click it to open the capture, or its **Trim** button to go straight to trimming. In the bar, **T** (R1 on the controller) trims the latest capture.
+### Gallery
 
-**Titles and notes.** In the viewer press **N** (or Rename) to give a capture a title, like "Clutch 1v4 on the bridge", and a note. The title shows in the viewer, the Recent row and the gallery, and names the copies you share. The file itself keeps its name.
+**All captures** in the bar (or **O**) lists everything: All, ★ Favorites, then each game with its count and size.
 
-**Favorites.** Press **F** in the viewer (D-pad ↑ on the controller) to star a capture. Stars show on the thumbnails and in the gallery's ★ Favorites list.
+- Arrows move, **Enter** opens the viewer, **[ ]** (L1 / R1) switches game, **F** (△ / Y) stars.
+- **S** sorts by Newest or **Largest**, which also puts the biggest games first.
+- **Space** (▢ / X, or Ctrl+click) marks captures, **Ctrl+A** marks all, **Del** deletes them to the Recycle Bin after a confirmation that mentions any favorites.
 
-**Gallery, like the PS5 Media Gallery.** "All captures" in the bar (or **O**) opens every capture: All, ★ Favorites, then each game with its count and size. Arrows move, Enter opens the viewer, **[ ]** (L1 / R1) switches game, **F** (△ / Y) stars.
+Titles like "Clutch 1v4 on the bridge" show in the viewer, Recent row and gallery, and name the copies you share; the file keeps its name.
 
-- **Sizes and sorting:** every capture and game shows its size. **S** (or "Sort") switches between Newest and **Largest**, which also puts the biggest games first, so you can see what's filling the drive.
-- **Delete several at once:** **Space** (▢ / X on the controller, or Ctrl+click) marks captures, **Ctrl+A** marks the whole list, then **Del** (Options / Menu). The first press asks you to confirm and says if favorites are included; the second sends them to the Recycle Bin and tells you how much space was freed. Esc clears the selection.
+### More
 
-**Mic button.** The **Mic** tile in the bar (or **M**) mutes or unmutes your microphone in OBS. It turns red when it's off.
+- **Mic.** The Mic tile (or **M**) mutes your microphone in OBS; it turns red when off.
+- **Your voice on its own track.** Recordings carry 3 audio tracks: everything, game only and mic only. Players use the first, so clips sound normal; *Without my voice* uses the second.
+- **Monitors and TVs.** The bar, notifications and viewer open on the screen of the window in front. When a game fills a screen, OBS switches to record that screen within about 2 seconds, scaled to your recording resolution. Alt-tabbing to another screen doesn't move it. The replay buffer keeps what was captured at the time, so minutes before a move show the old screen.
+- **REC timer.** A manual recording shows a small red *REC 12:34* in a corner. Clicks go through it, and it never shows up in captures.
+- **Storage warning.** Past 200 GB of captures, or under 20 GB free on the drive, you get a notice. Nothing is ever deleted for you.
+- **Sounds and vibration.** A chime when a clip is saved, a shutter click for screenshots and a tone when recording starts; the controller buzzes too while you're using it. Replace the `.wav` files in `assets\sounds` with your own if you like.
 
-**Your voice on its own track.** With `voice_track` on (default), recordings carry 3 audio tracks: everything, game only, and your mic only. Players play the first one, so clips sound normal; "Without my voice" uses the game-only one. To write extra tracks, OBS's Simple mode needs its quality preset instead of a fixed bitrate, so the buffer is capped by size (about 2.9 GB for 30 minutes at 1440p). In very detailed scenes it may hold a little less than 30 minutes. Set `"voice_track": false` to go back to the fixed 8000 Kbps (~1.8 GB).
+## Settings
 
-**Storage warning.** When your captures pass `storage_warn_gb` (200 GB by default) or the drive has less than 20 GB free, you get a notice and an amber line in the bar. Nothing is deleted for you.
+### Settings page
 
-**Monitor and TV.** Capture Menu follows the game. The bar, the notifications and the viewer open on the screen your game is on. And when a game fills a screen (fullscreen or borderless), OBS is switched to record that screen within about 2 seconds, scaled to your recording resolution (a 4K TV fits the 1440p canvas). A notification says "Recording this screen · SAMSUNG". Alt-tabbing to Discord or a browser on the other screen doesn't move it. If you switch Windows to "TV only" (Win + P), the capture moves to the TV as well.
+Open it from the **Settings** tile at the end of the bar, **,** on the keyboard, or the tray icon. Move with ↑ ↓, change with ← →, **S** (△ / Y) saves, **Esc** (◯ / B) cancels. **Restore defaults** goes back to the original setup.
 
-Keep in mind: the replay buffer holds whatever was being captured at the time. If you move the game from the monitor to the TV, the minutes before the move show the monitor.
-
----
-
-## Always on, out of the way
-Capture Menu starts with Windows and runs in the background. It has no window and no taskbar button. When the PC starts, a notice in the top-right says **Capture Menu is running** and how to open it. Its icon sits in the tray next to the clock: click it to open the bar, or right-click it for the gallery, Settings or Quit. On Windows 11 the icon is moved out of the hidden ^ area once; if you hide it again later, it stays hidden. OBS starts minimized to the tray too, without its first-run wizard.
-
-Only one copy runs at a time: starting it again does nothing. If something needs attention at start-up (OBS not running, the shortcut taken by another app), that same notice says so instead of opening a window.
-
-## Install
-1. Download **`CaptureMenu-Setup.exe`** from the [latest release](https://github.com/Amjz03/capture-menu/releases/latest).
-2. Double-click it and press **Install**. Wait a few minutes the first time.
-
-That's it: press **Alt + C** in a game. No Python needed.
-
-> **"Windows protected your PC"?** Click **More info → Run anyway**. Windows shows this for any app that isn't from the Store.
-
-Setup does everything else by itself:
-- installs Capture Menu to `%LOCALAPPDATA%\Programs\CaptureMenu` (no admin rights needed)
-- installs OBS Studio and FFmpeg (skips what you already have)
-- turns on OBS's WebSocket with a random password and saves it to `config.json`
-- adds Capture Menu to the Start menu and to Windows startup, and starts it
-- checks that everything is ready, and if something isn't, offers to open a log that says what to fix
-
-**Updating:** download the new `CaptureMenu-Setup.exe` and run it. Your settings are kept.
-
-**Removing:** Windows **Settings → Apps → Installed apps → Capture Menu → Uninstall**. Your captures, OBS and FFmpeg stay.
-
-### Python version (for tinkering)
-The release also has `CaptureMenu.zip`: the same app as Python source. Extract it and double-click **`Setup.cmd`**, which installs Python and the libraries too. It updates the same way, and **`Uninstall.cmd`** removes it.
-
-### Building Setup.exe yourself
-`build_exe.bat` builds `dist\CaptureMenu\CaptureMenu.exe`. Then compile the installer with [Inno Setup 6](https://jrsoftware.org/isinfo.php): `iscc /DAppVersion=1.2.0 installer.iss` makes `Output\CaptureMenu-Setup.exe`. Releases do this automatically on GitHub.
-
-The first time it runs, Capture Menu **sets up OBS for your PC by itself** and restarts OBS once:
-   - your main screen's resolution at **60 FPS**
-   - the best encoder for your graphics card (RTX 40/50: **AV1**, older NVIDIA: HEVC, AMD/Intel: their hardware encoder)
-   - a bitrate that suits the resolution (8000 Kbps AV1 at 1440p)
-   - the **30-minute** replay buffer, MP4 recordings, and a **Display Capture** source
-
-   You'll see "Setting up OBS · 2560×1440 · 60 FPS · NVENC AV1 8000 Kbps", then "OBS is ready". If OBS offers its Auto-Configuration Wizard, choose **No**.
-
-It runs again only if something changes (a new main monitor or graphics card). Turn it off with `"obs_auto_setup": false`.
-
-### Manual OBS setup (only if the automatic one can't)
-1. **Sources → + → Display Capture.**
-2. **Settings → Video:** Base and Output `2560x1440`, FPS `60`.
-3. **Settings → Output** (Simple): Video Encoder `Hardware (NVENC, AV1)`, Video Bitrate `8000`, Recording Quality `Same as stream`, Recording Format `MP4`, **Enable Replay Buffer**, Maximum Replay Time `1800`.
-4. **Tools → WebSocket Server Settings:** enable it, and copy the password into `obs_password` in `config.json`.
-
-## Little touches, like the PS5
-
-- **REC timer while you record.** A manual recording shows a small red **REC 12:34** in a corner of the game's screen, like the PS5. Clicks go through it, it never takes focus from the game, and it never shows up in your captures. Pick the corner, or turn it off, in Settings.
-- **Double-press to save.** Press the hotkey or **Create** twice quickly: the last **30 seconds** are saved straight away, no menu. A single press opens the bar (after a short 0.35 s wait to tell the two apart). Change the length with `double_press_seconds`, or `0` to turn it off.
-- **Sound.** A soft chime when a clip is saved, a shutter click for screenshots, a short tone when recording starts. Replace the files in `assets\sounds` with your own `.wav` if you like, or set `"sounds": false`.
-- **Vibration.** The controller gives a short buzz when a capture is saved and when recording starts, only while you're using the controller. `"rumble": false` turns it off.
-
-## How much RAM does it use?
-OBS keeps the buffer in RAM. Usage ≈ bitrate × length. For 2K / 60 FPS:
-
-| Buffer length | AV1 8000 Kbps (recommended) | HEVC 12000 Kbps (similar quality) |
-|---|---|---|
-| 10 min | ~0.6 GB | ~0.9 GB |
-| 20 min | ~1.2 GB | ~1.8 GB |
-| 30 min | ~1.8 GB | ~2.7 GB |
-
-With **voice on its own track** (the default), OBS records at a constant quality instead of a fixed bitrate, so busy scenes can use more than the table shows. The Settings page shows an estimate for your choices. To use less RAM, pick a shorter buffer, a lower resolution or the **Light** quality there.
-
-**Capture Menu itself** uses about 75 MB while it waits for the hotkey. The video player loads only when you open a clip, and it's let go a minute after you close the viewer. When nothing has been open for a while, its idle memory goes back to Windows. ffmpeg (thumbnails, trims, share copies) runs at below-normal priority, so it never takes CPU time from your game.
-
-Clip files use AV1. VLC, Chrome and Discord play them out of the box; the Windows Photos app needs the free "AV1 Video Extension" from the Microsoft Store. Some phone apps (like WhatsApp) may not accept AV1. If you share clips there a lot, use HEVC instead.
-
-## Settings page
-
-Open it from the **Settings** tile at the end of the bar (or **,** on the keyboard, or the tray icon → Settings). Move with ↑ ↓ (or the d-pad), change a value with ← →, press **S** (Triangle / Y) to save, **Esc** (Circle / B) to cancel without saving. **Restore defaults** puts everything back to the original setup.
-
-- **Recording:** resolution (Native, 1440p, 1080p, 720p), frame rate (30, 60, 120), quality (Light, Balanced, High, Max), video format (Auto, AV1, HEVC, H.264), replay buffer length (5 to 60 min), voice on its own track, follow the game's screen, recording indicator (top left, top right or off).
-- **Controls:** keyboard shortcut (press Enter, then the new keys), controller button, press or hold, double-press to save, rumble, sounds.
+- **Recording:** resolution (Native, 1440p, 1080p, 720p), frame rate (30, 60, 120), quality (Light, Balanced, High, Max), video format (Auto, AV1, HEVC, H.264), replay buffer (5 to 60 min), voice on its own track, follow the game's screen, REC indicator (top left, top right, off).
+- **Controls:** keyboard shortcut, controller button, press or hold, double-press to save, rumble, sounds.
 - **Library:** captures folder, storage warning.
 - **General:** start with Windows.
 
-The bottom of the page shows how much RAM the replay buffer will use with what you picked. Saving restarts Capture Menu in a second. If you changed a recording setting, it also updates OBS and restarts it once. Video format never asks for more than your graphics card can do: AV1 on an older card falls back to HEVC.
+The page shows how much RAM the buffer will use. Saving restarts Capture Menu; a changed recording setting also updates OBS and restarts it once. The video format never asks for more than your graphics card can do (AV1 on an older card falls back to HEVC).
 
-The defaults are the original setup: native resolution, 60 FPS, Balanced (AV1 8000 Kbps at 1440p), a 30 min buffer, voice on its own track.
+### `config.json`
 
-## Settings file (`config.json`)
-
-The Settings page writes here. You can also edit it by hand while Capture Menu is closed.
+The Settings page writes to `config.json` in the install folder. You can also edit it while Capture Menu is closed.
 
 | Setting | What it does |
 |---|---|
 | `resolution` / `fps` / `quality` / `video_codec` | Recording settings, as on the Settings page |
 | `buffer_minutes` | Replay buffer length in minutes |
-| `start_with_windows` | Start Capture Menu when you sign in |
 | `hotkey` | The shortcut, e.g. `alt+c`, `ctrl+shift+f8` or `f9` |
-| `durations_seconds` | The durations shown in the menu, in seconds |
-| `clips_dir` | Where clips are saved. Leave it empty to use `Videos\Clips` |
-| `game_names` | Fix a game's folder name if it's detected wrong (see below) |
-| `controller_button` | Controller button (or combo) that opens the bar |
-| `controller_hold_ms` | Hold time before it opens; `0` = on press |
-| `capture_follow_game` | `true`: OBS records the screen your game is on. `false`: never touch the capture |
-| `obs_display_source` | Name of the OBS Display Capture source to switch. Empty = the first one |
-| `obs_auto_setup` | `true`: set OBS up for this PC on first run |
+| `durations_seconds` | The lengths shown in Save recent, in seconds |
+| `clips_dir` | Where captures go. Empty = `Videos\Clips` |
+| `game_names` | Fix a game's folder name (see below) |
+| `controller_button` | `create`, `ps`, `options`, `touchpad`, `mute`, `share` (Xbox Series), `view`, or a combo like `l1+r1` |
+| `controller_hold_ms` | Hold time before the bar opens; `0` = on press. Use `400` if your game uses the same button |
 | `double_press_seconds` | Seconds saved by a double press; `0` = off |
-| `sounds` / `rumble` | Sound cues / controller vibration on save |
-| `storage_warn_gb` | Warn when captures use more than this; `0` = never |
-| `voice_track` | Record your voice on its own audio track (see above) |
+| `capture_follow_game` | `true`: OBS records the screen your game is on |
+| `obs_display_source` | The OBS Display Capture source to switch. Empty = the first one |
+| `obs_auto_setup` | `true`: set OBS up for this PC on first run |
+| `voice_track` | Record your voice on its own audio track |
+| `sounds` / `rumble` | Sound cues / controller vibration |
+| `storage_warn_gb` | Warn past this many GB of captures; `0` = never |
+| `start_with_windows` | Start Capture Menu when you sign in |
 
-### Fixing a game's folder name
-The name comes from the game's exe. If a game shows up with an odd name (like `Shipping` or a long window title), add it to `game_names` using the name of its exe file:
+**Fixing a game's folder name.** The name comes from the game's exe. If a game shows up as something odd (like `Shipping`), map its exe name; find it in Task Manager → right-click the game → **Go to details**:
 
 ```json
 "game_names": {
@@ -229,15 +230,66 @@ The name comes from the game's exe. If a game shows up with an odd name (like `S
 }
 ```
 
-To find the exe name: open Task Manager while the game runs, right-click the game → **Go to details**.
+## Performance
 
-## Notes
-- **Using the NVIDIA app's Instant Replay too?** Turn it off (`Alt + Z` → Settings → Instant Replay) so you don't record twice.
-- **2K needs a 2K monitor.** If your screen is 1080p, recording at 1440p won't add any detail. Use `1920x1080` and `10000 Kbps` instead.
-- **Menu doesn't show over a game?** Set the game's display mode to **Borderless** or **Windowed Fullscreen**.
-- The menu and notifications **don't appear in your recordings**.
-- **Trimming** doesn't re-encode, so it's instant and lossless. The clip may start a second or two earlier than requested.
+OBS keeps the replay buffer in RAM, roughly bitrate × length. At 1440p / 60 FPS:
 
-## Credits
-- Button prompts: **PromptFont** by Shinmera (Yukari Hafner), available at https://shinmera.com/promptfont. SIL Open Font License 1.1 (`assets/PROMPTFONT-LICENSE.txt`). PlayStation and Xbox trademarks belong to their owners.
-- Interface icons: **Lucide** (https://lucide.dev). ISC License (`assets/LUCIDE-LICENSE.txt`).
+| Buffer | AV1 8000 Kbps (default) | HEVC 12000 Kbps |
+|---|---|---|
+| 10 min | ~0.6 GB | ~0.9 GB |
+| 20 min | ~1.2 GB | ~1.8 GB |
+| 30 min | ~1.8 GB | ~2.7 GB |
+
+With your voice on its own track (the default), OBS records at constant quality, so busy scenes can use more, up to about 2.9 GB for 30 minutes at 1440p. For less RAM pick a shorter buffer, a lower resolution or **Light** quality, or set `"voice_track": false`.
+
+Capture Menu itself uses about 75 MB while it waits. The video player loads only when you open a clip, and FFmpeg (thumbnails, trims, share copies) runs at below-normal priority so it never takes CPU from your game.
+
+Clips are AV1 on recent cards. VLC, Chrome and Discord play them; the Windows Photos app needs the free *AV1 Video Extension* from the Microsoft Store. Choose HEVC in Settings if you share to apps that don't accept AV1.
+
+## Troubleshooting
+
+- **The bar didn't show up.** It opens on the screen of the window in front, so check your other monitors. Make sure you press **Alt** + C, not Ctrl.
+- **The bar doesn't show over a game.** Set the game to **Borderless** or **Windowed Fullscreen**.
+- **"Alt + C is taken by another app".** Pick another shortcut in Settings, or use the controller or the tray icon.
+- **Clips record twice.** Turn off the NVIDIA app's Instant Replay (`Alt + Z` → Settings).
+- **1080p monitor?** Recording at 1440p adds no detail; choose 1080p in Settings.
+- **Logs.** `capture_menu.log` and `setup.log` are in `%LOCALAPPDATA%\Programs\CaptureMenu`.
+
+<details>
+<summary><b>Set up OBS by hand</b> (only if the automatic setup can't)</summary>
+
+1. **Sources → + → Display Capture.**
+2. **Settings → Video:** Base and Output `2560x1440`, FPS `60`.
+3. **Settings → Output** (Simple): Video Encoder `Hardware (NVENC, AV1)`, Video Bitrate `8000`, Recording Quality `Same as stream`, Recording Format `MP4`, **Enable Replay Buffer**, Maximum Replay Time `1800`.
+4. **Tools → WebSocket Server Settings:** enable it, and copy the password into `obs_password` in `config.json`.
+
+</details>
+
+## Development
+
+Capture Menu is a single Python file built on [PySide6](https://doc.qt.io/qtforpython-6/), [OBS Studio](https://obsproject.com/) through its WebSocket, [SDL2](https://www.libsdl.org/) for controllers and [FFmpeg](https://ffmpeg.org/) for thumbnails, trims and share copies.
+
+```
+capture_menu.py      the app
+config.json          default settings
+assets/              icon, sounds, button-prompt font, interface icons
+installer/           Setup.exe (Inno Setup), the Python-version setup and uninstall scripts, build_exe.bat
+tests/               feature tests
+tools/               screenshot renders for the docs, benchmarks
+docs/                images for this README
+```
+
+**Run from source:** double-click `installer\Setup.cmd`. It installs Python 3.12, the libraries, OBS and FFmpeg, and installs the app from this folder (run it again after changes). Or run `py -3 capture_menu.py` directly with the libraries from `requirements.txt`.
+
+**Tests** are plain scripts that print `PASS` lines: `py -3 tests\test_trim.py <repo folder> <scratch folder>`. Several were written for Linux with `QT_QPA_PLATFORM=offscreen` and check non-Windows fallbacks.
+
+**Build:** `installer\build_exe.bat` makes `dist\CaptureMenu\CaptureMenu.exe`, and `Output\CaptureMenu-Setup.exe` when [Inno Setup 6](https://jrsoftware.org/isinfo.php) is installed.
+
+**Release:** change `VERSION` on `main` (e.g. to `v0.0.2`) and push. GitHub Actions builds `CaptureMenu-Setup.exe` and the Python `CaptureMenu.zip` on Windows and publishes them. Changes are listed in [CHANGELOG.md](CHANGELOG.md).
+
+## Credits and license
+
+- Button prompts: [PromptFont](https://shinmera.com/promptfont) by Shinmera (Yukari Hafner), SIL Open Font License 1.1 (`assets/PROMPTFONT-LICENSE.txt`). PlayStation and Xbox are trademarks of their owners.
+- Interface icons: [Lucide](https://lucide.dev), ISC License (`assets/LUCIDE-LICENSE.txt`).
+
+Capture Menu is released under the [MIT License](LICENSE).

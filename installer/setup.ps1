@@ -5,6 +5,12 @@ param([string]$InstallDir = (Join-Path $env:LOCALAPPDATA "Programs\CaptureMenu")
 
 $ErrorActionPreference = "Continue"
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
+# The release zip has everything side by side; in the repo this script sits in installer\
+$appSource = $here
+if (-not (Test-Path (Join-Path $here "capture_menu.py")) -and -not (Test-Path (Join-Path $here "CaptureMenu.exe")) -and
+    (Test-Path (Join-Path $here "..\capture_menu.py"))) {
+    $appSource = (Resolve-Path (Join-Path $here "..")).Path
+}
 $utf8 = New-Object System.Text.UTF8Encoding $false   # JSON without a BOM
 $total = 7
 $script:step = 0
@@ -99,17 +105,21 @@ if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
 
 # ---------------------------------------------------------------- 1. copy the app
 Step "Copying Capture Menu to $InstallDir"
-$sameDir = (Resolve-Path $here).Path.TrimEnd('\') -ieq [IO.Path]::GetFullPath($InstallDir).TrimEnd('\')
+$sameDir = $appSource.TrimEnd('\') -ieq [IO.Path]::GetFullPath($InstallDir).TrimEnd('\')
 if ($sameDir) {
     Ok "Already in place"
 } else {
     Stop-CaptureMenu   # an older copy may be running from there
     New-Item -ItemType Directory -Force $InstallDir | Out-Null
     $keepConfig = Test-Path (Join-Path $InstallDir "config.json")
-    $skip = @(".git", ".github", ".gitignore", "tests", "docs", "__pycache__", ".thumbs", "state.json")
-    Get-ChildItem $here -Force | Where-Object { $_.Name -notin $skip -and $_.Extension -ne ".log" } | ForEach-Object {
+    $skip = @(".git", ".github", ".gitignore", "tests", "tools", "docs", "installer", "dist", "build", "Output",
+              "__pycache__", ".thumbs", "state.json")
+    Get-ChildItem $appSource -Force | Where-Object { $_.Name -notin $skip -and $_.Extension -ne ".log" } | ForEach-Object {
         if ($_.Name -eq "config.json" -and $keepConfig) { return }   # updating: keep their settings
         Copy-Item $_.FullName -Destination $InstallDir -Recurse -Force
+    }
+    foreach ($f in "Uninstall.cmd", "uninstall.ps1") {   # so it can be removed from where it's installed
+        if (Test-Path (Join-Path $here $f)) { Copy-Item (Join-Path $here $f) -Destination $InstallDir -Force }
     }
     if ($keepConfig) { Ok "Updated, your settings are kept" } else { Ok "Copied" }
 }
