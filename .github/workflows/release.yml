@@ -1,7 +1,8 @@
 name: Release
 
 # Builds CaptureMenu.zip (the app only, no tests or screenshots) and publishes it as a release.
-# Run it from the Actions tab with a version like v1.0.0, or push a tag that starts with "v".
+# Three ways to start it: change the VERSION file on main (e.g. to v1.1.0), run it from the
+# Actions tab with a version, or push a tag that starts with "v".
 on:
   workflow_dispatch:
     inputs:
@@ -11,6 +12,8 @@ on:
         default: "v1.0.0"
   push:
     tags: ["v*"]
+    branches: [main]
+    paths: [VERSION]
 
 permissions:
   contents: write
@@ -32,8 +35,14 @@ jobs:
       - name: Publish the release
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
+          INPUT_VERSION: ${{ inputs.version }}
         run: |
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then TAG="$INPUT_VERSION"
+          elif [ "$GITHUB_REF_TYPE" = "tag" ]; then TAG="$GITHUB_REF_NAME"
+          else TAG="$(tr -d '[:space:]' < VERSION)"; fi
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG already exists, nothing to do"; exit 0
+          fi
           cat > notes.md <<'NOTES'
           **Install:** download `CaptureMenu.zip` below, extract it somewhere permanent (for example `Documents\CaptureMenu`), then double-click `Setup.cmd`.
 
