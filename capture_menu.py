@@ -63,6 +63,8 @@ DEFAULTS = {
     "obs_port": 4455,
     "obs_password": "",
     "clips_dir": str(Path.home() / "Videos" / "Clips"),
+    "screenshots_dir": "",      # empty: screenshots go in clips_dir with the clips
+    "language": "auto",         # auto (Windows' language) / en / ar
     "durations_seconds": [15, 30, 60, 180, 300, 900, 1800],
     "buffer_minutes": 30,
     "game_names": {},
@@ -93,6 +95,60 @@ logging.getLogger("obsws_python").setLevel(logging.CRITICAL)
 log = logging.getLogger("capture_menu")
 
 
+# ---------------------------------------------------------------- language
+# Every on-screen text is written in English and passed through tr(). Other languages live in
+# assets/lang/<code>.json, which maps the English text to the translation ({name} fields stay).
+
+LANGUAGES = {"en": "English", "ar": "العربية"}
+LANG = "en"
+_TRANSLATIONS: dict[str, str] = {}
+
+
+def system_language() -> str:
+    """Windows' display language, if Capture Menu has it; English otherwise."""
+    if IS_WINDOWS:
+        try:
+            primary = ctypes.windll.kernel32.GetUserDefaultUILanguage() & 0x3FF
+            if primary == 0x01:
+                return "ar"
+        except Exception:
+            pass
+    return "en"
+
+
+def set_language(choice: str):
+    global LANG, _TRANSLATIONS
+    LANG = system_language() if choice not in LANGUAGES else choice
+    _TRANSLATIONS = {}
+    if LANG != "en":
+        try:
+            _TRANSLATIONS = json.loads((BUNDLE_DIR / "assets" / "lang" / f"{LANG}.json").read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            log.exception("could not load the %s translation", LANG)
+            LANG = "en"
+
+
+def tr(text: str, **fields) -> str:
+    """The text in the chosen language, with {fields} filled in."""
+    out = _TRANSLATIONS.get(text) or text
+    return out.format(**fields) if fields else out
+
+
+def is_rtl() -> bool:
+    return LANG == "ar"
+
+
+def lead():
+    """Where a line of text starts: the left, or the right in a right-to-left language."""
+    return Qt.AlignRight if is_rtl() else Qt.AlignLeft
+
+
+def forward(key: int) -> int:
+    """+1 or -1 for ← → in a row of tiles: the arrows follow the screen, which is mirrored in Arabic."""
+    step = 1 if key == Qt.Key_Right else -1
+    return -step if is_rtl() else step
+
+
 def load_config() -> dict:
     cfg = dict(DEFAULTS)
     if CONFIG_PATH.exists():
@@ -112,11 +168,11 @@ def save_config(changes: dict):
 
 def duration_label(seconds: int | None, short: bool = False) -> str:
     if seconds is None:
-        return "Everything"
+        return tr("Everything")
     if seconds < 60:
-        return f"{seconds} sec"
+        return tr("{n} sec", n=seconds)
     minutes = seconds // 60
-    return f"{minutes} min" if short or minutes != 1 else "1 minute"
+    return tr("{n} min", n=minutes) if short or minutes != 1 else tr("1 minute")
 
 
 def clock_precise(ms: int) -> str:
@@ -830,25 +886,26 @@ def make_thumb(path: Path, thumbs_dir: Path) -> Path | None:
 def capture_kind(path: Path) -> str:
     parts = path.stem.split("_")
     if parts[0] == "Screenshot":
-        return "Screenshot"
+        return tr("Screenshot")
     if parts[0] == "Recording":
-        return "Recording"
+        return tr("Recording")
     if parts[0] == "Clip" and len(parts) >= 4 and parts[3] == "trim":
-        return "Trimmed clip"
+        return tr("Trimmed clip")
     if parts[0] == "Clip" and len(parts) >= 4 and parts[3].endswith("s"):
-        return f"Clip · {duration_label(int(parts[3][:-1]), short=True)}"
-    return "Clip"
+        return tr("Clip · {length}", length=duration_label(int(parts[3][:-1]), short=True))
+    return tr("Clip")
 
 
 def time_ago(ts: float) -> str:
     s = int(time.time() - ts)
     if s < 60:
-        return "just now"
+        return tr("just now")
     if s < 3600:
-        return f"{s // 60} min ago"
+        return tr("{n} min ago", n=s // 60)
     if s < 86400:
-        return f"{s // 3600} h ago"
-    return datetime.fromtimestamp(ts).strftime("%d %b")
+        return tr("{n} h ago", n=s // 3600)
+    d = datetime.fromtimestamp(ts)
+    return f"{d.day} {tr(d.strftime('%b'))}"   # month names are translated too
 
 
 # ---------------------------------------------------------------- automatic OBS setup
@@ -1060,6 +1117,11 @@ class Controller(QtCore.QObject):
         self.screen_px: tuple[int, int] | None = None
         self.clips_dir = Path(cfg["clips_dir"])
         self.clips_dir.mkdir(parents=True, exist_ok=True)
+        self.shots_dir = Path(cfg["screenshots_dir"]) if cfg.get("screenshots_dir") else self.clips_dir
+        self.shots_dir.mkdir(parents=True, exist_ok=True)
+        # where captures live: the clips folder, plus the screenshots folder when it's somewhere else
+        self.roots = [self.clips_dir] + ([self.shots_dir] if self.clips_dir not in
+                                         (self.shots_dir, *self.shots_dir.parents) else [])
         self._busy = threading.Lock()
         self.record_game: str | None = None
         self.thumbs_dir = self.clips_dir / ".thumbs"
@@ -1079,8 +1141,8 @@ class Controller(QtCore.QObject):
         return self.previews_dir / (hashlib.md5(str(path).encode()).hexdigest() + ".mp4")
 
     def all_captures(self) -> list[Path]:
-        files = [p for p in self.clips_dir.rglob("*")
-                 if p.suffix.lower() in MEDIA_EXTS and not SKIP_DIRS & set(p.parts)]
+        files = {p for root in self.roots for p in root.rglob("*")   # a set: one folder may hold the other
+                 if p.suffix.lower() in MEDIA_EXTS and not SKIP_DIRS & set(p.parts)}
         return sorted(files, key=lambda p: p.stat().st_mtime, reverse=True)
 
     def _scan_recent(self, limit: int = 30) -> list[Path]:
@@ -1130,16 +1192,17 @@ class Controller(QtCore.QObject):
     # ---- storage warning (nothing is ever deleted automatically)
     def check_storage(self):
         def run():
-            used = folder_size_gb(self.clips_dir)
+            used = sum(folder_size_gb(root) for root in self.roots)
             free = shutil.disk_usage(self.clips_dir).free / 1024 ** 3
             limit = float(self.cfg.get("storage_warn_gb") or 0)
             info = {"used_gb": used, "free_gb": free, "limit_gb": limit,
                     "over": bool(limit) and used > limit, "low": free < 20}
             self.last_storage = info
             self.storage.emit(info)
-            for flag, text in (("over", f"Captures use {used:.0f} GB, over your {limit:.0f} GB limit"
-                                        " · delete some in the gallery"),
-                               ("low", f"Only {free:.0f} GB free on this drive · delete some captures")):
+            for flag, text in (("over", tr("Captures use {used} GB, over your {limit} GB limit"
+                                           " · delete some in the gallery", used=f"{used:.0f}", limit=f"{limit:.0f}")),
+                               ("low", tr("Only {free} GB free on this drive · delete some captures",
+                                          free=f"{free:.0f}"))):
                 if info[flag] and flag not in self._warned:
                     self._warned.add(flag)
                     self.toast.emit(text, "error")
@@ -1162,28 +1225,28 @@ class Controller(QtCore.QObject):
         def progress(pct):
             if pct - last[0] >= 10:   # a notice every 10 %, not every frame
                 last[0] = pct
-                self.toast.emit(f"Preparing for {info['label']} · {pct}%", "info")
+                self.toast.emit(tr("Preparing for {target} · {pct}%", target=tr(info["label"]), pct=pct), "info")
         progress(0)
         size = export_for_share(src, out, info["size_mb"], without_voice, progress)
         self.copy_file.emit(str(out))
         make_thumb(out, self.thumbs_dir)
-        voice = " · without your voice" if without_voice else ""
-        self.shared.emit(f"{info['label']} · {size:.1f} MB{voice}", str(out))
+        voice = tr(" · without your voice") if without_voice else ""
+        self.shared.emit(f"{tr(info['label'])} · {size:.1f} MB{voice}", str(out))
 
     def copy(self, path: Path):
         self.copy_file.emit(str(path))
-        self.toast.emit(f"Copied · paste it with Ctrl+V · {path.name}", "ok")
+        self.toast.emit(tr("Copied · paste it with Ctrl+V · {name}", name=path.name), "ok")
 
     # ---- microphone
     def toggle_mic(self):
         def run():
             muted = self.obs.mic_muted()
             if muted is None:
-                self.toast.emit("No microphone in OBS · add one under Settings → Audio", "error")
+                self.toast.emit(tr("No microphone in OBS · add one under Settings → Audio"), "error")
                 return
             self.obs.set_mic_muted(not muted)
-            self.toast.emit("Mic off · your voice won't be recorded" if not muted else
-                            "Mic on · your voice is recorded", "info")
+            self.toast.emit(tr("Mic off · your voice won't be recorded") if not muted else
+                            tr("Mic on · your voice is recorded"), "info")
             self.refresh_status()
         self._bg(run, exclusive=False)
 
@@ -1276,8 +1339,8 @@ class Controller(QtCore.QObject):
             self.set_meta(out, m.get("title", ""), m.get("note", ""))
         if replace:
             self.delete(src)
-        note = "" if mode == "precise" else " · fast cut"
-        self._done(f"Length {length}{note}", out)
+        note = "" if mode == "precise" else tr(" · fast cut")
+        self._done(tr("Length {length}", length=length) + note, out)
         self.trimmed.emit(str(out))
 
     @staticmethod
@@ -1291,8 +1354,8 @@ class Controller(QtCore.QObject):
     def open_external(path: Path):
         QtGui.QDesktopServices.openUrl(QtCore.QUrl.fromLocalFile(str(path)))
 
-    def folder_for(self, game: str) -> Path:
-        folder = self.clips_dir / game
+    def folder_for(self, game: str, root: Path | None = None) -> Path:
+        folder = (root or self.clips_dir) / game
         folder.mkdir(parents=True, exist_ok=True)
         return folder
 
@@ -1300,15 +1363,15 @@ class Controller(QtCore.QObject):
     def _bg(self, fn, *args, exclusive: bool = True):
         def run():
             if exclusive and not self._busy.acquire(blocking=False):
-                self.toast.emit("Hang on, still saving the last clip…", "info")
+                self.toast.emit(tr("Hang on, still saving the last clip…"), "info")
                 return
             try:
                 fn(*args)
             except ObsOffline:
-                self.toast.emit("Can't reach OBS · make sure it's running, then try again", "error")
+                self.toast.emit(tr("Can't reach OBS · make sure it's running, then try again"), "error")
             except Exception as e:
                 log.exception("action failed")
-                self.toast.emit(f"Something went wrong: {e}", "error")
+                self.toast.emit(tr("Something went wrong: {error}", error=e), "error")
             finally:
                 if exclusive:
                     self._busy.release()
@@ -1344,7 +1407,7 @@ class Controller(QtCore.QObject):
         recording, _ = self.obs.record_status()
         if recording:
             return   # never interrupt a recording; try again next start
-        self.toast.emit(f"Setting up OBS · {plan['summary']}", "info")
+        self.toast.emit(tr("Setting up OBS · {summary}", summary=plan["summary"]), "info")
         if self.obs.buffer_active():
             self.obs.call("stop_replay_buffer")
             for _ in range(20):
@@ -1354,10 +1417,10 @@ class Controller(QtCore.QObject):
         changed = self.obs.apply_plan(plan)
         if changed and not self.restart_obs():
             self.obs.ensure_buffer()   # keep capturing with the old settings until OBS restarts
-            self.toast.emit("OBS is set up · restart OBS once to apply it", "info")
+            self.toast.emit(tr("OBS is set up · restart OBS once to apply it"), "info")
         else:
             self.obs.ensure_buffer()
-            self.toast.emit(f"OBS is ready · {plan['summary']}", "ok")
+            self.toast.emit(tr("OBS is ready · {summary}", summary=plan["summary"]), "ok")
         state["obs_setup"] = plan["summary"]
         save_state(state)
 
@@ -1413,7 +1476,7 @@ class Controller(QtCore.QObject):
                 name = self.obs.capture_monitor(info["rect"], only_if_missing=not info["fullscreen"])
                 if name:
                     log.info("capture moved to %s", name)
-                    self.toast.emit(f"Recording this screen · {name}", "info")
+                    self.toast.emit(tr("Recording this screen · {name}", name=name), "info")
             except ObsOffline:
                 pass
             except Exception:
@@ -1447,13 +1510,13 @@ class Controller(QtCore.QObject):
                     pass
                 except Exception:
                     log.exception("OBS auto setup failed")
-                    self.toast.emit("Couldn't set up OBS automatically · see README for the manual steps",
+                    self.toast.emit(tr("Couldn't set up OBS automatically · see README for the manual steps"),
                                     "error")
             try:
                 if not self.obs.ensure_buffer():
-                    self.toast.emit("Turned on the OBS replay buffer", "ok")
+                    self.toast.emit(tr("Turned on the OBS replay buffer"), "ok")
             except Exception:
-                self.toast.emit("OBS isn't running. Start it to use Capture Menu", "error")
+                self.toast.emit(tr("OBS isn't running. Start it to use Capture Menu"), "error")
             self.refresh_status()   # e.g. a recording still running after a restart
             log.info("start-up done")
         threading.Thread(target=run, daemon=True).start()
@@ -1464,17 +1527,17 @@ class Controller(QtCore.QObject):
 
     def _save_clip(self, seconds: int | None, game: str):
         if not self.obs.ensure_buffer():
-            self.toast.emit("The replay buffer was off, so I turned it on. "
-                            "Clips are collected from now on", "error")
+            self.toast.emit(tr("The replay buffer was off, so I turned it on. "
+                               "Clips are collected from now on"), "error")
             return
-        self.toast.emit("Saving…", "info")
+        self.toast.emit(tr("Saving…"), "info")
         saved = self.obs.save_replay()
         suffix = "all" if seconds is None else f"{seconds}s"
         out = self.folder_for(game) / f"Clip_{self._stamp()}_{suffix}{saved.suffix}"
         length = cut_tail(saved, seconds, out) or float(seconds or 0)
-        detail = (f"Everything · {clock(int(length * 1000))}"
+        detail = (tr("Everything · {length}", length=clock(int(length * 1000)))
                   if seconds is None or length < seconds - 1
-                  else f"Last {duration_label(seconds)}")
+                  else tr("Last {length}", length=duration_label(seconds)))
         self._done(detail, out)
 
     # ---- manual recording
@@ -1487,7 +1550,7 @@ class Controller(QtCore.QObject):
             self.obs.start_record()
             self.record_game = game  # the recording goes to the game it started in
             self.recording.emit(True)
-            self.toast.emit("Recording started · open the menu and choose Stop to finish", "rec")
+            self.toast.emit(tr("Recording started · open the menu and choose Stop to finish"), "rec")
             return
         path = self.obs.stop_record()
         self.recording.emit(False)
@@ -1497,14 +1560,14 @@ class Controller(QtCore.QObject):
         dest = self.folder_for(game) / f"Recording_{self._stamp()}{path.suffix}"
         shutil.move(str(path), dest)
         length = media_duration(dest) or 0
-        self._done(f"Length {clock(int(length * 1000))}", dest)
+        self._done(tr("Length {length}", length=clock(int(length * 1000))), dest)
 
     # ---- screenshot
     def screenshot(self, game: str = DESKTOP):
         self._bg(self._screenshot, game, exclusive=False)
 
     def _screenshot(self, game: str):
-        path = self.folder_for(game) / f"Screenshot_{self._stamp()}.png"
+        path = self.folder_for(game, self.shots_dir) / f"Screenshot_{self._stamp()}.png"
         self.obs.screenshot(path)
         wait_until_written(path, timeout=5)
         self._done("", path)
@@ -2089,7 +2152,7 @@ class HintBar(QtWidgets.QWidget):
         self.setFixedHeight(28)
 
     def set_items(self, items: list[tuple[str, str]], mode: str):
-        self.items, self.mode = items, mode
+        self.items, self.mode = [(glyph, tr(label)) for glyph, label in items], mode
         self.setFixedWidth(int(self._layout(None)) + 2)
         self.update()
 
@@ -2099,16 +2162,19 @@ class HintBar(QtWidgets.QWidget):
         if p is None:   # measure on a throwaway painter
             scratch = QtGui.QPixmap(1, 1)
             p = QtGui.QPainter(scratch)
-        for i, (glyph, label) in enumerate(self.items):
+        rtl = is_rtl()   # right to left: the first prompt sits on the right, each label left of its button
+        for i, (glyph, label) in enumerate(reversed(self.items) if rtl else self.items):
             if i:
                 x += self.ITEM_GAP
-            if glyph:
+            if glyph and not rtl:
                 x += draw_glyph(p, x, cy, glyph, self.mode) + self.GAP
             p.setFont(font(13))
             p.setPen(QtGui.QColor(244, 244, 246, 168))
             w = p.fontMetrics().horizontalAdvance(label)
             p.drawText(QtCore.QRectF(x, 0, w + 2, self.height()), Qt.AlignVCenter | Qt.AlignLeft, label)
             x += w
+            if glyph and rtl:
+                x += self.GAP + draw_glyph(p, x + self.GAP, cy, glyph, self.mode)
         if scratch is not None:
             p.end()
         return x
@@ -2193,11 +2259,11 @@ class ActionCard(Card):
         p.setPen(QtGui.QColor(INK) if focused else QtGui.QColor(244, 244, 246, 175))
         p.setFont(font(13, QtGui.QFont.DemiBold if focused else QtGui.QFont.Normal))
         p.drawText(text_r, Qt.AlignHCenter | Qt.AlignVCenter,
-                   p.fontMetrics().elidedText(self.label, Qt.ElideRight, self.width()))
+                   p.fontMetrics().elidedText(tr(self.label), Qt.ElideRight, self.width()))
         if self.hint:
             p.setPen(QtGui.QColor(244, 244, 246, 110))
             p.setFont(font(12))
-            p.drawText(text_r.translated(0, 17), Qt.AlignHCenter | Qt.AlignVCenter, self.hint)
+            p.drawText(text_r.translated(0, 17), Qt.AlignHCenter | Qt.AlignVCenter, tr(self.hint))
 
 
 def draw_capture_tile(p: QtGui.QPainter, r: QtCore.QRectF, pixmap: QtGui.QPixmap, path: Path | None,
@@ -2274,12 +2340,12 @@ class ThumbCard(Card):
             p.setPen(QtGui.QColor(INK))
             p.setFont(font(13, QtGui.QFont.DemiBold))
             p.drawText(QtCore.QRectF(4, self.tile().bottom() + 9, self.width() - 8, 18),
-                       Qt.AlignLeft | Qt.AlignVCenter,
+                       lead() | Qt.AlignVCenter,
                        p.fontMetrics().elidedText(self.caption, Qt.ElideRight, self.width() - 8))
             p.setPen(QtGui.QColor(244, 244, 246, 110))
             p.setFont(font(12))
             p.drawText(QtCore.QRectF(4, self.tile().bottom() + 26, self.width() - 8, 18),
-                       Qt.AlignLeft | Qt.AlignVCenter, self.when)
+                       lead() | Qt.AlignVCenter, self.when)
 
 BAR_STYLE = f"""
 QLabel {{ color: {INK}; background: transparent; }}
@@ -2294,12 +2360,12 @@ QLabel {{ color: {INK}; background: transparent; }}
 def chip_label(seconds: int | None) -> str:
     """PS5 wording: Full Video, Last 15s, Last 1m, Last 30m."""
     if seconds is None:
-        return "Full video"
+        return tr("Full video")
     if seconds < 60:
-        return f"Last {seconds}s"
+        return tr("Last {n}s", n=seconds)
     if seconds < 3600:
-        return f"Last {seconds // 60}m"
-    return f"Last {seconds // 3600}h"
+        return tr("Last {n}m", n=seconds // 60)
+    return tr("Last {n}h", n=seconds // 3600)
 
 
 class Chip(QtWidgets.QAbstractButton):
@@ -2339,7 +2405,7 @@ class Chip(QtWidgets.QAbstractButton):
         if self.dimmed and not focused:
             text.setAlpha(110)
         p.setPen(text)
-        p.drawText(r, Qt.AlignCenter, self.text())
+        p.drawText(r, Qt.AlignCenter, tr(self.text()))
 
 
 class Menu(QtWidgets.QWidget):
@@ -2404,7 +2470,7 @@ class Menu(QtWidgets.QWidget):
         for i, t in enumerate(self.thumbs):
             t.clicked.connect(lambda _=False, i=i: self._view(i))
             row.addWidget(t, 0, Qt.AlignTop)
-        self.empty_label = QtWidgets.QLabel("Your captures will show up here", objectName="focusInfo")
+        self.empty_label = QtWidgets.QLabel(tr("Your captures will show up here"), objectName="focusInfo")
         self.empty_label.setFixedHeight(ActionCard.SIZE + 8)
         row.addWidget(self.empty_label, 0, Qt.AlignTop)
         row.addSpacing(4)
@@ -2544,12 +2610,12 @@ class Menu(QtWidgets.QWidget):
     def _refresh_picker(self):
         b = self._buffer
         if not b["active"]:
-            held = "replay buffer is off"
+            held = tr("replay buffer is off")
         elif b["held_ms"] is None:
-            held = f"up to {clock(b['max_ms'])}"
+            held = tr("up to {length}", length=clock(b["max_ms"]))
         else:
             held = f"{clock(min(b['held_ms'], b['max_ms']))} / {clock(b['max_ms'])}"
-        self.pick_caption.setText(f'Save recent gameplay&nbsp;&nbsp;&nbsp;'
+        self.pick_caption.setText(f'{tr("Save recent gameplay")}&nbsp;&nbsp;&nbsp;'
                                   f'<span style="color:{MUTED}; font-weight:400">{held}</span>')
         for sec, chip in zip(self.options, self.chips):
             chip.dimmed = (sec is not None and b["held_ms"] is not None
@@ -2582,9 +2648,10 @@ class Menu(QtWidgets.QWidget):
 
     def show_storage(self, info: dict):
         if info.get("over"):
-            self.storage_label.setText(f"Captures {info['used_gb']:.0f} GB · over {info['limit_gb']:.0f} GB")
+            self.storage_label.setText(tr("Captures {used} GB · over {limit} GB", used=f"{info['used_gb']:.0f}",
+                                          limit=f"{info['limit_gb']:.0f}"))
         elif info.get("low"):
-            self.storage_label.setText(f"Only {info['free_gb']:.0f} GB free")
+            self.storage_label.setText(tr("Only {free} GB free", free=f"{info['free_gb']:.0f}"))
         self.storage_label.setVisible(bool(info.get("over") or info.get("low")))
 
     def open_gallery(self):
@@ -2609,22 +2676,23 @@ class Menu(QtWidgets.QWidget):
 
     def _on_status(self, st: dict):
         if not st.get("online"):
-            text = f'<span style="color:{AMBER}">OBS isn\'t running</span>'
+            off = tr("OBS isn't running")
+            text = f'<span style="color:{AMBER}">{off}</span>'
         elif st["recording"]:
-            text = (f'<span style="color:{RED}">●</span>&nbsp;&nbsp;<span style="color:{INK}">Recording'
+            text = (f'<span style="color:{RED}">●</span>&nbsp;&nbsp;<span style="color:{INK}">{tr("Recording")}'
                     f'</span>&nbsp;&nbsp;{clock(st["record_ms"])}')
         elif st["buffer"]:
-            text = f"Keeping the last {duration_label(st['buffer_seconds'], short=True)}"
+            text = tr("Keeping the last {length}", length=duration_label(st["buffer_seconds"], short=True))
         else:
-            text = f'<span style="color:{AMBER}">Replay buffer is off</span>'
+            text = f'<span style="color:{AMBER}">{tr("Replay buffer is off")}</span>'
         self.status.setText(text)
         if st.get("online"):
             self._buffer = {"active": st["buffer"], "max_ms": st["buffer_seconds"] * 1000,
                             "held_ms": st.get("buffered_ms")}
-            self.save_card.hint = f"last {duration_label(st['buffer_seconds'], short=True)}"
+            self.save_card.hint = tr("last {length}", length=duration_label(st["buffer_seconds"], short=True))
             self.save_card.update()
             if st["recording"]:
-                self.rec_card.set_state("stop", f"Stop  {clock(st['record_ms'])}", RED,
+                self.rec_card.set_state("stop", tr("Stop  {time}", time=clock(st["record_ms"])), RED,
                                         QtGui.QColor(255, 69, 58, 40))
             else:
                 self.rec_card.set_state("record", "Record")
@@ -2666,7 +2734,7 @@ class Menu(QtWidgets.QWidget):
         cards = self._nav_cards()
         focused = self.focusWidget()
         if k in (Qt.Key_Left, Qt.Key_Right) and focused in cards:
-            j = cards.index(focused) + (1 if k == Qt.Key_Right else -1)
+            j = cards.index(focused) + forward(k)
             cards[max(0, min(len(cards) - 1, j))].setFocus()
         elif k in (Qt.Key_Return, Qt.Key_Enter, Qt.Key_Space) and focused in cards:
             focused.click()
@@ -2785,10 +2853,10 @@ class Toast(QtWidgets.QWidget):
         self.thumb.setPixmap(rounded_pixmap(make_thumb(Path(path), self.thumbs_dir or Path(path).parent),
                                             112, 63, 8))
         self.thumb.show()
-        self.title.setText("Ready to share")
+        self.title.setText(tr("Ready to share"))
         self.sub.setText(detail.replace(" · ", "  ·  "))
         self.sub.show()
-        self.hint.setText("Copied · paste it with Ctrl+V")
+        self.hint.setText(tr("Copied · paste it with Ctrl+V"))
         self.hint.show()
         self._present(7000)
 
@@ -2832,7 +2900,7 @@ class Toast(QtWidgets.QWidget):
             col.addWidget(w)
         col.addStretch()
         lay.addLayout(col)
-        self.trim_btn = QtWidgets.QPushButton(" Trim")
+        self.trim_btn = QtWidgets.QPushButton(" " + tr("Trim"))
         self.trim_btn.setIcon(qicon("scissors"))
         self.trim_btn.setCursor(Qt.PointingHandCursor)
         self.trim_btn.setStyleSheet(
@@ -2866,7 +2934,7 @@ class Toast(QtWidgets.QWidget):
         thumb = make_thumb(capture, self.thumbs_dir or capture.parents[1] / ".thumbs")
         self.thumb.setPixmap(rounded_pixmap(thumb, 112, 63, 8))
         self.thumb.show()
-        self.title.setText(self.TITLES.get(kind, "Saved"))
+        self.title.setText(tr(self.TITLES.get(kind, "Saved")))
         self.sub.setText("  ·  ".join(x for x in (detail, capture.parent.name) if x))
         self.sub.show()
         if INPUT.mode == "keyboard":
@@ -2881,7 +2949,7 @@ class Toast(QtWidgets.QWidget):
             names = PAD_GLYPHS[INPUT.mode]
             open_html = glyph_html([names.get(b, PAD_NAMES[INPUT.mode].get(b, "?")) for b in combo])
             view_html = glyph_html([names[3]])
-        self.hint.setText(f"{open_html}&nbsp; then &nbsp;{view_html}&nbsp; to view")
+        self.hint.setText(tr("{open}&nbsp; then &nbsp;{view}&nbsp; to view", open=open_html, view=view_html))
         self.hint.show()
         self._present(6000)
 
@@ -3111,7 +3179,7 @@ class Viewer(QtWidgets.QWidget):
         lay.setSpacing(18)
 
         def button(row, text, fn, icon=None, name=""):
-            b = QtWidgets.QPushButton(text, objectName=name)
+            b = QtWidgets.QPushButton(tr(text), objectName=name)
             if icon:
                 b.setIcon(qicon(icon, "#111114" if name == "primary" else INK))
                 b.setIconSize(QtCore.QSize(18, 18))
@@ -3135,15 +3203,16 @@ class Viewer(QtWidgets.QWidget):
         self.counter = QtWidgets.QLabel(objectName="hint")
         head.addWidget(self.counter, 0, Qt.AlignTop)
         head.addSpacing(6)
-        self.prev_btn = button(head, "", lambda: self.step(-1), "left", "icon")
-        self.next_btn = button(head, "", lambda: self.step(1), "right", "icon")
-        self.prev_btn.setToolTip("Newer (A)")
-        self.next_btn.setToolTip("Older (D)")
+        rtl = is_rtl()     # newer is to the left, or to the right in Arabic
+        self.prev_btn = button(head, "", lambda: self.step(-1), "right" if rtl else "left", "icon")
+        self.next_btn = button(head, "", lambda: self.step(1), "left" if rtl else "right", "icon")
+        self.prev_btn.setToolTip(tr("Newer ({key})", key="D" if rtl else "A"))
+        self.next_btn.setToolTip(tr("Older ({key})", key="A" if rtl else "D"))
         head.addSpacing(16)
         close = button(head, "", self.close_viewer, "close", "icon")
         for b in (self.prev_btn, self.next_btn, close):
             head.setAlignment(b, Qt.AlignTop)
-        close.setToolTip("Close (Esc)")
+        close.setToolTip(tr("Close (Esc)"))
         lay.addLayout(head)
 
         # the picture / video
@@ -3161,6 +3230,7 @@ class Viewer(QtWidgets.QWidget):
 
         # playback controls
         self.controls = QtWidgets.QWidget()
+        self.controls.setLayoutDirection(Qt.LeftToRight)   # time runs left to right, like the trim filmstrip
         cl = QtWidgets.QHBoxLayout(self.controls)
         cl.setContentsMargins(0, 0, 0, 0)
         cl.setSpacing(14)
@@ -3230,8 +3300,8 @@ class Viewer(QtWidgets.QWidget):
         el = QtWidgets.QHBoxLayout(self.edit_panel)
         el.setContentsMargins(0, 0, 0, 0)
         el.setSpacing(8)
-        self.title_edit = QtWidgets.QLineEdit(placeholderText="Title, e.g. Triple kill on the bridge")
-        self.note_edit = QtWidgets.QLineEdit(placeholderText="Note (optional)")
+        self.title_edit = QtWidgets.QLineEdit(placeholderText=tr("Title, e.g. Boss down on the first try"))
+        self.note_edit = QtWidgets.QLineEdit(placeholderText=tr("Note (optional)"))
         self.title_edit.setMaxLength(80)
         self.note_edit.setMaxLength(200)
         for w in (self.title_edit, self.note_edit):
@@ -3261,8 +3331,8 @@ class Viewer(QtWidgets.QWidget):
         act.addSpacing(4)
         act.addWidget(sep)
         act.addSpacing(4)
-        button(act, "", lambda: self.ctl.reveal(self.current), "folder", "icon").setToolTip("Show in folder")
-        button(act, "", self._open_external, "external", "icon").setToolTip("Open in your video player")
+        button(act, "", lambda: self.ctl.reveal(self.current), "folder", "icon").setToolTip(tr("Show in folder"))
+        button(act, "", self._open_external, "external", "icon").setToolTip(tr("Open in your video player"))
         act.addSpacing(8)
         self.trim_btn = button(act, "Trim", self.enter_trim, "scissors", "primary")
         lay.addWidget(self.actions_row)
@@ -3350,7 +3420,7 @@ class Viewer(QtWidgets.QWidget):
         path = self.current
         self._show_title()
         self.sub.setToolTip(str(path))
-        self.counter.setText(f"{self.index + 1} of {len(self.items)}")
+        self.counter.setText(tr("{n} of {total}", n=self.index + 1, total=len(self.items)))
         self.prev_btn.setEnabled(self.index > 0)
         self.next_btn.setEnabled(self.index < len(self.items) - 1)
         self.trim_btn.setVisible(self.is_video())
@@ -3398,7 +3468,7 @@ class Viewer(QtWidgets.QWidget):
 
     def _show_msg(self, text: str):
         self.controls.hide()
-        self.msg.setText(text)
+        self.msg.setText(tr(text))
         self.stage.setCurrentWidget(self.msg)
 
     def resizeEvent(self, e):
@@ -3426,7 +3496,7 @@ class Viewer(QtWidgets.QWidget):
 
     def _on_preview_progress(self, path: str, pct: int):
         if self.isVisible() and self.items and str(self.current) == path:
-            self.msg.setText(f"Preparing preview…  {pct}%")
+            self.msg.setText(tr("Preparing preview…  {pct}%", pct=pct))
 
     def _on_preview_ready(self, path: str, preview: str):
         if not (self.isVisible() and self.items and str(self.current) == path):
@@ -3515,7 +3585,7 @@ class Viewer(QtWidgets.QWidget):
         self.sub.setText(f"{game}{capture_kind(path)}  ·  {time_ago(path.stat().st_mtime)}")
         self.note.setText(meta.get("note", ""))
         self.note.setVisible(bool(meta.get("note")))
-        self.fav_btn.setText("Favorited" if fav else "Favorite")
+        self.fav_btn.setText(tr("Favorited") if fav else tr("Favorite"))
         self.fav_btn.setIcon(qicon("star", "#ffd34d" if fav else INK))
 
     def toggle_favorite(self):
@@ -3572,9 +3642,9 @@ class Viewer(QtWidgets.QWidget):
             self.voice_chip.setText("With my voice")
             for key, chip in zip(["copy", *SHARE_PRESETS], self.share_chips):
                 chip.setVisible(key == "copy" or video)
-            self.share_caption.setText("Share  ·  converts to MP4 (H.264) that plays on phones, "
-                                       "WhatsApp and Discord, then copies it so you can paste it"
-                                       if video else "Share  ·  copy the screenshot and paste it anywhere")
+            self.share_caption.setText(tr("Share  ·  converts to MP4 (H.264) that plays on phones, "
+                                          "WhatsApp and Discord, then copies it so you can paste it")
+                                       if video else tr("Share  ·  copy the screenshot and paste it anywhere"))
             self.share_chips[0 if not video else 1].setFocus()
         self.update_hints()
 
@@ -3625,8 +3695,8 @@ class Viewer(QtWidgets.QWidget):
 
     def _trim_labels(self):
         t = self.timeline
-        self.trim_info.setText(f"{clock_precise(t.start)}  →  {clock_precise(t.end)}"
-                               f"     {clock_precise(t.end - t.start)} selected")
+        self.trim_info.setText(f"{clock_precise(t.start)}  →  {clock_precise(t.end)}     "
+                               + tr("{length} selected", length=clock_precise(t.end - t.start)))
 
     def preview_selection(self):
         if self.player:
@@ -3667,7 +3737,7 @@ class Viewer(QtWidgets.QWidget):
     def delete_current(self):
         if not self.del_btn.property("danger"):
             self.del_btn.setProperty("danger", True)
-            self.del_btn.setText("Press again to delete")
+            self.del_btn.setText(tr("Press again to delete"))
             self.del_btn.setIcon(qicon("trash", "#ff6961"))
             self._repolish(self.del_btn)
             self._disarm.start(3000)
@@ -3689,7 +3759,7 @@ class Viewer(QtWidgets.QWidget):
 
     def _reset_delete(self):
         self.del_btn.setProperty("danger", False)
-        self.del_btn.setText("Delete")
+        self.del_btn.setText(tr("Delete"))
         self.del_btn.setIcon(qicon("trash"))
         self._repolish(self.del_btn)
 
@@ -3710,7 +3780,7 @@ class Viewer(QtWidgets.QWidget):
             focused = self.focusWidget()
             i = nav.index(focused) if focused in nav else 0
             if k in (Qt.Key_Left, Qt.Key_Right) and nav:
-                nav[max(0, min(len(nav) - 1, i + (1 if k == Qt.Key_Right else -1)))].setFocus()
+                nav[max(0, min(len(nav) - 1, i + forward(k)))].setFocus()
             elif k in (Qt.Key_Return, Qt.Key_Enter, Qt.Key_Space) and nav:
                 nav[i].click()
             elif k in (Qt.Key_Escape, Qt.Key_Backspace):
@@ -3728,8 +3798,8 @@ class Viewer(QtWidgets.QWidget):
         else:
             handlers = {
                 Qt.Key_Escape: self.close_viewer,
-                Qt.Key_A: lambda: self.step(-1),
-                Qt.Key_D: lambda: self.step(1),
+                Qt.Key_A: lambda: self.step(1 if is_rtl() else -1),   # A / D (L1 / R1) go the way the arrows point
+                Qt.Key_D: lambda: self.step(-1 if is_rtl() else 1),
                 Qt.Key_T: self.enter_trim,
                 Qt.Key_Delete: self.delete_current,
                 Qt.Key_E: self.enter_share,
@@ -3796,11 +3866,11 @@ class TileDelegate(QtWidgets.QStyledItemDelegate):
         text = QtCore.QRectF(tile.left(), tile.bottom() + 10, tile.width(), 18)
         p.setPen(QtGui.QColor(INK) if selected else QtGui.QColor(244, 244, 246, 200))
         p.setFont(font(13, QtGui.QFont.DemiBold if selected else QtGui.QFont.Normal))
-        p.drawText(text, Qt.AlignLeft | Qt.AlignVCenter,
+        p.drawText(text, lead() | Qt.AlignVCenter,
                    p.fontMetrics().elidedText(title, Qt.ElideRight, int(tile.width())))
         p.setPen(QtGui.QColor(244, 244, 246, 115))
         p.setFont(font(12))
-        p.drawText(text.translated(0, 19), Qt.AlignLeft | Qt.AlignVCenter, sub)
+        p.drawText(text.translated(0, 19), lead() | Qt.AlignVCenter, sub)
         p.restore()
 
 
@@ -3824,10 +3894,11 @@ class CategoryDelegate(QtWidgets.QStyledItemDelegate):
         p.setFont(font(12))
         p.setPen(QtGui.QColor(17, 17, 20, 150) if selected else QtGui.QColor(244, 244, 246, 105))
         rw = p.fontMetrics().horizontalAdvance(right)
-        p.drawText(r, Qt.AlignRight | Qt.AlignVCenter, right)
+        rtl = is_rtl()    # the count sits at the far end of the line from the name
+        p.drawText(r, (Qt.AlignLeft if rtl else Qt.AlignRight) | Qt.AlignVCenter, right)
         p.setFont(font(14, QtGui.QFont.DemiBold if selected else QtGui.QFont.Normal))
         p.setPen(QtGui.QColor("#111114") if selected else QtGui.QColor(244, 244, 246, 200))
-        p.drawText(r.adjusted(0, 0, -rw - 12, 0), Qt.AlignLeft | Qt.AlignVCenter,
+        p.drawText(r.adjusted(rw + 12, 0, 0, 0) if rtl else r.adjusted(0, 0, -rw - 12, 0), lead() | Qt.AlignVCenter,
                    p.fontMetrics().elidedText(name, Qt.ElideRight, int(r.width() - rw - 12)))
         p.restore()
 
@@ -3872,18 +3943,18 @@ class Gallery(QtWidgets.QWidget):
         head.setSpacing(6)
         titles = QtWidgets.QVBoxLayout()
         titles.setSpacing(2)
-        titles.addWidget(QtWidgets.QLabel("Captures", objectName="vTitle"))
+        titles.addWidget(QtWidgets.QLabel(tr("Captures"), objectName="vTitle"))
         self.info = QtWidgets.QLabel(objectName="vSub")
         titles.addWidget(self.info)
         head.addLayout(titles)
         head.addStretch()
-        self.sort_btn = QtWidgets.QPushButton("Sort: Newest")
+        self.sort_btn = QtWidgets.QPushButton(tr("Sort: Newest"))
         self.sort_btn.setFocusPolicy(Qt.NoFocus)
         self.sort_btn.setCursor(Qt.PointingHandCursor)
         self.sort_btn.clicked.connect(self.toggle_sort)
         head.addWidget(self.sort_btn)
-        self.clear_btn = QtWidgets.QPushButton("Clear selection")
-        self.del_btn = QtWidgets.QPushButton("Delete selected")
+        self.clear_btn = QtWidgets.QPushButton(tr("Clear selection"))
+        self.del_btn = QtWidgets.QPushButton(tr("Delete selected"))
         self.del_btn.setIcon(qicon("trash"))
         for b, fn in ((self.clear_btn, self.clear_marks), (self.del_btn, self.delete_marked)):
             b.setFocusPolicy(Qt.NoFocus)
@@ -3894,7 +3965,7 @@ class Gallery(QtWidgets.QWidget):
         self._disarm = QtCore.QTimer(self, singleShot=True, timeout=self._reset_delete)
         for text, icon, fn in (("", "folder", self.ctl.open_folder), ("", "close", self.close_gallery)):
             b = QtWidgets.QPushButton(text, objectName="" if text else "icon")
-            b.setToolTip("Open the captures folder" if icon == "folder" else "Close (Esc)")
+            b.setToolTip(tr("Open the clips folder") if icon == "folder" else tr("Close (Esc)"))
             b.setIcon(qicon(icon))
             b.setIconSize(QtCore.QSize(18, 18))
             b.setCursor(Qt.PointingHandCursor)
@@ -3988,7 +4059,7 @@ class Gallery(QtWidgets.QWidget):
         for name, items in self.cats:
             size = human_size(sum(file_size(p) for p in items))
             item = QtWidgets.QListWidgetItem(f"{name}   {len(items)}  ·  {size}")
-            item.setData(Qt.UserRole, ("Favorites" if name == self.FAVORITES else name, len(items), size))
+            item.setData(Qt.UserRole, (self._cat_name(name), len(items), size))
             self.games.addItem(item)
         names = [c[0] for c in self.cats]
         self.games.setCurrentRow(names.index(select) if select in names else 0)
@@ -4032,22 +4103,26 @@ class Gallery(QtWidgets.QWidget):
         count = len(self.items)
         size = human_size(sum(file_size(p) for p in self.items))
         storage = self.ctl.last_storage
-        used = f"  ·  {storage['used_gb']:.0f} GB used in total" if storage else ""
-        name = "Favorites" if name == self.FAVORITES else name
-        text = f"{name}  ·  {count} capture{'s' if count != 1 else ''}  ·  {size}{used}"
+        used = "  ·  " + tr("{used} GB used in total", used=f"{storage['used_gb']:.0f}") if storage else ""
+        captures = tr("1 capture") if count == 1 else tr("{n} captures", n=count)
+        text = f"{self._cat_name(name)}  ·  {captures}  ·  {size}{used}"
         if self.marked:
-            text = (f"{len(self.marked)} selected  ·  "
+            text = (tr("{n} selected", n=len(self.marked)) + "  ·  "
                     f"{human_size(sum(file_size(p) for p in self.marked))}  ·  {text}")
         self.info.setText(text)
         self.clear_btn.setVisible(bool(self.marked))
         self.del_btn.setVisible(bool(self.marked))
         if not self.del_btn.property("danger"):
-            self.del_btn.setText(f"Delete {len(self.marked)}")
+            self.del_btn.setText(tr("Delete {n}", n=len(self.marked)))
+
+    @classmethod
+    def _cat_name(cls, name: str) -> str:
+        return tr("Favorites") if name == cls.FAVORITES else tr("All") if name == "All" else name
 
     # ---- sort, select, delete many
     def toggle_sort(self):
         self.by_size = not self.by_size
-        self.sort_btn.setText("Sort: Largest" if self.by_size else "Sort: Newest")
+        self.sort_btn.setText(tr("Sort: Largest") if self.by_size else tr("Sort: Newest"))
         self.refresh()
 
     def _clicked(self, item):
@@ -4081,23 +4156,26 @@ class Gallery(QtWidgets.QWidget):
             return
         if not self.del_btn.property("danger"):   # first press arms, second press deletes
             favs = sum(self.ctl.is_favorite(p) for p in self.marked)
-            note = f" (incl. {favs} favorite{'s' if favs != 1 else ''})" if favs else ""
+            note = (" " + (tr("(incl. 1 favorite)") if favs == 1 else tr("(incl. {n} favorites)", n=favs))
+                    if favs else "")
             self.del_btn.setProperty("danger", True)
-            self.del_btn.setText(f"Press again to delete {len(self.marked)}{note}")
+            self.del_btn.setText(tr("Press again to delete {n}", n=len(self.marked)) + note)
             Viewer._repolish(self.del_btn)
             self._disarm.start(4000)
             return
         count, freed = self.ctl.delete_many(sorted(self.marked))
         self.marked.clear()
         self._reset_delete()
-        self.ctl.toast.emit(f"Deleted {count} capture{'s' if count != 1 else ''} · "
-                            f"{human_size(freed)} freed, they're in the Recycle Bin", "ok")
+        self.ctl.toast.emit(tr("Deleted 1 capture · {size} freed, it's in the Recycle Bin", size=human_size(freed))
+                            if count == 1 else
+                            tr("Deleted {n} captures · {size} freed, they're in the Recycle Bin",
+                               n=count, size=human_size(freed)), "ok")
         self.refresh()
 
     def _reset_delete(self):
         self.del_btn.setProperty("danger", False)
         Viewer._repolish(self.del_btn)
-        self.del_btn.setText(f"Delete {len(self.marked)}")
+        self.del_btn.setText(tr("Delete {n}", n=len(self.marked)))
 
     # ---- actions
     def open_selected(self):
@@ -4212,12 +4290,13 @@ class SettingRow(QtWidgets.QWidget):
     H = 68
 
     def __init__(self, key: str, label: str, kind: str, choices: list | None = None, describe=None,
-                 custom=None):
+                 custom=None, display=None):
         super().__init__()
-        self.key, self.label, self.kind = key, label, kind
+        self.key, self.label, self.kind = key, tr(label), kind
         self.custom = custom                  # names a value typed into config.json that isn't a choice
-        self.choices = choices or []          # [(value, text)]
-        self.describe = describe or (lambda v: "")
+        self.choices = [(v, tr(t)) for v, t in choices or []]     # [(value, text)]
+        self.describe = (lambda v: tr(describe(v))) if describe else (lambda v: "")
+        self.display = display                # how an action's value reads, e.g. a folder that's not set
         self.value = None
         self.listening = False                # waiting for a new keyboard shortcut
         self.on_activate = None
@@ -4241,11 +4320,13 @@ class SettingRow(QtWidgets.QWidget):
 
     def text(self) -> str:
         if self.kind == "bool":
-            return "On" if self.value else "Off"
+            return tr("On") if self.value else tr("Off")
         if self.kind == "choice":
             return dict(self.choices).get(self.value, str(self.value))
         if self.listening:
-            return "Press the new keys…"
+            return tr("Press the new keys…")
+        if self.display:
+            return self.display(self.value)
         if self.key == "hotkey":
             return " + ".join(p.upper() if len(p) <= 3 and p[0] == "f" or len(p) == 1 else p.capitalize()
                               for p in str(self.value).split("+"))
@@ -4300,6 +4381,8 @@ class SettingRow(QtWidgets.QWidget):
             self.activate()
 
     def _value_rect(self) -> QtCore.QRectF:
+        if is_rtl():    # mirrored: the value on the left, the name on the right
+            return QtCore.QRectF(16, 0, 284, self.height())
         return QtCore.QRectF(self.width() - 300, 0, 284, self.height())
 
     def paintEvent(self, _):
@@ -4318,23 +4401,23 @@ class SettingRow(QtWidgets.QWidget):
         ink = QtGui.QColor("#111114") if focused else QtGui.QColor(INK)
         soft = QtGui.QColor(17, 17, 20, 165) if focused else QtGui.QColor(244, 244, 246, 120)
         desc = self.describe(self.value)
-        left = QtCore.QRectF(18, 0, self.width() - 340, self.height())
+        left = QtCore.QRectF(322 if is_rtl() else 18, 0, self.width() - 340, self.height())
         p.setPen(ink)
         p.setFont(font(15, QtGui.QFont.DemiBold if focused else QtGui.QFont.Normal))
         if desc:
-            p.drawText(left.adjusted(0, 13, 0, 0), Qt.AlignLeft | Qt.AlignTop, self.label)
+            p.drawText(left.adjusted(0, 13, 0, 0), lead() | Qt.AlignTop, self.label)
             p.setPen(soft)
             p.setFont(font(13))
-            p.drawText(left.adjusted(0, 36, 0, 0), Qt.AlignLeft | Qt.AlignTop,
+            p.drawText(left.adjusted(0, 36, 0, 0), lead() | Qt.AlignTop,
                        p.fontMetrics().elidedText(desc, Qt.ElideRight, int(left.width())))
         else:
-            p.drawText(left, Qt.AlignLeft | Qt.AlignVCenter, self.label)
+            p.drawText(left, lead() | Qt.AlignVCenter, self.label)
         v = self._value_rect()
         if self.kind == "bool":     # a switch
-            track = QtCore.QRectF(v.right() - 46, v.center().y() - 13, 46, 26)
-            on = bool(self.value)
+            track = QtCore.QRectF(v.left() if is_rtl() else v.right() - 46, v.center().y() - 13, 46, 26)
+            on = bool(self.value) != is_rtl()   # the knob sits toward the line's end when on
             p.setPen(Qt.NoPen)
-            p.setBrush(QtGui.QColor(GREEN) if on else (QtGui.QColor(17, 17, 20, 60) if focused
+            p.setBrush(QtGui.QColor(GREEN) if self.value else (QtGui.QColor(17, 17, 20, 60) if focused
                                                         else QtGui.QColor(255, 255, 255, 50)))
             p.drawRoundedRect(track, 13, 13)
             p.setBrush(QtGui.QColor("white"))
@@ -4353,12 +4436,12 @@ class SettingRow(QtWidgets.QWidget):
             p.drawText(v.adjusted(24, 0, -24, 0), Qt.AlignCenter, self.text())
         else:
             text = p.fontMetrics().elidedText(self.text(), Qt.ElideMiddle, int(v.width()))
-            p.drawText(v, Qt.AlignRight | Qt.AlignVCenter, text)
+            p.drawText(v, (Qt.AlignLeft if is_rtl() else Qt.AlignRight) | Qt.AlignVCenter, text)
 
 
 class SectionTitle(QtWidgets.QLabel):
     def __init__(self, text: str):
-        super().__init__(text)
+        super().__init__(tr(text))
         self.setStyleSheet(f"color: {MUTED}; font-size: 13px; font-weight: 600; padding: 22px 18px 6px 18px;")
 
 
@@ -4388,14 +4471,14 @@ class Settings(QtWidgets.QWidget):
         head.setSpacing(6)
         titles = QtWidgets.QVBoxLayout()
         titles.setSpacing(2)
-        titles.addWidget(QtWidgets.QLabel("Settings", objectName="vTitle"))
+        titles.addWidget(QtWidgets.QLabel(tr("Settings"), objectName="vTitle"))
         self.info = QtWidgets.QLabel(objectName="vSub")
         titles.addWidget(self.info)
         head.addLayout(titles)
         head.addStretch()
-        self.defaults_btn = QtWidgets.QPushButton("Restore defaults")
-        self.cancel_btn = QtWidgets.QPushButton("Cancel")
-        self.save_btn = QtWidgets.QPushButton("Save", objectName="primary")
+        self.defaults_btn = QtWidgets.QPushButton(tr("Restore defaults"))
+        self.cancel_btn = QtWidgets.QPushButton(tr("Cancel"))
+        self.save_btn = QtWidgets.QPushButton(tr("Save"), objectName="primary")
         for b, fn in ((self.defaults_btn, self.restore_defaults), (self.cancel_btn, self.close_settings),
                       (self.save_btn, self.save)):
             b.setFocusPolicy(Qt.NoFocus)
@@ -4451,7 +4534,7 @@ class Settings(QtWidgets.QWidget):
                                  lambda v: "Lower uses less RAM and space; Native looks sharpest")
         self._row("fps", "Frame rate", "choice", [(30, "30 FPS"), (60, "60 FPS"), (120, "120 FPS")],
                   lambda v: "60 is smooth for every game; 120 for fast shooters on a high-refresh screen",
-                  custom=lambda v: f"{v} FPS")
+                  custom=lambda v: tr("{n} FPS", n=v))
         self._row("quality", "Quality", "choice",
                   [("light", "Light"), ("balanced", "Balanced"), ("high", "High"), ("max", "Max")],
                   self._quality_text)
@@ -4459,8 +4542,8 @@ class Settings(QtWidgets.QWidget):
                                    [("auto", "Auto"), ("av1", "AV1"), ("hevc", "HEVC"), ("h264", "H.264")],
                                    self._codec_text)
         self._row("buffer_minutes", "Replay buffer", "choice",
-                  [(m, f"{m} min") for m in (5, 10, 15, 30, 60)], self._buffer_text,
-                  custom=lambda v: f"{v} min")
+                  [(m, tr("{n} min", n=m)) for m in (5, 10, 15, 30, 60)], self._buffer_text,
+                  custom=lambda v: tr("{n} min", n=v))
         self._row("voice_track", "Voice on its own track", "bool",
                   describe=lambda v: "So you can share a clip with or without your voice")
         self._row("capture_follow_game", "Follow the game's screen", "bool",
@@ -4479,24 +4562,31 @@ class Settings(QtWidgets.QWidget):
                   lambda v: "The button that opens the menu, like Create on the PS5")
         self._row("controller_hold_ms", "Open the menu with", "choice", [(0, "A press"), (400, "A hold")],
                   lambda v: "Hold keeps a quick tap for the game, if it uses the same button",
-                  custom=lambda v: f"A hold ({v} ms)")
+                  custom=lambda v: tr("A hold ({n} ms)", n=v))
         self._row("double_press_seconds", "Double-press to save", "choice",
                   [(0, "Off"), (15, "15 sec"), (30, "30 sec"), (60, "1 min"), (120, "2 min")],
                   lambda v: "Press twice quickly to save without opening the menu" if v else
-                  "Double-pressing does nothing extra", custom=lambda v: f"{v} sec")
+                  "Double-pressing does nothing extra", custom=lambda v: tr("{n} sec", n=v))
         self._row("rumble", "Rumble", "bool", describe=lambda v: "A short buzz on the controller when something is saved")
         self._row("sounds", "Sounds", "bool", describe=lambda v: "A short sound when something is saved")
         add(SectionTitle("LIBRARY"))
-        folder = self._row("clips_dir", "Captures folder", "action",
-                           describe=lambda v: "Each game gets its own folder in here. Press Enter to change")
+        folder = self._row("clips_dir", "Clips folder", "action",
+                           describe=lambda v: "Clips and recordings, a folder per game. Press Enter to change")
         folder.on_activate = self._pick_folder
+        shots = self._row("screenshots_dir", "Screenshots folder", "action",
+                          describe=lambda v: "A folder per game here too. Press Enter to change",
+                          display=lambda v: v or tr("Same as the clips folder"))
+        shots.on_activate = self._pick_folder
         self._row("storage_warn_gb", "Warn me when captures pass", "choice",
                   [(0, "Never"), (50, "50 GB"), (100, "100 GB"), (200, "200 GB"), (500, "500 GB"),
                    (1000, "1 TB")], lambda v: "Only a notice. Nothing is ever deleted for you",
-                  custom=lambda v: f"{v} GB")
+                  custom=lambda v: tr("{n} GB", n=v))
         add(SectionTitle("GENERAL"))
         self._row("start_with_windows", "Start with Windows", "bool",
                   describe=lambda v: "Capture Menu and OBS start when you sign in")
+        self._row("language", "Language", "choice",
+                  [("auto", "Same as Windows"), *LANGUAGES.items()],
+                  lambda v: "Capture Menu restarts in the new language when you save")
         self.rows_layout.addStretch()
 
     def _plan_cfg(self) -> dict:
@@ -4507,7 +4597,7 @@ class Settings(QtWidgets.QWidget):
         w, h = output_size(*self.screen_px, cfg["resolution"])
         enc = choose_encoder(self.encoder or "nvenc_av1", cfg["video_codec"])
         kbps = pick_bitrate(enc, w, h, int(cfg["fps"]), v or "balanced")
-        return f"About {kbps:,} Kbps. Higher is sharper in fast motion and makes bigger files"
+        return tr("About {kbps} Kbps. Higher is sharper in fast motion and makes bigger files", kbps=f"{kbps:,}")
 
     def _codec_text(self, v) -> str:
         if self.encoder is None:
@@ -4515,16 +4605,16 @@ class Settings(QtWidgets.QWidget):
         best = codec_of(self.encoder).upper().replace("H264", "H.264")
         used = codec_of(choose_encoder(self.encoder, v)).upper().replace("H264", "H.264")
         if v == "auto":
-            return f"{best}, the best your graphics card can record. Shared copies are always H.264"
+            return tr("{codec}, the best your graphics card can record. Shared copies are always H.264", codec=best)
         if used != (v or "").upper().replace("H264", "H.264"):
-            return f"Your graphics card can't record this, so {used} is used"
+            return tr("Your graphics card can't record this, so {codec} is used", codec=used)
         return "H.264 plays everywhere; AV1 and HEVC make smaller files" if v == "h264" else \
             "Smaller files than H.264 at the same quality. Shared copies are always H.264"
 
     def _buffer_text(self, v) -> str:
         mb = buffer_memory_mb(dict(self._plan_cfg(), buffer_minutes=v or 30), *self.screen_px,
                               choose_encoder(self.encoder or "nvenc_av1", self._plan_cfg()["video_codec"]))
-        return f"The longest clip you can save. Uses about {mb / 1024:.1f} GB of RAM"
+        return tr("The longest clip you can save. Uses about {gb} GB of RAM", gb=f"{mb / 1024:.1f}")
 
     def values(self) -> dict:
         return {r.key: r.value for r in self.rows}
@@ -4536,11 +4626,11 @@ class Settings(QtWidgets.QWidget):
         enc = choose_encoder(self.encoder or "nvenc_av1", cfg["video_codec"])
         w, h = output_size(*self.screen_px, cfg["resolution"])
         mb = buffer_memory_mb(cfg, *self.screen_px, enc)
-        self.memory.setText(f"Recording {w}×{h} at {cfg['fps']} FPS  ·  replay buffer about "
-                            f"{mb / 1024:.1f} GB of RAM")
+        self.memory.setText(tr("Recording {w}×{h} at {fps} FPS  ·  replay buffer about {gb} GB of RAM",
+                               w=w, h=h, fps=cfg["fps"], gb=f"{mb / 1024:.1f}"))
         dirty = self.changes()
-        self.info.setText(f"{len(dirty)} unsaved change{'s' if len(dirty) != 1 else ''}" if dirty
-                          else "Changes apply when you save")
+        self.info.setText((tr("1 unsaved change") if len(dirty) == 1 else
+                           tr("{n} unsaved changes", n=len(dirty))) if dirty else tr("Changes apply when you save"))
 
     def changes(self) -> dict:
         current = dict(self.ctl.cfg)
@@ -4553,7 +4643,7 @@ class Settings(QtWidgets.QWidget):
         if screen_px:
             self.screen_px = screen_px
         w, h = self.screen_px
-        self.res_row.choices = [("native", f"Native  {w}×{h}")] + [
+        self.res_row.choices = [("native", tr("Native  {w}×{h}", w=w, h=h))] + [
             (k, k) for k, v in RESOLUTIONS.items() if v < h]
         cfg = dict(self.ctl.cfg)
         if IS_WINDOWS:
@@ -4607,9 +4697,12 @@ class Settings(QtWidgets.QWidget):
         row.update()
 
     def _pick_folder(self, row: SettingRow):
-        path = QtWidgets.QFileDialog.getExistingDirectory(self, "Captures folder", str(row.value or ""))
+        clips = self.values().get("clips_dir")
+        path = QtWidgets.QFileDialog.getExistingDirectory(self, row.label, str(row.value or clips or ""))
         if path:
-            row.set_value(str(Path(path)), emit=True)
+            path = str(Path(path))
+            # screenshots in the clips folder are the default, stored as "not set"
+            row.set_value("" if row.key == "screenshots_dir" and path == clips else path, emit=True)
         bring_to_front(self)
         row.setFocus()
 
@@ -4717,7 +4810,10 @@ def main():
     install_crash_log()
     log.info("starting: %s %s", sys.executable, " ".join(sys.argv))
     cfg = load_config()
+    set_language(cfg.get("language", "auto"))
     app = QtWidgets.QApplication(sys.argv)
+    if is_rtl():
+        app.setLayoutDirection(Qt.RightToLeft)   # Arabic: the whole interface mirrors, like the PS5 does
     app.setQuitOnLastWindowClosed(False)
     app.setWindowIcon(tray_icon())
     restarted = "--restarted" in sys.argv
@@ -4771,14 +4867,14 @@ def main():
     ctl.copy_file.connect(to_clipboard)
 
     tray = QtWidgets.QSystemTrayIcon(tray_icon())
-    tray.setToolTip(f"Capture Menu is running · {cfg['hotkey'].upper()} to open")
+    tray.setToolTip(tr("Capture Menu is running · {keys} to open", keys=cfg["hotkey"].upper()))
     tm = QtWidgets.QMenu()
-    tm.addAction("Open menu", lambda: menu.show_menu())
-    tm.addAction("Open gallery", lambda: gallery.open())
-    tm.addAction("Open clips folder", ctl.open_folder)
-    tm.addAction("Settings", lambda: settings.open(ctl.screen_px))
+    tm.addAction(tr("Open menu"), lambda: menu.show_menu())
+    tm.addAction(tr("Open gallery"), lambda: gallery.open())
+    tm.addAction(tr("Open clips folder"), ctl.open_folder)
+    tm.addAction(tr("Settings"), lambda: settings.open(ctl.screen_px))
     tm.addSeparator()
-    tm.addAction("Quit", app.quit)
+    tm.addAction(tr("Quit"), app.quit)
     tray.setContextMenu(tm)
     tray.activated.connect(lambda r: menu.show_menu()
                            if r == QtWidgets.QSystemTrayIcon.Trigger else None)
@@ -4826,7 +4922,7 @@ def main():
         gamepad.used.connect(INPUT.set)
         gamepad.start()
     except ValueError as e:
-        problems.append(f"{e} · pick another controller button in Settings")
+        problems.append(tr("{problem} · pick another controller button in Settings", problem=e))
 
     hotkey = Hotkey(cfg["hotkey"], lambda: foreground_app(cfg))
     hotkey.pressed.connect(presses.press)
@@ -4837,16 +4933,17 @@ def main():
         time.sleep(0.25)
         registered = hotkey.start()
     if IS_WINDOWS and not registered:
-        problems.append(f"{cfg['hotkey'].upper()} is taken by another app · "
-                        "use the controller or the tray icon, and pick other keys in Settings")
+        problems.append(tr("{keys} is taken by another app · "
+                           "use the controller or the tray icon, and pick other keys in Settings",
+                           keys=cfg["hotkey"].upper()))
     keys = " + ".join(k.upper() if len(k) == 1 or k[0] == "f" and k[1:].isdigit() else k.capitalize()
                       for k in cfg["hotkey"].split("+"))   # alt+c -> Alt + C
     pad_name = cfg["controller_button"].replace("+", " + ").title()
     if problems:
         toast.show_message(problems[0], "error")
     else:
-        toast.show_running("Settings saved" if restarted else "Capture Menu is running",
-                           f"Press {keys} or {pad_name} to open")
+        toast.show_running(tr("Settings saved") if restarted else tr("Capture Menu is running"),
+                           tr("Press {keys} or {button} to open", keys=keys, button=pad_name))
     # once everything has been closed for a while, trim memory (once per idle stretch)
     idle = {"armed": True}
 

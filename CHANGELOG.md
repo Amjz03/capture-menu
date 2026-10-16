@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.0.2 · 2026-10-16
+
+- **Arabic.** The whole interface is translated and mirrored right to left. Settings → General → Language: same as Windows, English or العربية. Translations live in `assets/lang/`, so adding a language is one JSON file.
+- **Screenshots folder.** Settings → Library now has a clips folder and a screenshots folder; screenshots stay with the clips unless you pick another one. The gallery shows both.
+
 ## 0.0.1 · 2026-10-16
 
 First public build.

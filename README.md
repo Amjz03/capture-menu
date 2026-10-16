@@ -25,12 +25,13 @@
 
 - **Save recent gameplay** from a 30-minute replay buffer: the last 15 s, 30 s, 1, 3, 5, 15 or 30 minutes, or everything.
 - **Screenshot and record** from the same bar, with a small REC timer while you record.
-- **A folder per game**, detected automatically, like the PS5.
+- **A folder per game**, detected automatically, like the PS5. Clips and screenshots can go to different drives or folders.
 - **Check it right away:** a viewer with play, skip and frame-exact trim.
 - **Share in one step:** copies for phones and Discord (10 / 50 / 500 MB) go straight to the clipboard, with or without your voice.
 - **Gallery** with favorites, titles, notes, sizes, sorting and multi-delete.
 - **Works with a controller:** DualSense, Xbox and most others, with on-screen hints that match.
 - **Follows your game** across monitors and TVs, and never shows up in your recordings.
+- **English and Arabic:** the whole interface, mirrored right to left in Arabic, like the PS5.
 - **One-click install:** OBS Studio and FFmpeg are installed and set up for your PC automatically.
 
 | | | |
@@ -193,8 +194,8 @@ Open it from the **Settings** tile at the end of the bar, **,** on the keyboard,
 
 - **Recording:** resolution (Native, 1440p, 1080p, 720p), frame rate (30, 60, 120), quality (Light, Balanced, High, Max), video format (Auto, AV1, HEVC, H.264), replay buffer (5 to 60 min), voice on its own track, follow the game's screen, REC indicator (top left, top right, off).
 - **Controls:** keyboard shortcut, controller button, press or hold, double-press to save, rumble, sounds.
-- **Library:** captures folder, storage warning.
-- **General:** start with Windows.
+- **Library:** clips folder, screenshots folder (the clips folder unless you pick another), storage warning.
+- **General:** start with Windows, language (same as Windows, English or العربية).
 
 The page shows how much RAM the buffer will use. Saving restarts Capture Menu; a changed recording setting also updates OBS and restarts it once. The video format never asks for more than your graphics card can do (AV1 on an older card falls back to HEVC).
 
@@ -208,7 +209,9 @@ The Settings page writes to `config.json` in the install folder. You can also ed
 | `buffer_minutes` | Replay buffer length in minutes |
 | `hotkey` | The shortcut, e.g. `alt+c`, `ctrl+shift+f8` or `f9` |
 | `durations_seconds` | The lengths shown in Save recent, in seconds |
-| `clips_dir` | Where captures go. Empty = `Videos\Clips` |
+| `clips_dir` | Where clips and recordings go. Empty = `Videos\Clips` |
+| `screenshots_dir` | Where screenshots go. Empty = the clips folder |
+| `language` | `auto` (same as Windows), `en` or `ar` |
 | `game_names` | Fix a game's folder name (see below) |
 | `controller_button` | `create`, `ps`, `options`, `touchpad`, `mute`, `share` (Xbox Series), `view`, or a combo like `l1+r1` |
 | `controller_hold_ms` | Hold time before the bar opens; `0` = on press. Use `400` if your game uses the same button |
