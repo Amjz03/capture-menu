@@ -48,6 +48,7 @@
 - [Performance](#performance)
 - [Troubleshooting](#troubleshooting)
 - [Development](#development)
+- [Code signing policy](#code-signing-policy)
 - [Credits and license](#credits-and-license)
 
 ## Install
@@ -308,6 +309,17 @@ docs/                images for this README
 **Build:** `installer\build_exe.bat` makes `dist\CaptureMenu\CaptureMenu.exe`, and `Output\CaptureMenu-Setup.exe` when [Inno Setup 6](https://jrsoftware.org/isinfo.php) is installed.
 
 **Release:** change `VERSION` on `main` (e.g. to `v0.0.2`) and push. GitHub Actions builds `CaptureMenu-Setup.exe` and the Python `CaptureMenu.zip` on Windows and publishes them. Changes are listed in [CHANGELOG.md](CHANGELOG.md).
+
+**Promo video:** `tools\render_promo.py` renders a 16:9 and a 9:16 video from the app's real screens.
+
+## Code signing policy
+
+Release files are built only by the [release workflow](.github/workflows/release.yml) on GitHub Actions, from the code in this repository. Nothing built on a personal computer is published.
+
+- Committers and reviewers: [Amjz03](https://github.com/Amjz03)
+- Approvers (who decide what is released): [Amjz03](https://github.com/Amjz03)
+
+**Privacy:** Capture Menu doesn't send any information to other computers unless you ask it to. It talks to OBS on your own PC, and it contacts GitHub only when you click **Check for updates** (to see the latest version, and to download it if you choose to install it). Your clips and screenshots stay on your PC.
 
 ## Credits and license
 
