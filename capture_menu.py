@@ -163,7 +163,12 @@ class Obs:
                         raise ObsOffline(str(e)) from e
 
     def buffer_active(self) -> bool:
-        return self.call("get_replay_buffer_status").output_active
+        try:
+            return self.call("get_replay_buffer_status").output_active
+        except OBSSDKRequestError as e:
+            if e.code == 604:   # replay buffer not enabled in OBS yet (fresh install)
+                return False
+            raise
 
     def ensure_buffer(self) -> bool:
         """Starts the replay buffer if it is off. Returns True if it was already running."""
