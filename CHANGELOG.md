@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.0.6 · 2026-10-17
 
 - When Windows Security protects the Videos folder, nothing needs changing: Capture Menu says once, calmly, where your captures are saved instead (`C:\Users\<you>\Capture Menu`), without asking you to change Windows' settings. Settings → Clips folder shows the folder actually in use.
 
