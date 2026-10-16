@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.0.5 · 2026-10-17
 
 - Fixed: Capture Menu crashed on start ("The system cannot find the file specified: …\Videos\Clips") on PCs where Windows Security's Controlled folder access (ransomware protection) blocks unknown apps from Videos. It now starts anyway, saves captures in `C:\Users\<you>\Capture Menu` for the time being, points OBS there too, and says how to allow CaptureMenu.exe and obs64.exe so Videos can be used. Your chosen folder is kept and used again as soon as it's allowed.
 - Fixed: with two screens, Settings, the gallery or the viewer could open on the other screen, and Back could jump again. The app now stays on the screen the bar opened on until you close it; opening it again (Create, the hotkey, the tray) picks the game's screen again. Notices shown while a page is open appear on that page's screen.
