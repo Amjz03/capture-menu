@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Fixed: with two screens, Settings, the gallery or the viewer could open on the other screen, and Back could jump again. The app now stays on the screen the bar opened on until you close it; opening it again (Create, the hotkey, the tray) picks the game's screen again. Notices shown while a page is open appear on that page's screen.
+
 ## 0.0.4 · 2026-10-16
 
 - Fixed: installing an update could stop with "DeleteFile failed; Access is denied" on VCRUNTIME140.dll. OBS, started by Capture Menu, had picked up Capture Menu's own copy of that file and kept it open. Programs Capture Menu starts now get Windows' normal libraries, and Setup closes OBS (like clicking ✕) and waits for it before replacing files; Capture Menu starts it again afterwards.

@@ -628,6 +628,20 @@ def game_screen() -> QtGui.QScreen:
     return screen_for(foreground_screen())
 
 
+_ui_screen: QtGui.QScreen | None = None
+
+
+def ui_screen(fresh: bool = False) -> QtGui.QScreen:
+    """The screen Capture Menu's pages open on. It's picked (the game's screen) when the app is opened
+    from outside: the Create button, the hotkey, the tray, a notice. Every page reached from there
+    (Settings, the gallery, the viewer, and Back) stays on it. Picking it again on each page followed
+    whatever window was in front once the last page had closed, often one on another monitor."""
+    global _ui_screen
+    if fresh or _ui_screen is None or _ui_screen not in QtGui.QGuiApplication.screens():
+        _ui_screen = game_screen()
+    return _ui_screen
+
+
 def pick_monitor_item(items: list[dict], rect: tuple[int, int, int, int]) -> dict | None:
     """OBS lists monitors like "LG ULTRAGEAR: 2560x1440 @ 0,0 (Primary Monitor)".
     Finds the one at the same desktop position as rect (then by size if positions differ)."""
@@ -2685,11 +2699,12 @@ class Menu(QtWidgets.QWidget):
         self.bar.setGeometry(0, self.height() - h, self.width(), h)
         self.update()
 
-    def show_menu(self, game: str | None = None):
+    def show_menu(self, game: str | None = None, fresh: bool = True):
+        """fresh: opened from outside (the game's screen is picked again); False when coming Back."""
         self.game = game or foreground_app(self.ctl.cfg)
         if self.viewer.isVisible():
             self.viewer.close_viewer()
-        g = game_screen().geometry()   # the screen the game is on, TV or monitor
+        g = ui_screen(fresh).geometry()   # the screen the game is on, TV or monitor
         h = self.BAR_H + self.HEADROOM
         self.setGeometry(g.left(), g.bottom() - h + 1, g.width(), h)
         self.game_label.setText(self.game_label.fontMetrics().elidedText(self.game, Qt.ElideRight, 420))
@@ -2796,21 +2811,21 @@ class Menu(QtWidgets.QWidget):
             return
         game = self.game
         self.hide_menu()
-        self.gallery.open(game, back_to=lambda: self.show_menu(game))
+        self.gallery.open(game, back_to=lambda: self.show_menu(game, fresh=False))
 
     def open_settings(self):
         if self.settings is None:
             return
         game = self.game
         self.hide_menu()
-        self.settings.open(self.ctl.screen_px, back_to=lambda: self.show_menu(game))
+        self.settings.open(self.ctl.screen_px, back_to=lambda: self.show_menu(game, fresh=False))
 
     def _view(self, index: int, trim: bool = False):
         items = self.ctl.recent_items()
         if index < len(items):
             game = self.game
             self.hide_menu()
-            self.viewer.open(items, index, trim=trim, back_to=lambda: self.show_menu(game))
+            self.viewer.open(items, index, trim=trim, back_to=lambda: self.show_menu(game, fresh=False))
 
     def _on_status(self, st: dict):
         if not st.get("online"):
@@ -3130,7 +3145,9 @@ class Toast(QtWidgets.QWidget):
             lay.invalidate()
             lay.activate()
         self.resize(self.sizeHint())
-        g = game_screen().geometry()
+        page_open = any(w.isVisible() for w in QtWidgets.QApplication.topLevelWidgets()
+                        if isinstance(w, (Menu, Viewer, Gallery, Settings)))
+        g = (ui_screen() if page_open else game_screen()).geometry()   # beside the page in use
         self.move(g.right() - self.width() - 28, g.top() + 28)
         self.show()
         self.raise_()
@@ -3543,12 +3560,13 @@ class Viewer(QtWidgets.QWidget):
         return bool(self.items) and self.current.suffix.lower() != ".png"
 
     # ---- open / close
-    def open(self, items: list[Path], index: int = 0, trim: bool = False, back_to=None):
+    def open(self, items: list[Path], index: int = 0, trim: bool = False, back_to=None, fresh: bool = False):
+        """fresh: opened from outside (a notice), not from another page."""
         self.back_to = back_to      # what Back returns to once no panel is open (None: just close)
         self._drop_timer.stop()
         self.items, self.index = list(items), index
         self._pending_trim = trim and items[index].suffix.lower() != ".png"
-        self.setGeometry(game_screen().geometry())   # covers the game's screen, like the PS5 viewer
+        self.setGeometry(ui_screen(fresh).geometry())   # covers the game's screen, like the PS5 viewer
         self.show()
         bring_to_front(self)
         self.show_item()
@@ -4325,9 +4343,10 @@ class Gallery(QtWidgets.QWidget):
         p.fillRect(self.rect(), QtGui.QColor(11, 11, 14, 250))
 
     # ---- open / close
-    def open(self, game: str | None = None, back_to=None):
+    def open(self, game: str | None = None, back_to=None, fresh: bool = False):
+        """fresh: opened from outside (the tray), not from another page."""
         self.back_to = back_to      # what Back returns to (None: just close)
-        self.setGeometry(game_screen().geometry())
+        self.setGeometry(ui_screen(fresh).geometry())
         self._load(select=game)
         self.show()
         bring_to_front(self)
@@ -5195,7 +5214,8 @@ class Settings(QtWidgets.QWidget):
         return {k: v for k, v in self.values().items() if current.get(k) != v}
 
     # ---- open / close
-    def open(self, screen_px: tuple[int, int] | None = None, back_to=None):
+    def open(self, screen_px: tuple[int, int] | None = None, back_to=None, fresh: bool = False):
+        """fresh: opened from outside (the tray), not from another page."""
         self.back_to = back_to      # what Back returns to (None: just close)
         if screen_px:
             self.screen_px = screen_px
@@ -5213,7 +5233,7 @@ class Settings(QtWidgets.QWidget):
             threading.Thread(target=lambda: safe_emit(self.encoder_ready, pick_encoder(gpu_names())),
                              daemon=True).start()
         self._refresh()
-        self.setGeometry(game_screen().geometry())
+        self.setGeometry(ui_screen(fresh).geometry())
         self.show()
         bring_to_front(self)
         self.rows[0].setFocus()
@@ -5449,7 +5469,7 @@ def main():
             items = [p, *items]
         menu.hide_menu()
         gallery.close_gallery()
-        viewer.open(items, items.index(p), trim=trim)
+        viewer.open(items, items.index(p), trim=trim, fresh=True)
     toast.open_capture.connect(open_capture)
     ctl.storage.connect(menu.show_storage)
     ctl.library_changed.connect(menu.refresh_recent)
@@ -5465,12 +5485,12 @@ def main():
     tray.setToolTip(tr("Capture Menu is running · {keys} to open", keys=cfg["hotkey"].upper()))
     tm = QtWidgets.QMenu()
     tm.addAction(tr("Open menu"), lambda: menu.show_menu())
-    tm.addAction(tr("Open gallery"), lambda: gallery.open())
+    tm.addAction(tr("Open gallery"), lambda: gallery.open(fresh=True))
     tm.addAction(tr("Open clips folder"), ctl.open_folder)
-    tm.addAction(tr("Settings"), lambda: settings.open(ctl.screen_px))
+    tm.addAction(tr("Settings"), lambda: settings.open(ctl.screen_px, fresh=True))
 
     def check_updates():
-        settings.open(ctl.screen_px)
+        settings.open(ctl.screen_px, fresh=True)
         settings.update_row.setFocus()
         settings.check_or_install()
     tm.addAction(tr("Check for updates"), check_updates)
