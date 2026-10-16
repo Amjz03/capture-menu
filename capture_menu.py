@@ -987,6 +987,35 @@ def obs_exe_path() -> str | None:
     return r.stdout.strip() or None
 
 
+def find_obs_exe() -> str | None:
+    """obs64.exe from OBS's install record, else the default install folder."""
+    if not IS_WINDOWS:
+        return None
+    import winreg
+    for hive in (winreg.HKEY_LOCAL_MACHINE, winreg.HKEY_CURRENT_USER):
+        try:
+            with winreg.OpenKey(hive, r"SOFTWARE\OBS Studio") as key:
+                exe = Path(winreg.QueryValueEx(key, "")[0]) / "bin" / "64bit" / "obs64.exe"
+                if exe.exists():
+                    return str(exe)
+        except OSError:
+            continue
+    exe = Path(os.environ.get("ProgramFiles", r"C:\Program Files")) / "obs-studio" / "bin" / "64bit" / "obs64.exe"
+    return str(exe) if exe.exists() else None
+
+
+def start_obs() -> bool:
+    """Starts OBS hidden in the tray with the replay buffer on."""
+    exe = find_obs_exe()
+    if not exe:
+        log.warning("OBS not found")
+        return False
+    subprocess.Popen([exe, "--startreplaybuffer", "--minimize-to-tray", "--disable-shutdown-check"],
+                     cwd=str(Path(exe).parent), creationflags=0x00000008 | 0x00000200)
+    log.info("started OBS: %s", exe)
+    return True
+
+
 def obs_running() -> bool:
     if not IS_WINDOWS:
         return False
@@ -1381,6 +1410,14 @@ class Controller(QtCore.QObject):
         self.screen_px = screen_size
 
         def run():
+            if IS_WINDOWS and not obs_running() and start_obs():
+                for _ in range(60):    # OBS takes a few seconds at sign-in
+                    time.sleep(0.5)
+                    try:
+                        self.obs.call("get_version")
+                        break
+                    except Exception:
+                        continue
             self.check_storage()
             for p in self.recent[:8]:  # thumbnails and lengths for the Recent row
                 make_thumb(p, self.thumbs_dir)
@@ -1402,6 +1439,7 @@ class Controller(QtCore.QObject):
             except Exception:
                 self.toast.emit("OBS isn't running. Start it to use Capture Menu", "error")
             self.refresh_status()   # e.g. a recording still running after a restart
+            log.info("start-up done")
         threading.Thread(target=run, daemon=True).start()
 
     # ---- save what just happened
@@ -4111,8 +4149,8 @@ def set_start_with_windows(on: bool):
     if not on:
         lnk.unlink(missing_ok=True)
         return
-    launcher = APP_DIR / "CaptureMenu.vbs"
-    target, args = (sys.executable, "") if FROZEN else ("wscript.exe", f'"{launcher}"')
+    target, args = (sys.executable, "") if FROZEN else (str(Path(sys.executable).with_name("pythonw.exe")),
+                                                         f'"{APP_DIR / "capture_menu.py"}"')
     ps = ("$s = (New-Object -ComObject WScript.Shell).CreateShortcut($env:LNK); "
           "$s.TargetPath = $env:TGT; $s.Arguments = $env:ARGS; $s.WorkingDirectory = $env:DIR; "
           "$s.Description = 'Capture Menu'; $s.Save()")
@@ -4645,7 +4683,23 @@ def promote_tray_icon():
         save_state(state)
 
 
+def install_crash_log():
+    import faulthandler
+    import traceback
+
+    def log_error(kind, value, tb):
+        log.critical("unhandled error:\n%s", "".join(traceback.format_exception(kind, value, tb)))
+    sys.excepthook = log_error
+    threading.excepthook = lambda a: log_error(a.exc_type, a.exc_value, a.exc_traceback)
+    try:
+        faulthandler.enable(open(APP_DIR / "crash.log", "a", encoding="utf-8"))   # hard crashes too
+    except OSError:
+        pass
+
+
 def main():
+    install_crash_log()
+    log.info("starting: %s %s", sys.executable, " ".join(sys.argv))
     cfg = load_config()
     app = QtWidgets.QApplication(sys.argv)
     app.setQuitOnLastWindowClosed(False)
@@ -4658,6 +4712,7 @@ def main():
     if not lock.tryLock(8000 if restarted else 0):   # after Save, wait for the old copy to quit
         log.info("already running, exiting")
         return
+    app.aboutToQuit.connect(lock.unlock)
     problems: list[str] = []
 
     ctl = Controller(cfg)

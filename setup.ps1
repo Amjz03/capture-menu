@@ -91,25 +91,43 @@ $cfg.obs_port = $port
 Write-Host "   WebSocket on, password saved to config.json"
 
 Step "Adding shortcuts"
+# Shortcuts start Python (or CaptureMenu.exe) directly: nothing in between that can be blocked
+# or missing at sign-in. Capture Menu starts OBS itself when it isn't running.
+$exe = Join-Path $here "CaptureMenu.exe"
+if (Test-Path $exe) {
+    $target = $exe; $arguments = ""
+} else {
+    $python = (& py -3 -c "import sys; print(sys.executable)").Trim()
+    $target = Join-Path (Split-Path -Parent $python) "pythonw.exe"
+    $arguments = "`"$(Join-Path $here 'capture_menu.py')`""
+}
+if (-not (Test-Path $target)) {
+    Write-Host "   Couldn't find $target" -ForegroundColor Red; exit 1
+}
 $shell = New-Object -ComObject WScript.Shell
-$launcher = Join-Path $here "CaptureMenu.vbs"
+$startup = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\Startup\Capture Menu.lnk"
 $targets = @(
     (Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\Capture Menu.lnk"),
-    (Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\Startup\Capture Menu.lnk")
+    $startup
 )
 foreach ($lnk in $targets) {
     $s = $shell.CreateShortcut($lnk)
-    $s.TargetPath = "wscript.exe"
-    $s.Arguments = "`"$launcher`""
+    $s.TargetPath = $target
+    $s.Arguments = $arguments
     $s.WorkingDirectory = $here
     $s.Description = "Capture Menu"
     $s.Save()
 }
+# Windows keeps a per-app "allowed to start" switch (Task Manager > Startup apps); make sure it's on
+$approved = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\StartupFolder"
+if (Test-Path $approved) {
+    Remove-ItemProperty -Path $approved -Name "Capture Menu.lnk" -ErrorAction SilentlyContinue
+}
 Write-Host "   Start menu + starts with Windows"
 
 Step "Starting Capture Menu"
-Start-Process wscript.exe "`"$launcher`""
+if ($arguments) { Start-Process -FilePath $target -ArgumentList $arguments -WorkingDirectory $here }
+else { Start-Process -FilePath $target -WorkingDirectory $here }
 Write-Host ""
 Write-Host "All set. Press Alt + C (or Create on your controller) while playing." -ForegroundColor Green
 Write-Host "The first time, Capture Menu sets up OBS for your PC and restarts it once."
-Write-Host "If OBS asks to run its Auto-Configuration Wizard, choose No."

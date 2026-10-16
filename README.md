@@ -1,9 +1,5 @@
 # Capture Menu: a PS5-style Create button for Windows
 
-![The Create bar over a game](docs/screenshots/4_recent.png)
-
-**Download:** get `CaptureMenu.zip` from the [latest release](../../releases/latest), extract it, and double-click `Setup.cmd`. See [Install: one click](#install-one-click).
-
 Press **Alt + C** while gaming or anywhere on the desktop. A bar appears along the bottom of the screen, like the PS5 Create menu, so the game stays visible above it:
 
 - **Create:** Save recent, Screenshot, Record
@@ -140,7 +136,7 @@ Only one copy runs at a time: starting it again does nothing. If something needs
 It runs again only if something changes (a new main monitor or graphics card). Turn it off with `"obs_auto_setup": false`.
 
 ### Optional: a standalone .exe
-After Setup, double-click **`build_exe.bat`** once. It builds `dist\CaptureMenu\CaptureMenu.exe`, which runs without Python. Start it with `CaptureMenu.vbs` in that folder.
+After Setup, double-click **`build_exe.bat`** once. It builds `dist\CaptureMenu\CaptureMenu.exe`, which runs without Python. Run `Setup.cmd` in that folder once so it starts with Windows; it starts OBS by itself.
 
 ### Manual OBS setup (only if the automatic one can't)
 1. **Sources → + → Display Capture.**
@@ -228,16 +224,3 @@ To find the exe name: open Task Manager while the game runs, right-click the gam
 ## Credits
 - Button prompts: **PromptFont** by Shinmera (Yukari Hafner), available at https://shinmera.com/promptfont. SIL Open Font License 1.1 (`assets/PROMPTFONT-LICENSE.txt`). PlayStation and Xbox trademarks belong to their owners.
 - Interface icons: **Lucide** (https://lucide.dev). ISC License (`assets/LUCIDE-LICENSE.txt`).
-
-## Development
-The tests run offscreen on any OS with Python 3.12+, PySide6 and ffmpeg (they don't need OBS or Windows):
-
-```
-pip install -r requirements.txt
-QT_QPA_PLATFORM=offscreen python tests/test_flow.py .
-```
-
-Every `tests/test_*.py` takes the app folder as its first argument; `test_trim.py` also takes an output image path. The `render_*.py` scripts draw the screenshots in `docs/screenshots` over a made-up game scene.
-
-To publish a new version, run the **Release** workflow from the Actions tab with a tag like `v1.1.0` (or push that tag). It builds `CaptureMenu.zip` and attaches it to the release.
-
