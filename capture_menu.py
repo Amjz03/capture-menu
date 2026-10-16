@@ -831,6 +831,41 @@ def export_for_share(src: Path, out: Path, size_mb: int | None, without_voice: b
     return size
 
 
+# ---------------------------------------------------------------- sound levels
+
+VOICE_LEVELS = list(range(-12, 25, 3))    # dB, for the player's voice in one clip
+GAME_LEVELS = list(range(-24, 13, 3))     # dB, for the game's sound in one clip
+
+
+def remix_audio(src: Path, voice_db: int, game_db: int, out: Path, seconds: float | None = None,
+                start: float = 0.0, picture: Path | None = None):
+    """Rebuilds track 1 (what players play) from track 2 (game only) and track 3 (mic only) at new
+    levels. The video and those two tracks are copied untouched, so any level can be picked again later.
+    `start` / `seconds` make a short piece to listen to; otherwise the whole clip. `picture` takes the
+    video from another file (the 720p preview copy, for clips the built-in player can't show)."""
+    ffmpeg = find_tool("ffmpeg")
+    if not ffmpeg:
+        raise FileNotFoundError("ffmpeg is not installed")
+    seek = ["-ss", f"{start:.3f}"] if start else []
+    inputs = [*seek, "-i", str(picture or src)] + ([*seek, "-i", str(src)] if picture else [])
+    a = "1" if picture else "0"     # the input that has the sound tracks
+    mix = (f"[{a}:a:1]volume={game_db}dB[g];[{a}:a:2]volume={voice_db}dB[v];"
+           f"[g][v]amix=inputs=2:normalize=0:duration=longest,alimiter=limit=0.95:level=disabled[mix]")
+    cmd = [ffmpeg, "-y", "-v", "error", *inputs, "-filter_complex", mix,
+           "-map", "0:v:0", "-map", "[mix]", "-map", f"{a}:a:1", "-map", f"{a}:a:2",
+           "-c:v", "copy", "-c:a:0", "aac", "-b:a:0", "192k", "-c:a:1", "copy", "-c:a:2", "copy",
+           "-disposition:a:0", "default", "-disposition:a:1", "0", "-disposition:a:2", "0",
+           *(["-t", f"{seconds:.3f}"] if seconds else []), "-movflags", "+faststart", "-f", "mp4", str(out)]
+    r = run_quiet(cmd)
+    if r.returncode != 0 or not out.exists() or out.stat().st_size == 0:
+        out.unlink(missing_ok=True)
+        raise RuntimeError(r.stderr.strip()[-300:] or "couldn't change the sound")
+
+
+def level_label(db: int) -> str:
+    return tr("As recorded") if db == 0 else f"‎{db:+d} dB"   # LRM: "+9 dB" stays in order in Arabic
+
+
 # ---------------------------------------------------------------- storage
 
 def human_size(nbytes: float) -> str:
@@ -1102,6 +1137,7 @@ class Controller(QtCore.QObject):
     toast = QtCore.Signal(str, str)        # text, kind: info / ok / error
     captured = QtCore.Signal(str, str)     # detail line, path of the new capture
     trimmed = QtCore.Signal(str)           # path of a freshly trimmed clip
+    remixed = QtCore.Signal(str)           # path of a clip whose voice / game levels changed
     recording = QtCore.Signal(bool)        # manual recording started / stopped
     shared = QtCore.Signal(str, str)       # detail line, path of the share-ready copy
     copy_file = QtCore.Signal(str)         # put this file on the clipboard (main thread)
@@ -1188,6 +1224,35 @@ class Controller(QtCore.QObject):
         save_state(state)
         self.library_changed.emit()
         return key in favs
+
+    # ---- voice and game levels of one clip (the clip keeps its separate game and mic tracks)
+    def mix_of(self, path: Path) -> tuple[int, int]:
+        m = load_state().get("mix", {}).get(self._fav_key(path), {})
+        return int(m.get("voice", 0)), int(m.get("game", 0))
+
+    def set_mix(self, path: Path, voice_db: int, game_db: int):
+        self._bg(self._set_mix, path, voice_db, game_db)
+
+    def _set_mix(self, path: Path, voice_db: int, game_db: int):
+        tmp = path.with_name(path.name + ".part")   # not a capture, so the gallery never lists it
+        try:
+            remix_audio(path, voice_db, game_db, tmp)
+            st = path.stat()
+            os.replace(tmp, path)
+            os.utime(path, (st.st_atime, st.st_mtime))     # same place in Recent and the gallery
+            self.preview_path(path).unlink(missing_ok=True)   # a 720p preview copy has the old sound
+            state = load_state()
+            mixes = state.setdefault("mix", {})
+            if voice_db or game_db:
+                mixes[self._fav_key(path)] = {"voice": voice_db, "game": game_db}
+            else:
+                mixes.pop(self._fav_key(path), None)
+            save_state(state)
+            self.toast.emit(tr("Sound saved · your voice {voice} · game {game}",
+                               voice=level_label(voice_db), game=level_label(game_db)), "ok")
+        finally:
+            tmp.unlink(missing_ok=True)
+            self.remixed.emit(str(path))   # the viewer reloads the clip, saved or not
 
     # ---- storage warning (nothing is ever deleted automatically)
     def check_storage(self):
@@ -1789,7 +1854,10 @@ def pad_key(button: int, menu: "Menu", viewer: "Viewer", gallery: "Gallery | Non
     if viewer.isVisible():
         if viewer.editing:          # typing needs the keyboard; the pad can only cancel
             return {B: Qt.Key_Escape}.get(button)
-        if viewer.sharing:
+        if viewer.sounding:
+            keys = {A: Qt.Key_Return, B: Qt.Key_Escape, UP: Qt.Key_Up, DOWN: Qt.Key_Down,
+                    LEFT: Qt.Key_Left, RIGHT: Qt.Key_Right, X: Qt.Key_P}
+        elif viewer.sharing:
             keys = {A: Qt.Key_Return, B: Qt.Key_Escape, LEFT: Qt.Key_Left, RIGHT: Qt.Key_Right}
         elif viewer.trimming:
             keys = {A: Qt.Key_Return, B: Qt.Key_Escape, LEFT: Qt.Key_Left, RIGHT: Qt.Key_Right,
@@ -1797,7 +1865,7 @@ def pad_key(button: int, menu: "Menu", viewer: "Viewer", gallery: "Gallery | Non
         else:
             keys = {A: Qt.Key_Space, B: Qt.Key_Escape, LEFT: Qt.Key_Left, RIGHT: Qt.Key_Right,
                     L1: Qt.Key_A, R1: Qt.Key_D, X: Qt.Key_T, Y: Qt.Key_Delete,
-                    OPTIONS: Qt.Key_E, DOWN: Qt.Key_E, UP: Qt.Key_F}
+                    OPTIONS: Qt.Key_E, DOWN: Qt.Key_E, UP: Qt.Key_F, 7: Qt.Key_V}   # 7 = L3: Sound
         return keys.get(button)
     if gallery is not None and gallery.isVisible():
         keys = {A: Qt.Key_Return, B: Qt.Key_Escape, UP: Qt.Key_Up, DOWN: Qt.Key_Down,
@@ -2098,6 +2166,8 @@ def token_glyphs(token: str, mode: str) -> list[str]:
         return [PAD_GLYPHS[kind][b] for b in pad[token]]
     if token == "OPT":
         return [PAD_GLYPHS[kind][6]]
+    if token == "L3":   # PromptFont has no Xbox stick press
+        return ["sony-left-stick"] if kind == "playstation" else ["t:LS"]
     if token == "DPAD_U":
         return ["dpad-up" if kind == "playstation" else "xbox-dpad-up"]
     if token in ("DPAD_LR", "DPAD_UD"):
@@ -3154,6 +3224,7 @@ class Viewer(QtWidgets.QWidget):
     preview_ready = QtCore.Signal(str, str)   # original, preview path ("" = failed)
     preview_progress = QtCore.Signal(str, int)
     frame_ready = QtCore.Signal(str, int, str)
+    sound_ready = QtCore.Signal(str, str)    # clip, short remixed piece to listen to ("" = failed)
     closed = QtCore.Signal()
 
     def __init__(self, ctl: Controller):
@@ -3164,6 +3235,8 @@ class Viewer(QtWidgets.QWidget):
         self.trimming = False
         self.sharing = False
         self.editing = False
+        self.sounding = False                    # the Sound panel: voice and game levels of this clip
+        self._previewing_sound = False
         self.without_voice = False
         self._pending_trim = False
         self._tried_preview: set[Path] = set()
@@ -3295,6 +3368,45 @@ class Viewer(QtWidgets.QWidget):
         self.share_panel.hide()
         lay.addWidget(self.share_panel)
 
+        # sound panel (hidden until Sound): how loud your voice and the game are in this clip
+        self.sound_panel = QtWidgets.QWidget()
+        sdl = QtWidgets.QVBoxLayout(self.sound_panel)
+        sdl.setContentsMargins(0, 0, 0, 0)
+        sdl.setSpacing(4)
+        sound_head = QtWidgets.QHBoxLayout()
+        self.sound_caption = QtWidgets.QLabel(
+            tr("Sound  ·  your voice and the game are kept on their own tracks, so you can change this again"),
+            objectName="vSub")
+        sound_head.addWidget(self.sound_caption)
+        sound_head.addStretch()
+        self.sound_hints = HintBar()
+        sound_head.addWidget(self.sound_hints)
+        sdl.addLayout(sound_head)
+        srows = QtWidgets.QHBoxLayout()
+        level_rows = QtWidgets.QVBoxLayout()
+        level_rows.setSpacing(0)
+        self.voice_row = SettingRow("voice", "Your voice", "choice", [(v, level_label(v)) for v in VOICE_LEVELS],
+                                    lambda v: "How loud you are in this clip")
+        self.game_row = SettingRow("game", "Game", "choice", [(v, level_label(v)) for v in GAME_LEVELS],
+                                   lambda v: "The game's sound in this clip")
+        for r in (self.voice_row, self.game_row):
+            r.setMinimumWidth(720)
+            r.setMaximumWidth(860)
+            level_rows.addWidget(r)
+        srows.addLayout(level_rows)
+        srows.addStretch(1)     # the buttons stay together at the far end
+        sbtns = QtWidgets.QVBoxLayout()
+        sbtns.addStretch()
+        sbtn_row = QtWidgets.QHBoxLayout()
+        button(sbtn_row, "Preview", self.preview_sound, "play")
+        button(sbtn_row, "Cancel", self.exit_sound)
+        button(sbtn_row, "Save", self.save_sound, None, "primary")
+        sbtns.addLayout(sbtn_row)
+        srows.addLayout(sbtns)
+        sdl.addLayout(srows)
+        self.sound_panel.hide()
+        lay.addWidget(self.sound_panel)
+
         # rename panel: a title and a note for this capture
         self.edit_panel = QtWidgets.QWidget()
         el = QtWidgets.QHBoxLayout(self.edit_panel)
@@ -3323,6 +3435,7 @@ class Viewer(QtWidgets.QWidget):
         act.addStretch()
         self.fav_btn = button(act, "Favorite", self.toggle_favorite, "star")
         button(act, "Rename", self.start_edit)
+        self.sound_btn = button(act, "Sound", self.enter_sound, "mic")
         button(act, "Share", self.enter_share, "share")
         self.del_btn = button(act, "Delete", self.delete_current, "trash")
         sep = QtWidgets.QFrame()
@@ -3344,7 +3457,9 @@ class Viewer(QtWidgets.QWidget):
         self.preview_ready.connect(self._on_preview_ready)
         self.preview_progress.connect(self._on_preview_progress)
         self.frame_ready.connect(self._on_frame)
+        self.sound_ready.connect(self._on_sound_ready)
         ctl.trimmed.connect(self._on_trimmed)
+        ctl.remixed.connect(self._on_remixed)
 
     def paintEvent(self, _):
         p = QtGui.QPainter(self)      # the sheet: the game stays faintly visible behind it
@@ -3417,6 +3532,7 @@ class Viewer(QtWidgets.QWidget):
         self._set_trimming(False)
         self._set_sharing(False)
         self._set_editing(False)
+        self._set_sound(False)
         path = self.current
         self._show_title()
         self.sub.setToolTip(str(path))
@@ -3424,6 +3540,7 @@ class Viewer(QtWidgets.QWidget):
         self.prev_btn.setEnabled(self.index > 0)
         self.next_btn.setEnabled(self.index < len(self.items) - 1)
         self.trim_btn.setVisible(self.is_video())
+        self.sound_btn.setVisible(self.is_video())
         self.update_hints()
         if not self.is_video():
             self.controls.hide()
@@ -3569,7 +3686,7 @@ class Viewer(QtWidgets.QWidget):
     def _set_trimming(self, on: bool):
         self.trimming = on
         self.trim_panel.setVisible(on)
-        self.actions_row.setVisible(not on and not self.sharing)
+        self.actions_row.setVisible(not on and not self.sharing and not self.sounding)
         self.update_hints()
 
     # ---- favourites
@@ -3618,9 +3735,90 @@ class Viewer(QtWidgets.QWidget):
     def _set_editing(self, on: bool):
         self.editing = on
         self.edit_panel.setVisible(on)
+        self.actions_row.setVisible(not on and not self.trimming and not self.sharing and not self.sounding)
+        if not on:
+            self.setFocus()
+
+    # ---- sound levels
+    def enter_sound(self):
+        if not self.is_video():
+            return
+        if audio_tracks(self.current) < 3:
+            self.ctl.toast.emit(tr("This clip has no separate voice track · "
+                                   "it was recorded with “Voice on its own track” off"), "info")
+            return
+        voice, game = self.ctl.mix_of(self.current)
+        self.voice_row.set_value(voice)
+        self.game_row.set_value(game)
+        self._set_trimming(False)
+        self._set_sharing(False)
+        self._set_sound(True)
+        self.voice_row.setFocus()
+
+    def exit_sound(self):
+        previewed = self._previewing_sound
+        self._set_sound(False)
+        if previewed:
+            self.show_item()     # back to the clip as it is
+
+    def _set_sound(self, on: bool):
+        self.sounding = on
+        self._previewing_sound = self._previewing_sound and on
+        self.sound_panel.setVisible(on)
         self.actions_row.setVisible(not on and not self.trimming and not self.sharing)
         if not on:
             self.setFocus()
+        self.update_hints()
+
+    def preview_sound(self):
+        """Plays 12 seconds from here with the levels picked, before anything is saved."""
+        if not self.sounding or self.player is None:
+            return
+        src, start = self.current, self.player.position() / 1000
+        voice, game = self.voice_row.value, self.game_row.value
+        showing = Path(self.player.source().toLocalFile() or src)
+        picture = showing if showing != src and showing.exists() and showing.parent == self.ctl.previews_dir \
+            else None   # the 720p copy, when the clip itself doesn't play here
+        out = self.ctl.thumbs_dir / "sound_preview.mp4"
+        self._release()          # the last preview may still be open
+        self._show_msg("Preparing preview…")
+
+        def run():
+            try:
+                remix_audio(src, voice, game, out, seconds=12, start=start, picture=picture)
+                safe_emit(self.sound_ready, str(src), str(out))
+            except Exception:
+                log.exception("sound preview failed")
+                safe_emit(self.sound_ready, str(src), "")
+        threading.Thread(target=run, daemon=True).start()
+
+    def _on_sound_ready(self, src: str, piece: str):
+        if not (self.isVisible() and self.sounding and self.items and str(self.current) == src):
+            return
+        if not piece:
+            self._show_msg("Couldn't make a preview of this clip.")
+            return
+        self._previewing_sound = True
+        self._play(Path(piece))
+        self.player.play()
+
+    def save_sound(self):
+        if not self.sounding:
+            return
+        src, voice, game = self.current, self.voice_row.value, self.game_row.value
+        previewed = self._previewing_sound
+        self._set_sound(False)
+        if (voice, game) == self.ctl.mix_of(src):   # nothing to save
+            if previewed:
+                self.show_item()   # back to the clip from the preview piece
+            return
+        self._release()          # the file is rewritten, so let go of it
+        self._show_msg("Changing the sound…")
+        self.ctl.set_mix(src, voice, game)
+
+    def _on_remixed(self, path: str):
+        if self.isVisible() and self.items and str(self.current) == path:
+            self.show_item()
 
     # ---- share
     def enter_share(self):
@@ -3632,7 +3830,7 @@ class Viewer(QtWidgets.QWidget):
     def _set_sharing(self, on: bool):
         self.sharing = on
         self.share_panel.setVisible(on)
-        self.actions_row.setVisible(not on and not self.trimming)
+        self.actions_row.setVisible(not on and not self.trimming and not self.sounding)
         if on:
             video = self.is_video()
             # "without my voice" needs the separate game-only track (voice_track in OBS)
@@ -3665,6 +3863,12 @@ class Viewer(QtWidgets.QWidget):
 
     def update_hints(self):
         pad, mode = INPUT.mode != "keyboard", INPUT.mode
+        if self.sounding:
+            self.sound_hints.set_items(
+                [("DPAD_UD", "Move"), ("DPAD_LR", "Change"), ("X", "Preview"), ("A", "Save"), ("B", "Cancel")]
+                if pad else [("k:↑ ↓", "Move"), ("k:← →", "Change"), ("k:P", "Preview"), ("k:Enter", "Save"),
+                             ("k:Esc", "Cancel")], mode)
+            return
         if self.sharing:
             self.share_hints.set_items(
                 [("DPAD_LR", "Choose"), ("A", "Select"), ("B", "Back")] if pad
@@ -3677,9 +3881,9 @@ class Viewer(QtWidgets.QWidget):
                       ("k:Esc", "Cancel")], mode)
         elif self.is_video():
             self.keys_hint.set_items(
-                [("A", "Play/pause"), ("L1R1", "Newer/older"), ("X", "Trim"), ("OPT", "Share"),
+                [("A", "Play/pause"), ("L1R1", "Newer/older"), ("X", "Trim"), ("L3", "Sound"), ("OPT", "Share"),
                  ("DPAD_U", "Favorite"), ("B", "Close")] if pad
-                else [("k:Space", "Play/pause"), ("k:A D", "Newer/older"), ("k:T", "Trim"),
+                else [("k:Space", "Play/pause"), ("k:A D", "Newer/older"), ("k:T", "Trim"), ("k:V", "Sound"),
                       ("k:E", "Share"), ("k:F", "Favorite"), ("k:N", "Rename"), ("k:Esc", "Close")], mode)
         else:
             self.keys_hint.set_items(
@@ -3775,6 +3979,22 @@ class Viewer(QtWidgets.QWidget):
             if k == Qt.Key_Escape:
                 self.cancel_edit()
             return
+        if self.sounding:
+            rows = [self.voice_row, self.game_row]
+            row = self.focusWidget() if self.focusWidget() in rows else self.voice_row
+            if k in (Qt.Key_Up, Qt.Key_Down):
+                rows[1 if k == Qt.Key_Down else 0].setFocus()
+            elif k in (Qt.Key_Left, Qt.Key_Right):
+                row.step(1 if k == Qt.Key_Right else -1)
+            elif k == Qt.Key_P:
+                self.preview_sound()
+            elif k in (Qt.Key_Return, Qt.Key_Enter):
+                self.save_sound()
+            elif k in (Qt.Key_Escape, Qt.Key_Backspace):
+                self.exit_sound()
+            elif k == Qt.Key_Space:
+                self.toggle_play()
+            return
         if self.sharing:
             nav = self._share_nav()
             focused = self.focusWidget()
@@ -3801,6 +4021,7 @@ class Viewer(QtWidgets.QWidget):
                 Qt.Key_A: lambda: self.step(1 if is_rtl() else -1),   # A / D (L1 / R1) go the way the arrows point
                 Qt.Key_D: lambda: self.step(-1 if is_rtl() else 1),
                 Qt.Key_T: self.enter_trim,
+                Qt.Key_V: self.enter_sound,
                 Qt.Key_Delete: self.delete_current,
                 Qt.Key_E: self.enter_share,
                 Qt.Key_F: self.toggle_favorite,

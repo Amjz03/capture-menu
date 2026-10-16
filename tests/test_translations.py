@@ -26,7 +26,7 @@ for n in ast.walk(tree):
             keys.add(const(a[0]))
         elif name == "set_items" and a:
             keys.update(pairs(a[0]))
-        elif name == "_row" and len(a) >= 3:
+        elif name in ("_row", "SettingRow") and len(a) >= 3:
             keys.add(const(a[1]))
             for extra in a[3:] + [k.value for k in n.keywords if k.arg == "describe"]:
                 keys.update(pairs(extra))

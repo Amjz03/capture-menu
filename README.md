@@ -27,6 +27,7 @@
 - **Screenshot and record** from the same bar, with a small REC timer while you record.
 - **A folder per game**, detected automatically, like the PS5. Clips and screenshots can go to different drives or folders.
 - **Check it right away:** a viewer with play, skip and frame-exact trim.
+- **Your voice louder or quieter, per clip:** your voice and the game are recorded on their own tracks, so each clip's balance can be changed afterwards, and changed back.
 - **Share in one step:** copies for phones and Discord (10 / 50 / 500 MB) go straight to the clipboard, with or without your voice.
 - **Gallery** with favorites, titles, notes, sizes, sorting and multi-delete.
 - **Works with a controller:** DualSense, Xbox and most others, with on-screen hints that match.
@@ -42,7 +43,7 @@
 ## Contents
 
 - [Install](#install)
-- [Using it](#using-it): [the bar](#the-bar) · [controller](#with-a-controller) · [viewer](#viewer) · [trim](#trim) · [share](#share) · [gallery](#gallery) · [more](#more)
+- [Using it](#using-it): [the bar](#the-bar) · [controller](#with-a-controller) · [viewer](#viewer) · [trim](#trim) · [sound](#sound) · [share](#share) · [gallery](#gallery) · [more](#more)
 - [Settings](#settings): [Settings page](#settings-page) · [`config.json`](#configjson)
 - [Performance](#performance)
 - [Troubleshooting](#troubleshooting)
@@ -132,6 +133,7 @@ Every capture shows a notification with its thumbnail; click it to open the capt
 | ← → | Skip 5 seconds |
 | A / D | Newer / older capture |
 | T | Trim |
+| V | Sound: your voice and the game louder or quieter |
 | E | Share |
 | N | Title and note |
 | F | Favorite |
@@ -153,6 +155,20 @@ Press **T**. A filmstrip appears with two handles:
 | Esc | Cancel |
 
 **Replace original** keeps only the trimmed part and sends the full clip to the Recycle Bin. Trims are frame-exact, encoded on the GPU in the same format as the original. When that isn't possible, Capture Menu makes a fast lossless cut instead, which may start a second or two early.
+
+### Sound
+
+Too quiet next to the game, or too loud? In the viewer press **V** (L3 on the controller) or **Sound**:
+
+| Key | In Sound |
+|---|---|
+| ↑ ↓ | Your voice / Game |
+| ← → | Quieter / louder, in 3 dB steps (your voice up to +24 dB, the game down to -24 dB) |
+| P | Listen to 12 seconds from where you are, before saving |
+| Enter | Save |
+| Esc | Cancel |
+
+Only the sound that players play (track 1) is rebuilt; the video and your separate voice and game tracks stay as they were recorded, so you can change it again any time, or set both back to **As recorded**. The clip keeps its name and its place in the gallery, and share copies use the new balance. Clips recorded with "Voice on its own track" off have no separate voice to change.
 
 ### Share
 
