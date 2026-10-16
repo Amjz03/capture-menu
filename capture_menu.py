@@ -1816,6 +1816,11 @@ class Gamepad(QtCore.QObject):
             return
         sdl2.SDL_SetHint(sdl2.SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, b"1")
         sdl2.SDL_SetHint(sdl2.SDL_HINT_JOYSTICK_HIDAPI_PS5_PLAYER_LED, b"0")  # leave the lights alone
+        # Windows.Gaming.Input and RawInput need window messages handled on this thread, which never
+        # happens here; with them on, closing a video in the viewer could hang forever (the player waits
+        # on the audio device). HIDAPI still reads PlayStation pads and XInput the Xbox ones.
+        sdl2.SDL_SetHint(b"SDL_JOYSTICK_WGI", b"0")
+        sdl2.SDL_SetHint(b"SDL_JOYSTICK_RAWINPUT", b"0")
         if sdl2.SDL_Init(sdl2.SDL_INIT_GAMECONTROLLER) != 0:
             log.warning("controller support off: %s", sdl2.SDL_GetError())
             return

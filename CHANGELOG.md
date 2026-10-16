@@ -6,6 +6,8 @@
 - **Updates from inside the app.** Settings → General → Updates (or the tray icon) checks GitHub for a new version and installs it when you press again. Nothing updates by itself.
 - **Arabic that reads naturally.** Every text rewritten in everyday wording, with consistent names: مقطع، لقطة شاشة، تسجيل، معرض الوسائط; sizes in ميجا / جيجا.
 - **Freezes leave a trace.** If the interface stops responding for 6 seconds, where it was stuck goes into crash.log, so a freeze that can't be reproduced can still be fixed. The viewer logs each clip it opens.
+- Fixed: the viewer could freeze when you closed a video (Windows: "not responding"). The controller reader turned on Windows controller interfaces that the video player then waited on forever. PlayStation and Xbox controllers still work.
+- **Controller notices.** A short notice when a controller connects or disconnects.
 - Fixed: a startup error when OBS wasn't ready yet to report its screens.
 - **Back, everywhere.** The viewer, the gallery, Settings and the Save recent row have a Back button. It goes one step back: an open panel first, then to where you came from (the bar or the gallery). Esc and ◯ / B do the same, and the hints say Back.
 
