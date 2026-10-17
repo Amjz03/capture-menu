@@ -47,6 +47,7 @@ app = QtWidgets.QApplication([])
 cm.STATE_PATH = Path(tempfile.mkdtemp()) / "state.json"
 cm.gpu_names = lambda: ["NVIDIA GeForce RTX 4070 Ti SUPER"]
 ctl = cm.Controller(dict(cm.DEFAULTS, clips_dir=tempfile.mkdtemp())); ctl.obs = FakeObs()
+ctl.restart_obs = lambda: True   # the real one closes and restarts the OBS on this PC
 toasts = []; ctl.toast.connect(lambda t, k: toasts.append(t))
 ctl.auto_setup(2560, 1440)
 o = ctl.obs
