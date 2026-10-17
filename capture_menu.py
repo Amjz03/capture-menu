@@ -3317,6 +3317,7 @@ class ActionButton(QtWidgets.QAbstractButton):
                  primary: bool = False):
         super().__init__()
         self.icon_name, self.tokens, self.primary, self.danger = icon, (pad, key), primary, False
+        self.icon_color: str | None = None     # e.g. a filled-in yellow star
         self.setText(text)
         self.setFont(font(16, QtGui.QFont.DemiBold))
         self.setFixedHeight(self.H)
@@ -3357,7 +3358,8 @@ class ActionButton(QtWidgets.QAbstractButton):
             p.drawRoundedRect(r, 12, 12)
             ink = QtGui.QColor("#16161b")
         elif self.danger:
-            p.setPen(QtGui.QPen(QtGui.QColor(255, 105, 97, 150), 1))
+            p.setPen(QtGui.QPen(QtGui.QColor(INK), 2) if self.hasFocus() else
+                     QtGui.QPen(QtGui.QColor(255, 105, 97, 150), 1))
             p.setBrush(QtGui.QColor(255, 69, 58, 46))
             p.drawRoundedRect(r.adjusted(.5, .5, -.5, -.5), 12, 12)
             ink = QtGui.QColor("#ff8a82")
@@ -3370,7 +3372,7 @@ class ActionButton(QtWidgets.QAbstractButton):
         icon = QtCore.QRectF(x, cy - 11, 22, 22)
         label = QtCore.QRectF(x + 34, 0, text_w + 2, self.height())
         prompt = QtCore.QRectF(x + 34 + text_w + 14, 0, glyph_w, self.height())
-        p.drawPixmap(mirror(self, icon).toRect(), icon_pixmap(self.icon_name, 22, ink.name()))
+        p.drawPixmap(mirror(self, icon).toRect(), icon_pixmap(self.icon_name, 22, self.icon_color or ink.name()))
         p.setPen(ink)
         p.drawText(mirror(self, label), Qt.AlignVCenter | Qt.AlignLeft, self.text())
         if glyph_w:
@@ -3919,22 +3921,27 @@ class Viewer(QtWidgets.QWidget):
         act.addStretch()
         lay.addWidget(self.actions_row)
 
+        # ---- More: the same big buttons, for everything else
         self.more_row = QtWidgets.QWidget()
-        mr = QtWidgets.QHBoxLayout(self.more_row)
-        mr.setContentsMargins(0, 4, 0, 0)
-        mr.setSpacing(6)
+        ml = QtWidgets.QVBoxLayout(self.more_row)
+        ml.setContentsMargins(0, 4, 0, 0)
+        ml.setSpacing(2)
+        panel_head(ml, "More", "Everything else you can do with this capture")
+        mr = QtWidgets.QHBoxLayout()
+        mr.setSpacing(14)
+        self.fav_btn = ActionButton(tr("Favorite"), "star", "DPAD_U", "k:F")
+        self.edit_chip = ActionButton(tr("Rename"), "pencil", None, "k:N")
+        self.folder_chip = ActionButton(tr("Show in folder"), "folder")
+        self.external_chip = ActionButton(tr("Open in your video player"), "external")
+        self.del_btn = ActionButton(tr("Delete"), "trash", None, "k:Del")
+        for b, fn in ((self.fav_btn, self.toggle_favorite), (self.edit_chip, self.start_edit),
+                      (self.folder_chip, lambda: self.ctl.reveal(self.current)),
+                      (self.external_chip, self._open_external), (self.del_btn, self.delete_current)):
+            b.clicked.connect(fn)
+            b.setFocusPolicy(Qt.StrongFocus)    # walked with ← →, chosen with ✕
+            mr.addWidget(b)
         mr.addStretch()
-        self.fav_btn = Chip("Favorite")
-        self.edit_chip = Chip("Rename")
-        self.folder_chip = Chip("Show in folder")
-        self.external_chip = Chip("Open in your video player")
-        self.del_btn = Chip("Delete")
-        for chip, fn in ((self.fav_btn, self.toggle_favorite), (self.edit_chip, self.start_edit),
-                         (self.folder_chip, lambda: self.ctl.reveal(self.current)),
-                         (self.external_chip, self._open_external), (self.del_btn, self.delete_current)):
-            chip.clicked.connect(fn)
-            mr.addWidget(chip)
-        mr.addStretch()
+        ml.addLayout(mr)
         lay.addWidget(self.more_row)
 
         # ---- footer: what the buttons do on the left, the open panel's buttons on the right
@@ -4285,7 +4292,8 @@ class Viewer(QtWidgets.QWidget):
         self.sub.setText(f"{game}{capture_kind(path)}  ·  {time_ago(path.stat().st_mtime)}")
         self.note.setText(meta.get("note", ""))
         self.note.setVisible(bool(meta.get("note")))
-        self.fav_btn.setText("Favorited" if fav else "Favorite")
+        self.fav_btn.setText(tr("Favorited") if fav else tr("Favorite"))
+        self.fav_btn.icon_color = "#ffd34d" if fav else None
 
     def toggle_favorite(self):
         if self.items:
@@ -4609,7 +4617,7 @@ class Viewer(QtWidgets.QWidget):
             self._set_more(True)
         if not self.del_btn.danger:
             self.del_btn.danger = True
-            self.del_btn.setText("Press again to delete")
+            self.del_btn.setText(tr("Press again to delete"))
             self.del_btn.setFocus()
             self._disarm.start(3000)
             return
@@ -4630,7 +4638,7 @@ class Viewer(QtWidgets.QWidget):
 
     def _reset_delete(self):
         self.del_btn.danger = False
-        self.del_btn.setText("Delete")
+        self.del_btn.setText(tr("Delete"))
 
     @staticmethod
     def _repolish(w):
