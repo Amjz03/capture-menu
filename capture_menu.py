@@ -1320,14 +1320,31 @@ def launch_outside(cmd: list[str], cwd: str | None = None, flags: int = 0) -> su
         k32.SetDllDirectoryW(ours)    # and we keep ours
 
 
+def launch_obs(exe: str | Path):
+    """Starts OBS hidden in the tray with the replay buffer on, without its "did not properly shut
+    down, run in Safe Mode?" question. That question waits on screen and nothing records meanwhile;
+    it comes after Windows ends OBS while it's still closing (a restart with a long replay buffer).
+    OBS 32 dropped --disable-shutdown-check and asks whenever it finds a run file left in .sentinel,
+    so when no OBS is running those leftovers go first. The flag stays for older OBS."""
+    if not obs_running():
+        sentinel = Path(os.environ.get("APPDATA", str(Path.home()))) / "obs-studio" / ".sentinel"
+        for f in sentinel.glob("run_*"):
+            try:
+                f.unlink()
+                log.info("cleared OBS's unclean-shutdown mark: %s", f.name)
+            except OSError:
+                pass
+    launch_outside([str(exe), "--startreplaybuffer", "--minimize-to-tray", "--disable-shutdown-check"],
+                   cwd=str(Path(exe).parent), flags=0x00000008 | 0x00000200)  # DETACHED, NEW_PROCESS_GROUP
+
+
 def start_obs() -> bool:
     """Starts OBS hidden in the tray with the replay buffer on."""
     exe = find_obs_exe()
     if not exe:
         log.warning("OBS not found")
         return False
-    launch_outside([exe, "--startreplaybuffer", "--minimize-to-tray", "--disable-shutdown-check"],
-                   cwd=str(Path(exe).parent), flags=0x00000008 | 0x00000200)
+    launch_obs(exe)
     log.info("started OBS: %s", exe)
     return True
 
@@ -1738,8 +1755,7 @@ class Controller(QtCore.QObject):
                 break
         else:
             return False
-        launch_outside([path, "--startreplaybuffer", "--minimize-to-tray", "--disable-shutdown-check"],
-                       cwd=str(Path(path).parent), flags=0x00000008 | 0x00000200)  # DETACHED, NEW_PROCESS_GROUP
+        launch_obs(path)
         for _ in range(60):
             time.sleep(0.5)
             try:
