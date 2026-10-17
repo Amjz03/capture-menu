@@ -30,25 +30,40 @@ def pad(btn):
     k = cm.pad_key(btn, menu, viewer, gallery)
     cm.send_key(viewer if viewer.isVisible() else gallery if gallery.isVisible() else menu, k); app.processEvents()
 
-# viewer: share a 3-track clip without the voice, via the controller
+# viewer: share a 3-track clip at 10 MB without the voice, via the controller
 viewer.open(ctl.all_captures(), 0); app.processEvents()
-pad(6)                                   # Options -> Share
-assert viewer.sharing and viewer.voice_chip.isVisible()
-assert viewer.focusWidget() is viewer.share_chips[1], "starts on the first destination"
-pad(cm.LEFT); pad(cm.LEFT); pad(cm.A)    # -> voice chip, toggle it
-assert viewer.without_voice and viewer.voice_chip.text() == "Without my voice"
-for _ in range(3): pad(cm.RIGHT)         # copy, phone, discord10
+pad(6)                                   # Options -> Share / Export
+assert viewer.sharing and viewer.voice_card.isEnabled() and viewer.share_panel.isVisible()
+assert viewer.focusWidget() is viewer.share_go, "starts on Export, so ✕ shares right away"
+pad(cm.LEFT); pad(cm.LEFT); pad(cm.A)    # Cancel -> Size limit, next choice
+assert viewer.size_card.value == 10
+pad(cm.LEFT); pad(cm.A)                  # Your voice: leave it out
+assert viewer.without_voice
+for _ in range(3): pad(cm.RIGHT)         # Size limit, Cancel, Export
 pad(cm.A)
 assert calls[-1] == ("share", a.name, "discord10", True) and not viewer.sharing, calls
+viewer.enter_share(); pad(cm.LEFT); pad(cm.LEFT); pad(cm.LEFT); pad(cm.LEFT); pad(cm.A)   # Format: original
+assert viewer.format_card.value == "copy" and not viewer.size_card.isEnabled() and not viewer.voice_card.isEnabled()
+pad(cm.RIGHT); pad(cm.RIGHT); pad(cm.A)   # past the cards it turned off, to Copy file
+assert calls[-1] == ("copy", a.name) and not viewer.sharing, calls
 pad(cm.UP)                               # D-pad up -> favourite
 assert ctl.is_favorite(a) and "★" in viewer.title.text()
-viewer.step(1); viewer.enter_share()     # a screenshot: only "Copy file"
-assert [c.isVisible() for c in viewer.share_chips] == [True, False, False, False, False] and not viewer.voice_chip.isVisible()
+viewer.step(1); viewer.enter_share()     # a screenshot: only Copy
+assert not any(c.isVisible() for c in (viewer.format_card, viewer.voice_card, viewer.size_card))
 key(viewer, Qt.Key_Return); assert calls[-1] == ("copy", b.name)
-viewer.step(1); viewer.enter_share(); assert not viewer.voice_chip.isVisible(), "1-track clip: no voice option"
+viewer.step(1); viewer.enter_share(); assert not viewer.voice_card.isEnabled(), "1-track clip: no voice option"
 key(viewer, Qt.Key_Escape); assert not viewer.sharing and viewer.isVisible()
-viewer.close_viewer()
 print("viewer share/favorite PASS")
+
+# More: △ opens it; Delete there needs a second press
+pad(cm.Y); assert viewer.more_open and viewer.more_row.isVisible() and not viewer.actions_row.isVisible()
+assert viewer.focusWidget() is viewer.fav_btn
+pad(cm.B); assert not viewer.more_open and viewer.actions_row.isVisible() and viewer.isVisible()
+key(viewer, Qt.Key_Delete)               # opens More with Delete armed, nothing deleted yet
+assert viewer.more_open and viewer.del_btn.danger and viewer.focusWidget() is viewer.del_btn and c.exists()
+pad(cm.B); assert not viewer.more_open and not viewer.del_btn.danger and c.exists()
+viewer.close_viewer()
+print("viewer More PASS")
 
 # gallery: categories, favourites, open, controller
 menu.show_menu("Frostfall"); menu.all_card.click(); app.processEvents()

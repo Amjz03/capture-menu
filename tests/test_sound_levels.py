@@ -96,6 +96,10 @@ press(viewer.game_row.slider, Qt.Key_Left)
 assert (viewer.voice_row.value, viewer.game_row.value) == (50, 75), (viewer.voice_row.value, viewer.game_row.value)
 viewer.voice_row.slider.setValue(140)            # a drag lands on the nearest step
 assert viewer.voice_row.value == 150 and viewer.voice_row.amount.text().endswith("150%")
+viewer.voice_row.toggle_mute()                   # Mute, then back to where it was
+assert viewer.voice_row.value == 0 and viewer.voice_row.mute.isChecked()
+viewer.voice_row.toggle_mute()
+assert viewer.voice_row.value == 150 and not viewer.voice_row.mute.isChecked()
 saved = []
 ctl.remixed.connect(saved.append)
 press(viewer.game_row.slider, Qt.Key_Return)     # Enter isn't the bar's: it reaches the viewer

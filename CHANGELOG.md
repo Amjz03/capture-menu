@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- **A calmer viewer.** The video sits in its own card with play, the timeline, sound on / off and "only the video" built in. Under it, four big buttons show the controller button that does each one: ▢ Trim, L3 Adjust audio, Options Share / Export, △ More. Favorite, Show in folder, Open in your video player and Delete moved into **More** (△ / M); △ no longer deletes, and Delete still needs a second press.
+- **Adjust audio** shows your voice and the game as two cards, each with a volume bar and a **Mute** switch (M / △).
+- **Share / Export** is three cards (Format, Your voice, Size limit) and one Export & copy button, instead of a row of presets.
+- **Rename** opens a small dialog over the video, with the note tucked away until you add one.
+- Fixed: on a 1920×1080 screen some viewer buttons lost the end of their names.
+
 ## 0.0.6 · 2026-10-17
 
 - When Windows Security protects the Videos folder, nothing needs changing: Capture Menu says once, calmly, where your captures are saved instead (`C:\Users\<you>\Capture Menu`), without asking you to change Windows' settings. Settings → Clips folder shows the folder actually in use.

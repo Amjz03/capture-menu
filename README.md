@@ -136,14 +136,16 @@ Every capture shows a notification with its thumbnail; click it to open the capt
 | ← → | Skip 5 seconds |
 | A / D | Newer / older capture |
 | T | Trim |
-| V | Sound: your voice and the game louder or quieter |
-| E | Share |
-| N | Title and note |
+| V | Adjust audio: your voice and the game louder or quieter |
+| E | Share / Export |
+| M | More: Favorite, Rename, Show in folder, Open in your video player, Delete |
+| N | Rename (a title and a note) |
 | F | Favorite |
 | Del | Delete (press twice; it goes to the Recycle Bin) |
-| Esc | Close |
+| F11 | Only the video (Esc to come back) |
+| Esc | Back |
 
-Two small buttons show the file in its folder or open it in your own player. If the built-in player can't show a clip's picture (for example AV1 without GPU decoding), a light 720p preview plays instead; the original is untouched.
+The four big buttons under the video show the controller button that does each one: ▢ Trim, L3 Adjust audio, Options Share / Export, △ More. The video's own bar has play, the timeline, sound on / off and "only the video". If the built-in player can't show a clip's picture (for example AV1 without GPU decoding), a light 720p preview plays instead; the original is untouched.
 
 ### Trim
 
@@ -161,12 +163,13 @@ Press **T**. A filmstrip appears with two handles:
 
 ### Sound
 
-Too quiet next to the game, or too loud? In the viewer press **V** (L3 on the controller) or **Sound**. Two volume bars appear, **Your voice** and **Game**: drag them, or use the arrows. **100%** is how it was recorded, 200% sounds twice as loud, 50% half as loud, 0% is muted (your voice goes up to 400%).
+Too quiet next to the game, or too loud? In the viewer press **V** (L3 on the controller) or **Adjust audio**. Two cards appear, **Your voice** and **Game**, each with a volume bar and **Mute**: drag them, or use the arrows. **100%** is how it was recorded, 200% sounds twice as loud, 50% half as loud, 0% is muted (your voice goes up to 400%).
 
-| Key | In Sound |
+| Key | In Adjust audio |
 |---|---|
 | ↑ ↓ | Your voice / Game |
 | ← → | Quieter / louder, 25% at a time |
+| M (△) | Mute, or back to the level it had |
 | P | Listen to 12 seconds from where you are, before saving |
 | Enter | Save |
 | Esc | Back |
@@ -175,14 +178,13 @@ Only the sound that players play (track 1) is rebuilt; the video and your separa
 
 ### Share
 
-In the viewer press **E** (Options on the controller):
+In the viewer press **E** (Options on the controller). Three cards, then **Export & copy**; ← → moves between them and Enter (✕) changes the one you're on:
 
-| Option | What you get |
+| Card | Choices |
 |---|---|
-| Copy file | The capture itself on the clipboard: paste it anywhere with Ctrl+V |
-| Phone & WhatsApp | MP4 (H.264, up to 1080p) that plays on every phone |
-| Discord · 10 / 50 / 500 MB | Shrunk to fit Discord's limit (free / Nitro Basic / Nitro). Long clips drop to 720p or 480p; a clip too long for the limit asks you to trim it first |
-| Without my voice | The same, with the game sound only (when the clip has your voice on its own track) |
+| Format | **MP4 for phones & apps** (H.264, up to 1080p, plays everywhere), or the **Original file** as it was saved |
+| Your voice | **Include** it, or **Leave out** for the game sound only (when the clip has your voice on its own track) |
+| Size limit | **No limit**, or **10 / 50 / 500 MB** to fit Discord (free / Nitro Basic / Nitro). Long clips drop to 720p or 480p; a clip too long for the limit asks you to trim it first |
 
 Copies go into a `Shared` folder in the game's folder and are **copied to the clipboard**, so you can paste them straight into Discord or WhatsApp.
 

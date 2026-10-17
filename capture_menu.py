@@ -1976,16 +1976,17 @@ def pad_key(button: int, menu: "Menu", viewer: "Viewer", gallery: "Gallery | Non
             return {B: Qt.Key_Escape}.get(button)
         if viewer.sounding:
             keys = {A: Qt.Key_Return, B: Qt.Key_Escape, UP: Qt.Key_Up, DOWN: Qt.Key_Down,
-                    LEFT: Qt.Key_Left, RIGHT: Qt.Key_Right, X: Qt.Key_P}
-        elif viewer.sharing:
-            keys = {A: Qt.Key_Return, B: Qt.Key_Escape, LEFT: Qt.Key_Left, RIGHT: Qt.Key_Right}
+                    LEFT: Qt.Key_Left, RIGHT: Qt.Key_Right, X: Qt.Key_P, Y: Qt.Key_M}
+        elif viewer.sharing or viewer.more_open:
+            keys = {A: Qt.Key_Return, B: Qt.Key_Escape, LEFT: Qt.Key_Left, RIGHT: Qt.Key_Right,
+                    Y: Qt.Key_Escape if viewer.more_open else None}
         elif viewer.trimming:
             keys = {A: Qt.Key_Return, B: Qt.Key_Escape, LEFT: Qt.Key_Left, RIGHT: Qt.Key_Right,
                     X: Qt.Key_I, Y: Qt.Key_O, L1: Qt.Key_P, R1: Qt.Key_P}
         else:
             keys = {A: Qt.Key_Space, B: Qt.Key_Escape, LEFT: Qt.Key_Left, RIGHT: Qt.Key_Right,
-                    L1: Qt.Key_A, R1: Qt.Key_D, X: Qt.Key_T, Y: Qt.Key_Delete,
-                    OPTIONS: Qt.Key_E, DOWN: Qt.Key_E, UP: Qt.Key_F, 7: Qt.Key_V}   # 7 = L3: Sound
+                    L1: Qt.Key_A, R1: Qt.Key_D, X: Qt.Key_T, Y: Qt.Key_M,
+                    OPTIONS: Qt.Key_E, DOWN: Qt.Key_E, UP: Qt.Key_F, 7: Qt.Key_V}   # 7 = L3: Sound, Y: More
         return keys.get(button)
     if gallery is not None and gallery.isVisible():
         keys = {A: Qt.Key_Return, B: Qt.Key_Escape, UP: Qt.Key_Up, DOWN: Qt.Key_Down,
@@ -2169,6 +2170,9 @@ ICON_FILES = {
     "right": "chevron-right", "close": "x", "image": "image",
     "share": "share-2", "copy": "copy", "star": "star", "mic": "mic", "mic-off": "mic-off",
     "gallery": "layout-grid", "drive": "hard-drive", "settings": "settings",
+    "volume": "volume-2", "volume-off": "volume-x", "maximize": "maximize", "minimize": "minimize",
+    "pencil": "pencil", "audio": "audio-lines", "export": "upload", "more": "ellipsis",
+    "gamepad": "gamepad-2", "info": "info", "file-video": "file-video",
 }
 _icon_cache: dict = {}
 
@@ -2296,11 +2300,32 @@ def token_glyphs(token: str, mode: str) -> list[str]:
     return [f"t:{token}"]
 
 
-def draw_glyph(p: QtGui.QPainter, x: float, cy: float, token: str, mode: str) -> float:
+def _glyph_parts(token: str, mode: str) -> list[tuple[QtGui.QFont, str]]:
+    parts = []
+    for name in token_glyphs(token, mode):
+        char = "" if name.startswith("t:") else glyph(name)
+        if char:
+            f = QtGui.QFont(prompt_family())
+            f.setPixelSize(22)
+            parts.append((f, char))
+        else:
+            parts.append((font(12, QtGui.QFont.DemiBold),
+                          name[2:] if name.startswith("t:") else name.split("-", 1)[-1].upper()))
+    return parts
+
+
+def glyph_width(token: str, mode: str) -> float:
+    """How wide draw_glyph() draws this button prompt."""
+    return sum(QtGui.QFontMetrics(f).horizontalAdvance(text) + (2 if i else 0)
+               for i, (f, text) in enumerate(_glyph_parts(token, mode)))
+
+
+def draw_glyph(p: QtGui.QPainter, x: float, cy: float, token: str, mode: str,
+               color: str | QtGui.QColor = INK) -> float:
     """Draws one button prompt at x (vertically centred on cy); returns its width."""
     width = 0.0
     p.save()
-    p.setPen(QtGui.QColor(INK))
+    p.setPen(QtGui.QColor(color))
     for i, name in enumerate(token_glyphs(token, mode)):
         char = "" if name.startswith("t:") else glyph(name)
         if char:
@@ -2575,9 +2600,17 @@ class Chip(QtWidgets.QAbstractButton):
         self.setCursor(Qt.PointingHandCursor)
         self.setAttribute(Qt.WA_Hover)
         self.dimmed = False      # longer than what the buffer holds so far
-        f = font(15, QtGui.QFont.DemiBold)
-        self.setFont(f)
-        self.setFixedSize(QtGui.QFontMetrics(f).horizontalAdvance(text) + 48, self.H + 8)
+        self.danger = False      # a delete waiting for its second press
+        self.setFont(font(15, QtGui.QFont.DemiBold))
+        self._fit()
+
+    def _fit(self):
+        self.setFixedSize(QtGui.QFontMetrics(self.font()).horizontalAdvance(tr(self.text())) + 48, self.H + 8)
+
+    def setText(self, text: str):
+        super().setText(text)
+        self._fit()
+        self.update()
 
     def enterEvent(self, e):
         super().enterEvent(e)
@@ -2591,12 +2624,12 @@ class Chip(QtWidgets.QAbstractButton):
         focused = self.hasFocus()
         if focused:
             p.setPen(Qt.NoPen)
-            p.setBrush(QtGui.QColor(INK))
+            p.setBrush(QtGui.QColor("#ff6961" if self.danger else INK))
         else:
-            p.setPen(QtGui.QPen(QtGui.QColor(255, 255, 255, 46), 1))
+            p.setPen(QtGui.QPen(QtGui.QColor(255, 105, 97, 150) if self.danger else QtGui.QColor(255, 255, 255, 46), 1))
             p.setBrush(QtGui.QColor(255, 255, 255, 20 if self.underMouse() else 0))
         p.drawRoundedRect(r.adjusted(0.5, 0.5, -0.5, -0.5), radius, radius)
-        text = QtGui.QColor("#1c1c21") if focused else QtGui.QColor(INK)
+        text = QtGui.QColor("#1c1c21") if focused else QtGui.QColor("#ff8a82" if self.danger else INK)
         if self.dimmed and not focused:
             text.setAlpha(110)
         p.setPen(text)
@@ -3202,38 +3235,353 @@ class Toast(QtWidgets.QWidget):
 
 
 VIEWER_STYLE = f"""
+QWidget {{ font-family: {FONT}; }}
 #viewer {{ background: transparent; border: none; }}
 QLabel {{ color: {INK}; background: transparent; }}
 #vTitle {{ font-family: {DISPLAY}; font-size: 28px; font-weight: 600; }}
-#vSub {{ color: {MUTED}; font-size: 14px; }}
+#vSub, #vNote {{ color: {MUTED}; font-size: 14px; }}
 #hint {{ color: {MUTED}; font-size: 14px; }}
-#stage {{ background: transparent; }}
+#panelTitle {{ font-family: {DISPLAY}; font-size: 22px; font-weight: 600; }}
+#panelSub {{ color: {MUTED}; font-size: 14px; }}
+#info {{ color: {MUTED}; font-size: 13px; }}
 #vMsg {{ color: {MUTED}; font-size: 16px; }}
-#time {{ color: {MUTED}; font-size: 13px; font-family: "Cascadia Mono", Consolas, monospace; }}
+#time {{ color: {MUTED}; font-size: 14px; font-family: "Cascadia Mono", Consolas, monospace; }}
+#stage {{ background: transparent; }}
+#videoCard {{ background: #000000; border: 1px solid rgba(255,255,255,18); border-radius: 14px; }}
+#ctlBar {{ background: rgba(255,255,255,8); border-top: 1px solid rgba(255,255,255,14);
+           border-bottom-left-radius: 13px; border-bottom-right-radius: 13px; }}
+#footer {{ border-top: 1px solid rgba(255,255,255,16); }}
+#rule {{ background: rgba(255,255,255,40); }}
+#dialog {{ background: #16161b; border: 1px solid rgba(255,255,255,26); border-radius: 16px; }}
+#dim {{ background: rgba(0,0,0,150); border-radius: 14px; }}
+#fieldLabel {{ font-size: 14px; font-weight: 600; }}
 QPushButton {{
-    color: {INK}; font-size: 14px; font-weight: 400;
-    background: transparent; border: none; border-radius: 8px;
-    padding: 0 12px; min-height: 38px;
+    color: {INK}; font-size: 15px; font-weight: 600;
+    background: rgba(255,255,255,8); border: 1px solid rgba(255,255,255,30); border-radius: 10px;
+    padding: 0 20px; min-height: 44px;
 }}
-QPushButton:hover {{ background: rgba(255,255,255,22); }}
-QPushButton:disabled {{ color: rgba(244,244,246,0.25); }}
-QPushButton#primary {{ background: {INK}; color: #111114; font-weight: 600; padding: 0 18px; }}
+QPushButton:hover {{ background: rgba(255,255,255,24); }}
+QPushButton:disabled {{ color: rgba(244,244,246,0.28); border-color: rgba(255,255,255,14); }}
+QPushButton#primary {{ background: {INK}; color: #16161b; border: none; padding: 0 24px; }}
 QPushButton#primary:hover {{ background: #ffffff; }}
-QPushButton#icon {{ padding: 0; min-width: 38px; max-width: 38px; }}
-QPushButton#back {{ background: rgba(255,255,255,16); font-weight: 600; padding: 0 16px 0 10px; }}
-QPushButton#back:hover {{ background: rgba(255,255,255,40); }}
-QPushButton[danger="true"] {{ background: rgba(255,69,58,38); color: #ff6961; font-weight: 600; }}
+QPushButton:focus {{ border: 2px solid {INK}; padding: 0 19px; }}
+QPushButton#primary:focus {{ border: 3px solid #16161b; padding: 0 21px; }}
+QPushButton#back {{ background: rgba(255,255,255,12); border: none; padding: 0 18px 0 12px; }}
+QPushButton#back:hover {{ background: rgba(255,255,255,32); }}
+QPushButton#round {{ padding: 0; min-width: 46px; max-width: 46px; min-height: 46px; max-height: 46px;
+                     border-radius: 23px; border: none; background: rgba(255,255,255,12); }}
+QPushButton#round:hover {{ background: rgba(255,255,255,32); }}
+QPushButton#pill {{ min-height: 34px; padding: 0 14px; font-size: 13px; border-radius: 9px; }}
+QPushButton#ctl {{ padding: 0; min-width: 40px; max-width: 40px; min-height: 40px; border: none;
+                   background: transparent; border-radius: 20px; }}
+QPushButton#ctl:hover {{ background: rgba(255,255,255,24); }}
+QPushButton#noteToggle {{ text-align: left; padding: 0 16px; font-weight: 400; color: {MUTED}; }}
 QLineEdit {{
-    color: {INK}; background: rgba(255,255,255,10); border: 1px solid rgba(255,255,255,36);
-    border-radius: 8px; padding: 0 12px; min-height: 38px; font-size: 15px;
-    selection-background-color: rgba(255,255,255,60);
+    color: {INK}; background: rgba(255,255,255,10); border: 1px solid rgba(255,255,255,40);
+    border-radius: 10px; padding: 0 14px; min-height: 48px; font-size: 16px;
+    selection-background-color: rgba(255,255,255,70);
 }}
-QLineEdit:focus {{ border-color: {INK}; }}
-#vNote {{ color: {MUTED}; font-size: 14px; }}
-QSlider::groove:horizontal {{ height: 3px; background: rgba(255,255,255,40); border-radius: 1px; }}
-QSlider::sub-page:horizontal {{ background: {INK}; border-radius: 1px; }}
-QSlider::handle:horizontal {{ width: 12px; height: 12px; margin: -5px 0; border-radius: 6px; background: white; }}
+QLineEdit:focus {{ border: 2px solid {INK}; padding: 0 13px; }}
+QSlider::groove:horizontal {{ height: 4px; background: rgba(255,255,255,46); border-radius: 2px; }}
+QSlider::sub-page:horizontal {{ background: {INK}; border-radius: 2px; }}
+QSlider::handle:horizontal {{ width: 16px; height: 16px; margin: -6px 0; border-radius: 8px; background: white; }}
 """
+
+# ---- the viewer's parts. One calm vocabulary: a faint surface with a hairline, corners of 12-14,
+# white only for focus and for the one main action on screen.
+CARD_RADIUS = 14
+
+
+def paint_card(p: QtGui.QPainter, r: QtCore.QRectF, focused: bool = False, hovered: bool = False,
+               radius: float = CARD_RADIUS):
+    inset = 1.0 if focused else 0.5
+    p.setPen(QtGui.QPen(QtGui.QColor(INK) if focused else QtGui.QColor(255, 255, 255, 26), 2 if focused else 1))
+    p.setBrush(QtGui.QColor(255, 255, 255, 20 if (hovered or focused) else 11))
+    p.drawRoundedRect(r.adjusted(inset, inset, -inset, -inset), radius, radius)
+
+
+def mirror(w: QtWidgets.QWidget, r: QtCore.QRectF) -> QtCore.QRectF:
+    """r as laid out left to right, flipped when the widget runs right to left (Arabic)."""
+    if not w.isRightToLeft():
+        return r
+    return QtCore.QRectF(w.width() - r.x() - r.width(), r.y(), r.width(), r.height())
+
+
+class ActionButton(QtWidgets.QAbstractButton):
+    """A big viewer action: its icon, its name, and the button that does it (□ Trim, like the PS5).
+    The main one on screen is white."""
+
+    H = 60
+
+    def __init__(self, text: str, icon: str, pad: str | None = None, key: str | None = None,
+                 primary: bool = False):
+        super().__init__()
+        self.icon_name, self.tokens, self.primary, self.danger = icon, (pad, key), primary, False
+        self.setText(text)
+        self.setFont(font(16, QtGui.QFont.DemiBold))
+        self.setFixedHeight(self.H)
+        self.setCursor(Qt.PointingHandCursor)
+        self.setAttribute(Qt.WA_Hover)
+        self.setFocusPolicy(Qt.NoFocus)
+        INPUT.changed.connect(lambda _: self._fit())
+        self._fit()
+
+    def _token(self) -> str | None:
+        pad, key = self.tokens
+        return key if INPUT.mode == "keyboard" else pad
+
+    def _parts(self) -> tuple[float, float, float]:
+        """Widths of the label and the button prompt, and the whole content."""
+        text_w = QtGui.QFontMetrics(self.font()).horizontalAdvance(self.text())
+        glyph_w = glyph_width(self._token(), INPUT.mode) if self._token() else 0.0
+        total = 22 + 12 + text_w + (14 + glyph_w if glyph_w else 0)
+        return text_w, glyph_w, total
+
+    def _fit(self):
+        self.setMinimumWidth(int(self._parts()[2]) + 56)
+        self.update()
+
+    def setText(self, text: str):
+        super().setText(text)
+        if hasattr(self, "tokens"):
+            self._fit()
+
+    def paintEvent(self, _):
+        p = QtGui.QPainter(self)
+        p.setRenderHint(QtGui.QPainter.Antialiasing)
+        r = QtCore.QRectF(self.rect()).adjusted(1, 1, -1, -1)
+        hover = self.underMouse()
+        if self.primary:
+            p.setPen(Qt.NoPen)
+            p.setBrush(QtGui.QColor("#ffffff" if hover else INK))
+            p.drawRoundedRect(r, 12, 12)
+            ink = QtGui.QColor("#16161b")
+        elif self.danger:
+            p.setPen(QtGui.QPen(QtGui.QColor(255, 105, 97, 150), 1))
+            p.setBrush(QtGui.QColor(255, 69, 58, 46))
+            p.drawRoundedRect(r.adjusted(.5, .5, -.5, -.5), 12, 12)
+            ink = QtGui.QColor("#ff8a82")
+        else:
+            paint_card(p, r, self.hasFocus(), hover, 12)
+            ink = QtGui.QColor(INK)
+        p.setFont(self.font())
+        text_w, glyph_w, total = self._parts()
+        x, cy = (self.width() - total) / 2, self.height() / 2
+        icon = QtCore.QRectF(x, cy - 11, 22, 22)
+        label = QtCore.QRectF(x + 34, 0, text_w + 2, self.height())
+        prompt = QtCore.QRectF(x + 34 + text_w + 14, 0, glyph_w, self.height())
+        p.drawPixmap(mirror(self, icon).toRect(), icon_pixmap(self.icon_name, 22, ink.name()))
+        p.setPen(ink)
+        p.drawText(mirror(self, label), Qt.AlignVCenter | Qt.AlignLeft, self.text())
+        if glyph_w:
+            faint = QtGui.QColor(ink)
+            faint.setAlpha(150)
+            draw_glyph(p, mirror(self, prompt).x(), cy, self._token(), INPUT.mode, faint)
+
+
+class Switch(QtWidgets.QAbstractButton):
+    """On / off, like Windows' own switches; white when on."""
+
+    def __init__(self):
+        super().__init__()
+        self.setCheckable(True)
+        self.setFixedSize(46, 26)
+        self.setCursor(Qt.PointingHandCursor)
+        self.setFocusPolicy(Qt.NoFocus)
+
+    def paintEvent(self, _):
+        p = QtGui.QPainter(self)
+        p.setRenderHint(QtGui.QPainter.Antialiasing)
+        on = self.isChecked()
+        p.setPen(Qt.NoPen if on else QtGui.QPen(QtGui.QColor(255, 255, 255, 70), 1))
+        p.setBrush(QtGui.QColor(INK) if on else QtGui.QColor(255, 255, 255, 18))
+        p.drawRoundedRect(QtCore.QRectF(0.5, 0.5, 45, 25), 12.5, 12.5)
+        knob = 30 if on != self.isRightToLeft() else 4
+        p.setPen(Qt.NoPen)
+        p.setBrush(QtGui.QColor("#16161b") if on else QtGui.QColor(INK))
+        p.drawEllipse(QtCore.QRectF(knob, 5, 16, 16) if on else QtCore.QRectF(knob + 1, 6, 14, 14))
+
+
+def icon_badge(name: str) -> QtWidgets.QLabel:
+    """A round badge with an icon, the leading mark of a card."""
+    b = QtWidgets.QLabel(alignment=Qt.AlignCenter)
+    b.setFixedSize(46, 46)
+    b.setPixmap(icon_pixmap(name, 21))
+    b.setStyleSheet("background: rgba(255,255,255,16); border-radius: 23px;")
+    return b
+
+
+class LevelRow(QtWidgets.QWidget):
+    """One card of Audio mix: what it is, a volume bar, how loud (100% = as recorded), and Mute."""
+
+    changed = QtCore.Signal()
+
+    def __init__(self, label: str, describe: str, maximum: int, icon: str = "mic"):
+        super().__init__()
+        self.setFixedHeight(96)
+        self.setAttribute(Qt.WA_Hover)
+        lay = QtWidgets.QHBoxLayout(self)
+        lay.setContentsMargins(20, 0, 20, 0)
+        lay.setSpacing(16)
+        lay.addWidget(icon_badge(icon))
+        names = QtWidgets.QVBoxLayout()
+        names.setSpacing(2)
+        self.name = QtWidgets.QLabel(tr(label))
+        self.name.setFont(font(16, QtGui.QFont.DemiBold))
+        self.desc = QtWidgets.QLabel(tr(describe))
+        self.desc.setFont(font(13))
+        self.desc.setStyleSheet(f"color: {MUTED};")
+        names.addStretch()
+        names.addWidget(self.name)
+        names.addWidget(self.desc)
+        names.addStretch()
+        lay.addLayout(names)
+        self.slider = LevelSlider(Qt.Horizontal)
+        self.slider.setLayoutDirection(Qt.LeftToRight)   # louder to the right in every language, like the video bar
+        self.slider.setRange(0, maximum)
+        self.slider.setSingleStep(LEVEL_STEP)
+        self.slider.setPageStep(LEVEL_STEP * 2)
+        self.slider.setMinimumWidth(150)
+        self.slider.setCursor(Qt.PointingHandCursor)
+        self.slider.valueChanged.connect(self._on_value)
+        lay.addWidget(self.slider, 1)
+        self.amount = QtWidgets.QLabel(alignment=Qt.AlignCenter)
+        self.amount.setFont(font(15, QtGui.QFont.DemiBold))
+        self.amount.setFixedSize(80, 44)
+        lay.addWidget(self.amount)
+        mute_label = QtWidgets.QLabel(tr("Mute"))
+        mute_label.setFont(font(14))
+        mute_label.setStyleSheet(f"color: {MUTED};")
+        lay.addWidget(mute_label)
+        self.mute = Switch()
+        self.mute.clicked.connect(self.toggle_mute)
+        lay.addWidget(self.mute)
+        self._unmuted = 100
+
+    @property
+    def value(self) -> int:
+        return self.slider.value()
+
+    def set_value(self, percent: int):
+        self.slider.setValue(percent)
+        self._on_value(self.slider.value())
+
+    def step(self, delta: int):
+        self.slider.setValue(self.slider.value() + delta * LEVEL_STEP)
+
+    def toggle_mute(self):
+        """Mute, or back to the level it had before."""
+        if self.value > 0:
+            self._unmuted = self.value
+            self.slider.setValue(0)
+        else:
+            self.slider.setValue(self._unmuted or 100)
+
+    def _on_value(self, v: int):
+        snapped = round(v / LEVEL_STEP) * LEVEL_STEP     # a drag lands on the nearest 25 %
+        if snapped != v:
+            self.slider.setValue(snapped)
+            return
+        self.amount.setText(f"‎{v}%")   # LRM keeps "150%" in order in Arabic
+        muted = v == 0
+        self.amount.setStyleSheet(
+            f"color: {'#ff8a82' if muted else INK}; border-radius: 10px;"
+            f"border: 1px solid {'rgba(255,105,97,110)' if muted else 'rgba(255,255,255,40)'};")
+        self.mute.setChecked(muted)
+        self.changed.emit()
+
+    def setFocus(self, *args):
+        self.slider.setFocus(*args)
+
+    def paintEvent(self, _):
+        p = QtGui.QPainter(self)
+        p.setRenderHint(QtGui.QPainter.Antialiasing)
+        paint_card(p, QtCore.QRectF(self.rect()), self.slider.hasFocus(), self.underMouse())
+
+
+class OptionCard(QtWidgets.QAbstractButton):
+    """A Share setting as a card: a name, what it does, and its choices side by side.
+    Enter / ✕ moves to the next choice; a click picks one."""
+
+    picked = QtCore.Signal(object)
+
+    def __init__(self, icon: str, title: str, choices: list[tuple[object, str]], describe):
+        super().__init__()
+        self.icon_name, self.title, self.choices, self.describe = icon, title, choices, describe
+        self.index = 0
+        self.note = ""            # replaces the description when the card can't be used
+        self.setFixedHeight(150)
+        self.setMinimumWidth(300)
+        self.setCursor(Qt.PointingHandCursor)
+        self.setAttribute(Qt.WA_Hover)
+        self.setFocusPolicy(Qt.StrongFocus)
+
+    @property
+    def value(self):
+        return self.choices[self.index][0]
+
+    def set_value(self, value):
+        self.index = next((i for i, (v, _) in enumerate(self.choices) if v == value), 0)
+        self.update()
+        self.picked.emit(self.value)
+
+    def next(self):
+        if self.isEnabled():
+            self.set_value(self.choices[(self.index + 1) % len(self.choices)][0])
+
+    def _segments(self) -> list[QtCore.QRectF]:
+        bar = QtCore.QRectF(20, self.height() - 58, self.width() - 40, 40)
+        w = (bar.width() - 8) / len(self.choices)
+        return [mirror(self, QtCore.QRectF(bar.x() + 4 + i * w, bar.y() + 4, w, bar.height() - 8))
+                for i in range(len(self.choices))]
+
+    def mousePressEvent(self, e):
+        if not self.isEnabled():
+            return
+        self.setFocus(Qt.MouseFocusReason)
+        for i, seg in enumerate(self._segments()):
+            if seg.contains(e.position()):
+                self.set_value(self.choices[i][0])
+                return
+
+    def keyPressEvent(self, e):
+        e.ignore()        # the viewer moves between cards and picks with Enter
+
+    def paintEvent(self, _):
+        p = QtGui.QPainter(self)
+        p.setRenderHint(QtGui.QPainter.Antialiasing)
+        if not self.isEnabled():
+            p.setOpacity(0.45)
+        paint_card(p, QtCore.QRectF(self.rect()), self.hasFocus(), self.underMouse() and self.isEnabled())
+        badge = mirror(self, QtCore.QRectF(20, 20, 40, 40))
+        p.setPen(Qt.NoPen)
+        p.setBrush(QtGui.QColor(255, 255, 255, 16))
+        p.drawEllipse(badge)
+        p.drawPixmap(badge.adjusted(10, 10, -10, -10).toRect(), icon_pixmap(self.icon_name, 20))
+        p.setPen(QtGui.QColor(INK))
+        p.setFont(font(16, QtGui.QFont.DemiBold))
+        flags = Qt.AlignLeft | Qt.AlignVCenter    # Qt turns this to the right in Arabic by itself
+        p.drawText(mirror(self, QtCore.QRectF(74, 18, self.width() - 94, 24)), flags, self.title)
+        p.setPen(QtGui.QColor(244, 244, 246, 168))
+        p.setFont(font(13))
+        sub = self.note or (self.describe(self.value) if callable(self.describe) else self.describe)
+        p.drawText(mirror(self, QtCore.QRectF(74, 42, self.width() - 94, 22)), flags,
+                   p.fontMetrics().elidedText(sub, Qt.ElideRight, self.width() - 94))
+        bar = QtCore.QRectF(20, self.height() - 58, self.width() - 40, 40)
+        p.setPen(Qt.NoPen)
+        p.setBrush(QtGui.QColor(0, 0, 0, 90))
+        p.drawRoundedRect(bar, 10, 10)
+        p.setFont(font(14, QtGui.QFont.DemiBold))
+        for i, seg in enumerate(self._segments()):
+            chosen = i == self.index
+            if chosen:
+                p.setPen(Qt.NoPen)
+                p.setBrush(QtGui.QColor(INK) if self.hasFocus() else QtGui.QColor(255, 255, 255, 44))
+                p.drawRoundedRect(seg, 7, 7)
+            p.setPen(QtGui.QColor("#16161b") if chosen and self.hasFocus()
+                     else QtGui.QColor(INK) if chosen else QtGui.QColor(244, 244, 246, 150))
+            p.drawText(seg, Qt.AlignCenter, p.fontMetrics().elidedText(self.choices[i][1], Qt.ElideRight,
+                                                                         int(seg.width()) - 12))
 
 
 class Timeline(QtWidgets.QWidget):
@@ -3371,7 +3719,6 @@ class Viewer(QtWidgets.QWidget):
         self.editing = False
         self.sounding = False                    # the Sound panel: voice and game levels of this clip
         self._previewing_sound = False
-        self.without_voice = False
         self._pending_trim = False
         self._tried_preview: set[Path] = set()
         self.setObjectName("viewer")
@@ -3382,49 +3729,69 @@ class Viewer(QtWidgets.QWidget):
         hide_from_capture(self)
 
         lay = QtWidgets.QVBoxLayout(self)
-        lay.setContentsMargins(64, 40, 64, 32)
-        lay.setSpacing(18)
+        lay.setContentsMargins(64, 36, 64, 24)
+        lay.setSpacing(16)
+        self.more_open = False                   # the More row: favourite, rename, folder, delete
+        self.full = False                        # only the video, nothing around it
 
         def button(row, text, fn, icon=None, name=""):
-            b = QtWidgets.QPushButton(tr(text), objectName=name)
+            label = tr(text).replace("&", "&&")   # "&" isn't a shortcut here
+            b = QtWidgets.QPushButton(("  " + label) if icon and label else label, objectName=name)
             if icon:
-                b.setIcon(qicon(icon, "#111114" if name == "primary" else INK))
+                b.setIcon(qicon(icon, "#16161b" if name == "primary" else INK))
                 b.setIconSize(QtCore.QSize(18, 18))
             b.setCursor(Qt.PointingHandCursor)
             b.clicked.connect(fn)
             row.addWidget(b)
             return b
 
-        head = QtWidgets.QHBoxLayout()
+        # ---- header: Back, the title with Rename next to it, newer / older, close
+        self.head = QtWidgets.QWidget()
+        head = QtWidgets.QHBoxLayout(self.head)
+        head.setContentsMargins(0, 0, 0, 0)
+        head.setSpacing(0)
         head.addWidget(back_button(self.go_back), 0, Qt.AlignTop)
-        head.addSpacing(18)
+        head.addSpacing(22)
         titles = QtWidgets.QVBoxLayout()
-        titles.setSpacing(2)
+        titles.setSpacing(3)
+        title_row = QtWidgets.QHBoxLayout()
+        title_row.setSpacing(14)
         self.title = QtWidgets.QLabel(objectName="vTitle")
+        title_row.addWidget(self.title)
+        self.rename_btn = button(title_row, "Rename", self.start_edit, "pencil", "pill")
+        title_row.addStretch()
+        titles.addLayout(title_row)
         self.sub = QtWidgets.QLabel(objectName="vSub")
-        titles.addWidget(self.title)
         titles.addWidget(self.sub)
         self.note = QtWidgets.QLabel(objectName="vNote")
         self.note.hide()
         titles.addWidget(self.note)
-        head.addLayout(titles)
-        head.addStretch()
+        head.addLayout(titles, 1)
         self.counter = QtWidgets.QLabel(objectName="hint")
         head.addWidget(self.counter, 0, Qt.AlignTop)
-        head.addSpacing(6)
+        head.addSpacing(16)
         rtl = is_rtl()     # newer is to the left, or to the right in Arabic
-        self.prev_btn = button(head, "", lambda: self.step(-1), "right" if rtl else "left", "icon")
-        self.next_btn = button(head, "", lambda: self.step(1), "left" if rtl else "right", "icon")
+        self.prev_btn = button(head, "", lambda: self.step(-1), "right" if rtl else "left", "round")
+        head.addSpacing(10)
+        self.next_btn = button(head, "", lambda: self.step(1), "left" if rtl else "right", "round")
         self.prev_btn.setToolTip(tr("Newer ({key})", key="D" if rtl else "A"))
         self.next_btn.setToolTip(tr("Older ({key})", key="A" if rtl else "D"))
-        head.addSpacing(16)
-        close = button(head, "", self.close_viewer, "close", "icon")
+        head.addSpacing(18)
+        rule = QtWidgets.QFrame(objectName="rule")
+        rule.setFixedSize(1, 30)
+        head.addWidget(rule, 0, Qt.AlignVCenter)
+        head.addSpacing(18)
+        close = button(head, "", self.close_viewer, "close", "round")
         for b in (self.prev_btn, self.next_btn, close):
             head.setAlignment(b, Qt.AlignTop)
         close.setToolTip(tr("Close (Esc)"))
-        lay.addLayout(head)
+        lay.addWidget(self.head)
 
-        # the picture / video
+        # ---- the video card: the picture, and its controls built into the bottom edge
+        self.card = QtWidgets.QFrame(objectName="videoCard")
+        card = QtWidgets.QVBoxLayout(self.card)
+        card.setContentsMargins(1, 1, 1, 0)
+        card.setSpacing(0)
         self.stage = QtWidgets.QStackedWidget(objectName="stage")
         self.image = QtWidgets.QLabel(alignment=Qt.AlignCenter)
         self.image.setSizePolicy(QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Ignored)  # the picture follows the stage, never the other way
@@ -3435,158 +3802,216 @@ class Viewer(QtWidgets.QWidget):
         self._frames = 0
         self._watchdog = QtCore.QTimer(self, singleShot=True, interval=2500, timeout=self._check_frames)
         self._drop_timer = QtCore.QTimer(self, singleShot=True, interval=60_000, timeout=self._drop_player)
-        lay.addWidget(self.stage, 1)
-
-        # playback controls
-        self.controls = QtWidgets.QWidget()
+        card.addWidget(self.stage, 1)
+        self.controls = QtWidgets.QFrame(objectName="ctlBar")
+        self.controls.setFixedHeight(60)
         self.controls.setLayoutDirection(Qt.LeftToRight)   # time runs left to right, like the trim filmstrip
         cl = QtWidgets.QHBoxLayout(self.controls)
-        cl.setContentsMargins(0, 0, 0, 0)
-        cl.setSpacing(14)
-        self.play_btn = button(cl, "", self.toggle_play, "pause", "icon")
+        cl.setContentsMargins(16, 0, 16, 0)
+        cl.setSpacing(16)
+        self.play_btn = button(cl, "", self.toggle_play, "pause", "ctl")
         self.slider = QtWidgets.QSlider(Qt.Horizontal)
         self.slider.sliderMoved.connect(lambda v: self.player and self.player.setPosition(v))
         self.time = QtWidgets.QLabel("0:00 / 0:00", objectName="time")
         cl.addWidget(self.slider, 1)
         cl.addWidget(self.time)
-        lay.addWidget(self.controls)
+        self.vol_btn = button(cl, "", self.toggle_mute, "volume", "ctl")
+        self.vol_btn.setToolTip(tr("Sound on / off"))
+        self.full_btn = button(cl, "", self.toggle_full, "maximize", "ctl")
+        self.full_btn.setToolTip(tr("Only the video"))
+        card.addWidget(self.controls)
+        lay.addWidget(self.card, 1)
 
-        # trim panel (hidden until Trim)
+        def panel_head(box, title: str, sub: str = "") -> QtWidgets.QLabel:
+            t = QtWidgets.QLabel(tr(title), objectName="panelTitle")
+            box.addWidget(t)
+            s = QtWidgets.QLabel(tr(sub) if sub else "", objectName="panelSub")
+            box.addWidget(s)
+            box.addSpacing(6)
+            return s
+
+        # ---- Trim: the filmstrip with its start and end handles
         self.trim_panel = QtWidgets.QWidget()
         tl = QtWidgets.QVBoxLayout(self.trim_panel)
-        tl.setContentsMargins(0, 0, 0, 0)
-        tl.setSpacing(10)
+        tl.setContentsMargins(0, 4, 0, 0)
+        tl.setSpacing(2)
+        trim_top = QtWidgets.QHBoxLayout()
+        trim_titles = QtWidgets.QVBoxLayout()
+        trim_titles.setSpacing(2)
+        panel_head(trim_titles, "Trim", "Drag the handles, or mark the start and the end while it plays")
+        trim_top.addLayout(trim_titles)
+        trim_top.addStretch()
+        self.trim_info = QtWidgets.QLabel(objectName="time")
+        trim_top.addWidget(self.trim_info, 0, Qt.AlignBottom)
+        tl.addLayout(trim_top)
         self.timeline = Timeline()
         self.timeline.seek.connect(self._timeline_seek)
         self.timeline.changed.connect(self._trim_labels)
         tl.addWidget(self.timeline)
-        trow = QtWidgets.QHBoxLayout()
-        trow.setSpacing(8)
-        self.trim_info = QtWidgets.QLabel(objectName="time")
-        trow.addWidget(self.trim_info)
-        trow.addSpacing(20)
-        self.trim_hints = HintBar()
-        trow.addWidget(self.trim_hints)
-        trow.addStretch()
+        lay.addWidget(self.trim_panel)
+
+        # ---- Audio mix: how loud your voice and the game are in this clip
+        self.sound_panel = QtWidgets.QWidget()
+        sdl = QtWidgets.QVBoxLayout(self.sound_panel)
+        sdl.setContentsMargins(0, 4, 0, 0)
+        sdl.setSpacing(2)
+        self.sound_caption = panel_head(sdl, "Audio mix",
+                                        "Change your voice and the game separately. 100% is as recorded")
+        cards = QtWidgets.QHBoxLayout()
+        cards.setSpacing(16)
+        self.voice_row = LevelRow("Your voice", "Your microphone in this clip", VOICE_MAX, "mic")
+        self.game_row = LevelRow("Game", "The game's sound in this clip", GAME_MAX, "gamepad")
+        for r in (self.voice_row, self.game_row):
+            cards.addWidget(r, 1)
+        sdl.addLayout(cards)
+        sdl.addSpacing(8)
+        kept = QtWidgets.QHBoxLayout()
+        kept.setSpacing(8)
+        info = QtWidgets.QLabel()
+        info.setPixmap(icon_pixmap("info", 16, "#a9a9ae"))
+        kept.addWidget(info)
+        kept.addWidget(QtWidgets.QLabel(tr("Both are kept on their own tracks, so you can change this again"),
+                                        objectName="info"))
+        kept.addStretch()
+        sdl.addLayout(kept)
+        lay.addWidget(self.sound_panel)
+
+        # ---- Share / Export: where this capture is going
+        self.share_panel = QtWidgets.QWidget()
+        sl = QtWidgets.QVBoxLayout(self.share_panel)
+        sl.setContentsMargins(0, 4, 0, 0)
+        sl.setSpacing(2)
+        self.share_caption = panel_head(sl, "Share / Export")
+        share_cards = QtWidgets.QHBoxLayout()
+        share_cards.setSpacing(16)
+        self.format_card = OptionCard("file-video", tr("Format"),
+                                      [("mp4", tr("MP4 for phones & apps")), ("copy", tr("Original file"))],
+                                      lambda v: tr("Plays everywhere: WhatsApp, Discord, phones")
+                                      if v == "mp4" else tr("The clip exactly as it was saved"))
+        self.voice_card = OptionCard("mic", tr("Your voice"), [(True, tr("Include")), (False, tr("Leave out"))],
+                                     lambda v: tr("Your microphone is in the video") if v
+                                     else tr("Only the game's sound"))
+        self.size_card = OptionCard("export", tr("Size limit"),
+                                    [(None, tr("No limit"))] + [(mb, f"{mb} {tr('MB')}") for mb in (10, 50, 500)],
+                                    lambda v: tr("Full quality") if v is None
+                                    else tr("Discord without Nitro allows 10 MB") if v == 10
+                                    else tr("Made to fit, quality drops as needed"))
+        for c in (self.format_card, self.voice_card, self.size_card):
+            share_cards.addWidget(c, 1)
+        self.format_card.picked.connect(lambda _: self._share_cards_state())
+        sl.addLayout(share_cards)
+        lay.addWidget(self.share_panel)
+
+        # ---- the main actions, and More with the rest
+        self.actions_row = QtWidgets.QWidget()
+        act = QtWidgets.QHBoxLayout(self.actions_row)
+        act.setContentsMargins(0, 4, 0, 0)
+        act.setSpacing(14)
+        act.addStretch()
+        self.trim_btn = ActionButton(tr("Trim"), "scissors", "X", "k:T")
+        self.sound_btn = ActionButton(tr("Adjust audio"), "audio", "L3", "k:V")
+        self.share_btn = ActionButton(tr("Share / Export"), "export", "OPT", "k:E", primary=True)
+        self.more_btn = ActionButton(tr("More"), "more", "Y", "k:M")
+        for b, fn in ((self.trim_btn, self.enter_trim), (self.sound_btn, self.enter_sound),
+                      (self.share_btn, self.enter_share), (self.more_btn, self.toggle_more)):
+            b.clicked.connect(fn)
+            act.addWidget(b)
+        act.addStretch()
+        lay.addWidget(self.actions_row)
+
+        self.more_row = QtWidgets.QWidget()
+        mr = QtWidgets.QHBoxLayout(self.more_row)
+        mr.setContentsMargins(0, 4, 0, 0)
+        mr.setSpacing(6)
+        mr.addStretch()
+        self.fav_btn = Chip("Favorite")
+        self.edit_chip = Chip("Rename")
+        self.folder_chip = Chip("Show in folder")
+        self.external_chip = Chip("Open in your video player")
+        self.del_btn = Chip("Delete")
+        for chip, fn in ((self.fav_btn, self.toggle_favorite), (self.edit_chip, self.start_edit),
+                         (self.folder_chip, lambda: self.ctl.reveal(self.current)),
+                         (self.external_chip, self._open_external), (self.del_btn, self.delete_current)):
+            chip.clicked.connect(fn)
+            mr.addWidget(chip)
+        mr.addStretch()
+        lay.addWidget(self.more_row)
+
+        # ---- footer: what the buttons do on the left, the open panel's buttons on the right
+        self.footer = QtWidgets.QFrame(objectName="footer")
+        foot = QtWidgets.QHBoxLayout(self.footer)
+        foot.setContentsMargins(0, 14, 0, 0)
+        foot.setSpacing(10)
+        self.keys_hint = self.trim_hints = self.share_hints = self.sound_hints = HintBar()
+        foot.addWidget(self.keys_hint)
+        foot.addStretch()
+        self.trim_buttons = QtWidgets.QWidget()
+        trow = QtWidgets.QHBoxLayout(self.trim_buttons)
+        trow.setContentsMargins(0, 0, 0, 0)
+        trow.setSpacing(10)
         button(trow, "Preview", self.preview_selection, "play")
         button(trow, "Cancel", self.exit_trim)
         button(trow, "Replace original", lambda: self.save_trim(replace=True))
         button(trow, "Save as new clip", lambda: self.save_trim(replace=False), "scissors", "primary")
-        tl.addLayout(trow)
-        self.trim_panel.hide()
-        lay.addWidget(self.trim_panel)
+        self.sound_buttons = QtWidgets.QWidget()
+        srow = QtWidgets.QHBoxLayout(self.sound_buttons)
+        srow.setContentsMargins(0, 0, 0, 0)
+        srow.setSpacing(10)
+        button(srow, "Preview mix", self.preview_sound, "play")
+        button(srow, "Cancel", self.exit_sound)
+        button(srow, "Save mix", self.save_sound, None, "primary")
+        self.share_buttons = QtWidgets.QWidget()
+        shrow = QtWidgets.QHBoxLayout(self.share_buttons)
+        shrow.setContentsMargins(0, 0, 0, 0)
+        shrow.setSpacing(10)
+        self.share_cancel = button(shrow, "Cancel", lambda: self._set_sharing(False))
+        self.share_go = button(shrow, "Export & copy", self._do_share, "copy", "primary")
+        for w in (self.trim_buttons, self.sound_buttons, self.share_buttons):
+            foot.addWidget(w)
+        lay.addWidget(self.footer)
 
-        # share panel (hidden until Share): where is this clip going?
-        self.share_panel = QtWidgets.QWidget()
-        sl = QtWidgets.QVBoxLayout(self.share_panel)
-        sl.setContentsMargins(0, 0, 0, 0)
-        sl.setSpacing(8)
-        share_head = QtWidgets.QHBoxLayout()
-        self.share_caption = QtWidgets.QLabel(objectName="vSub")
-        share_head.addWidget(self.share_caption)
-        share_head.addStretch()
-        self.share_hints = HintBar()
-        share_head.addWidget(self.share_hints)
-        sl.addLayout(share_head)
-        srow = QtWidgets.QHBoxLayout()
-        srow.setSpacing(6)
-        self.voice_chip = Chip("With my voice")
-        self.voice_chip.clicked.connect(self._toggle_voice)
-        srow.addWidget(self.voice_chip)
-        self.share_chips: list[Chip] = []
-        for key, label in [("copy", "Copy file")] + [(k, v["label"]) for k, v in SHARE_PRESETS.items()]:
-            chip = Chip(label)
-            chip.clicked.connect(lambda _=False, k=key: self._do_share(k))
-            srow.addWidget(chip)
-            self.share_chips.append(chip)
-        srow.addStretch()
-        sl.addLayout(srow)
-        self.share_panel.hide()
-        lay.addWidget(self.share_panel)
-
-        # sound panel (hidden until Sound): how loud your voice and the game are in this clip
-        self.sound_panel = QtWidgets.QWidget()
-        sdl = QtWidgets.QVBoxLayout(self.sound_panel)
-        sdl.setContentsMargins(0, 0, 0, 0)
-        sdl.setSpacing(4)
-        sound_head = QtWidgets.QHBoxLayout()
-        self.sound_caption = QtWidgets.QLabel(
-            tr("Sound  ·  your voice and the game are kept on their own tracks, so you can change this again"),
-            objectName="vSub")
-        sound_head.addWidget(self.sound_caption)
-        sound_head.addStretch()
-        self.sound_hints = HintBar()
-        sound_head.addWidget(self.sound_hints)
-        sdl.addLayout(sound_head)
-        srows = QtWidgets.QHBoxLayout()
-        level_rows = QtWidgets.QVBoxLayout()
-        level_rows.setSpacing(0)
-        self.voice_row = LevelRow("Your voice", "How loud you are in this clip", VOICE_MAX)
-        self.game_row = LevelRow("Game", "The game's sound in this clip", GAME_MAX)
-        for r in (self.voice_row, self.game_row):
-            r.setMinimumWidth(860)
-            r.setMaximumWidth(980)
-            level_rows.addWidget(r)
-        srows.addLayout(level_rows)
-        srows.addStretch(1)     # the buttons stay together at the far end
-        sbtns = QtWidgets.QVBoxLayout()
-        sbtns.addStretch()
-        sbtn_row = QtWidgets.QHBoxLayout()
-        button(sbtn_row, "Preview", self.preview_sound, "play")
-        button(sbtn_row, "Cancel", self.exit_sound)
-        button(sbtn_row, "Save", self.save_sound, None, "primary")
-        sbtns.addLayout(sbtn_row)
-        srows.addLayout(sbtns)
-        sdl.addLayout(srows)
-        self.sound_panel.hide()
-        lay.addWidget(self.sound_panel)
-
-        # rename panel: a title and a note for this capture
-        self.edit_panel = QtWidgets.QWidget()
-        el = QtWidgets.QHBoxLayout(self.edit_panel)
-        el.setContentsMargins(0, 0, 0, 0)
-        el.setSpacing(8)
+        # ---- Rename: a small dialog over the dimmed video
+        self.edit_dim = QtWidgets.QWidget(self, objectName="dim")
+        self.edit_dim.setAttribute(Qt.WA_StyledBackground)
+        self.edit_panel = QtWidgets.QFrame(self, objectName="dialog")
+        el = QtWidgets.QVBoxLayout(self.edit_panel)
+        el.setContentsMargins(32, 28, 32, 28)
+        el.setSpacing(6)
+        self.edit_heading = QtWidgets.QLabel(tr("Rename"), objectName="panelTitle")
+        el.addWidget(self.edit_heading)
+        el.addWidget(QtWidgets.QLabel(tr("A name you'll find easily later"), objectName="panelSub"))
+        el.addSpacing(16)
+        el.addWidget(QtWidgets.QLabel(tr("Title"), objectName="fieldLabel"))
+        el.addSpacing(4)
         self.title_edit = QtWidgets.QLineEdit(placeholderText=tr("Title, e.g. Boss down on the first try"))
         self.note_edit = QtWidgets.QLineEdit(placeholderText=tr("Note (optional)"))
         self.title_edit.setMaxLength(80)
         self.note_edit.setMaxLength(200)
         for w in (self.title_edit, self.note_edit):
             w.returnPressed.connect(self.save_edit)
-        el.addWidget(self.title_edit, 2)
-        el.addWidget(self.note_edit, 3)
-        button(el, "Cancel", self.cancel_edit)
-        button(el, "Save", self.save_edit, None, "primary")
+        el.addWidget(self.title_edit)
+        el.addSpacing(10)
+        self.note_toggle = QtWidgets.QPushButton("+  " + tr("Add a note (optional)"), objectName="noteToggle")
+        self.note_toggle.setCursor(Qt.PointingHandCursor)
+        self.note_toggle.clicked.connect(self._show_note_field)
+        el.addWidget(self.note_toggle)
+        el.addWidget(self.note_edit)
+        el.addSpacing(18)
+        erow = QtWidgets.QHBoxLayout()
+        erow.setSpacing(10)
+        erow.addStretch()
+        button(erow, "Cancel", self.cancel_edit)
+        button(erow, "Save title", self.save_edit, None, "primary")
+        el.addLayout(erow)
+        self.edit_panel.setFixedWidth(600)
+        self.edit_dim.hide()
         self.edit_panel.hide()
-        lay.addWidget(self.edit_panel)
-
-        # actions
-        self.actions_row = QtWidgets.QWidget()
-        act = QtWidgets.QHBoxLayout(self.actions_row)
-        act.setContentsMargins(0, 0, 0, 0)
-        act.setSpacing(8)
-        self.keys_hint = HintBar()
-        act.addWidget(self.keys_hint)
-        act.addStretch()
-        self.fav_btn = button(act, "Favorite", self.toggle_favorite, "star")
-        button(act, "Rename", self.start_edit)
-        self.sound_btn = button(act, "Sound", self.enter_sound, "mic")
-        button(act, "Share", self.enter_share, "share")
-        self.del_btn = button(act, "Delete", self.delete_current, "trash")
-        sep = QtWidgets.QFrame()
-        sep.setFixedSize(1, 22)
-        sep.setStyleSheet("background: rgba(255,255,255,40);")
-        act.addSpacing(4)
-        act.addWidget(sep)
-        act.addSpacing(4)
-        button(act, "", lambda: self.ctl.reveal(self.current), "folder", "icon").setToolTip(tr("Show in folder"))
-        button(act, "", self._open_external, "external", "icon").setToolTip(tr("Open in your video player"))
-        act.addSpacing(8)
-        self.trim_btn = button(act, "Trim", self.enter_trim, "scissors", "primary")
-        lay.addWidget(self.actions_row)
 
         self._disarm = QtCore.QTimer(self, singleShot=True, timeout=self._reset_delete)
         for b in self.findChildren(QtWidgets.QPushButton):
             b.setFocusPolicy(Qt.NoFocus)  # keys go to the viewer, not to a button
+        for b in (self.share_cancel, self.share_go):
+            b.setFocusPolicy(Qt.StrongFocus)   # Share is walked with ← → like its cards
         INPUT.changed.connect(lambda _: self.update_hints() if self.items else None)
         self.preview_ready.connect(self._on_preview_ready)
         self.preview_progress.connect(self._on_preview_progress)
@@ -3594,6 +4019,7 @@ class Viewer(QtWidgets.QWidget):
         self.sound_ready.connect(self._on_sound_ready)
         ctl.trimmed.connect(self._on_trimmed)
         ctl.remixed.connect(self._on_remixed)
+        self._sync()
 
     def paintEvent(self, _):
         p = QtGui.QPainter(self)      # the sheet: the game stays faintly visible behind it
@@ -3622,12 +4048,16 @@ class Viewer(QtWidgets.QWidget):
         """One step back: an open panel first, then wherever the viewer was opened from."""
         if self.editing:
             self.cancel_edit()
+        elif self.full:
+            self.toggle_full()
         elif self.sounding:
             self.exit_sound()
         elif self.sharing:
             self._set_sharing(False)
         elif self.trimming:
             self.exit_trim()
+        elif self.more_open:
+            self._set_more(False)
         else:
             back, self.back_to = getattr(self, "back_to", None), None
             self.close_viewer()
@@ -3657,6 +4087,7 @@ class Viewer(QtWidgets.QWidget):
         self.player = QtMultimedia.QMediaPlayer(self)
         self.audio = QtMultimedia.QAudioOutput(self)
         self.player.setAudioOutput(self.audio)
+        self.audio.setMuted(getattr(self, "_muted", False))
         self.player.setVideoOutput(self.video)
         self.player.positionChanged.connect(self._on_position)
         self.player.durationChanged.connect(self._on_duration)
@@ -3681,6 +4112,7 @@ class Viewer(QtWidgets.QWidget):
     def show_item(self):
         self._release()
         self._reset_delete()
+        self.more_open = False
         self._set_trimming(False)
         self._set_sharing(False)
         self._set_editing(False)
@@ -3743,12 +4175,12 @@ class Viewer(QtWidgets.QWidget):
 
     def resizeEvent(self, e):
         super().resizeEvent(e)
-        side = max(64, (self.width() - 1600) // 2)    # keep lines short on a wide TV
-        self.layout().setContentsMargins(side, 40, side, 32)
+        side = 24 if self.full else max(64, (self.width() - 1680) // 2)    # keep lines short on a wide TV
+        self.layout().setContentsMargins(side, 24 if self.full else 36, side, 24)
         if self.items and self.stage.currentWidget() is self.image:
-            self._fit_image()
+            QtCore.QTimer.singleShot(0, self._fit_image)    # once the layout has settled
+        self._place_dialog()
 
-    # ---- the built-in player can't decode this clip: make a light preview copy
     def _on_error(self, *_):
         path = self.current if self.items else None
         log.warning("playback failed for %s: %s", path.name if path else "?",
@@ -3839,11 +4271,8 @@ class Viewer(QtWidgets.QWidget):
 
     def _set_trimming(self, on: bool):
         self.trimming = on
-        self.trim_panel.setVisible(on)
-        self.actions_row.setVisible(not on and not self.sharing and not self.sounding)
-        self.update_hints()
+        self._sync()
 
-    # ---- favourites
     def _show_title(self):
         path = self.current
         fav = self.ctl.is_favorite(path)
@@ -3856,8 +4285,7 @@ class Viewer(QtWidgets.QWidget):
         self.sub.setText(f"{game}{capture_kind(path)}  ·  {time_ago(path.stat().st_mtime)}")
         self.note.setText(meta.get("note", ""))
         self.note.setVisible(bool(meta.get("note")))
-        self.fav_btn.setText(tr("Favorited") if fav else tr("Favorite"))
-        self.fav_btn.setIcon(qicon("star", "#ffd34d" if fav else INK))
+        self.fav_btn.setText("Favorited" if fav else "Favorite")
 
     def toggle_favorite(self):
         if self.items:
@@ -3871,11 +4299,22 @@ class Viewer(QtWidgets.QWidget):
         meta = self.ctl.meta(self.current)
         self.title_edit.setText(meta.get("title", ""))
         self.note_edit.setText(meta.get("note", ""))
+        self.note_edit.setVisible(bool(meta.get("note")))
+        self.note_toggle.setVisible(not meta.get("note"))
+        if self.player is not None:
+            self.player.pause()
         self._set_trimming(False)
         self._set_sharing(False)
+        self._set_more(False)
         self._set_editing(True)
         self.title_edit.setFocus()
         self.title_edit.selectAll()
+
+    def _show_note_field(self):
+        self.note_toggle.hide()
+        self.note_edit.show()
+        self.note_edit.setFocus()
+        self._place_dialog()
 
     def save_edit(self):
         if self.editing:
@@ -3888,12 +4327,10 @@ class Viewer(QtWidgets.QWidget):
 
     def _set_editing(self, on: bool):
         self.editing = on
-        self.edit_panel.setVisible(on)
-        self.actions_row.setVisible(not on and not self.trimming and not self.sharing and not self.sounding)
+        self._sync()
         if not on:
             self.setFocus()
 
-    # ---- sound levels
     def enter_sound(self):
         if not self.is_video():
             return
@@ -3918,11 +4355,9 @@ class Viewer(QtWidgets.QWidget):
     def _set_sound(self, on: bool):
         self.sounding = on
         self._previewing_sound = self._previewing_sound and on
-        self.sound_panel.setVisible(on)
-        self.actions_row.setVisible(not on and not self.trimming and not self.sharing)
+        self._sync()
         if not on:
             self.setFocus()
-        self.update_hints()
 
     def preview_sound(self):
         """Plays 12 seconds from here with the levels picked, before anything is saved."""
@@ -3979,72 +4414,149 @@ class Viewer(QtWidgets.QWidget):
         if not self.items:
             return
         self._set_trimming(False)
+        self._set_more(False)
         self._set_sharing(True)
 
     def _set_sharing(self, on: bool):
         self.sharing = on
-        self.share_panel.setVisible(on)
-        self.actions_row.setVisible(not on and not self.trimming and not self.sounding)
         if on:
             video = self.is_video()
-            # "without my voice" needs the separate game-only track (voice_track in OBS)
+            # leaving your voice out needs the separate game-only track (voice_track in OBS)
             split = video and audio_tracks(self.current) >= 3
-            self.voice_chip.setVisible(split)
-            self.without_voice = False
-            self.voice_chip.setText("With my voice")
-            for key, chip in zip(["copy", *SHARE_PRESETS], self.share_chips):
-                chip.setVisible(key == "copy" or video)
-            self.share_caption.setText(tr("Share  ·  converts to MP4 (H.264) that plays on phones, "
-                                          "WhatsApp and Discord, then copies it so you can paste it")
-                                       if video else tr("Share  ·  copy the screenshot and paste it anywhere"))
-            self.share_chips[0 if not video else 1].setFocus()
-        self.update_hints()
+            for card in (self.format_card, self.voice_card, self.size_card):
+                card.setVisible(video)
+            self.format_card.set_value("mp4")
+            self.voice_card.set_value(True)
+            self.size_card.set_value(None)
+            self._split = split
+            self.share_caption.setText(tr("Makes a file that plays everywhere and copies it, ready to paste")
+                                       if video else tr("Copies the screenshot so you can paste it anywhere"))
+            self._share_cards_state()
+            self.share_go.setFocus()
+        self._sync()
+        if not on:
+            self.setFocus()
+
+    def _share_cards_state(self):
+        """The original file is copied as it is: your voice and the size don't apply to it."""
+        original = not self.is_video() or self.format_card.value == "copy"
+        split = getattr(self, "_split", False)
+        self.voice_card.setEnabled(split and not original)
+        self.voice_card.note = ("" if split and not original else
+                                tr("Not needed for the original file") if original else
+                                tr("This clip has your voice and the game together"))
+        self.size_card.setEnabled(not original)
+        self.size_card.note = tr("Not needed for the original file") if original else ""
+        for card in (self.voice_card, self.size_card):
+            card.update()
+        self.share_go.setText("  " + (tr("Copy") if not self.is_video() else
+                                      tr("Copy file") if original else tr("Export & copy")).replace("&", "&&"))
 
     def _toggle_voice(self):
-        self.without_voice = not self.without_voice
-        self.voice_chip.setText("Without my voice" if self.without_voice else "With my voice")
+        self.voice_card.next()
 
-    def _do_share(self, key: str):
+    @property
+    def without_voice(self) -> bool:
+        return self.voice_card.isEnabled() and self.voice_card.value is False
+
+    def _do_share(self, *_):
         path = self.current
+        copy_only = not self.is_video() or self.format_card.value == "copy"
+        size, without_voice = self.size_card.value, self.without_voice
         self._set_sharing(False)
-        if key == "copy":
+        if copy_only:
             self.ctl.copy(path)
         else:
-            self.ctl.share(path, key, self.without_voice)
+            self.ctl.share(path, "phone" if size is None else f"discord{size}", without_voice)
 
-    def _share_nav(self) -> list[QtWidgets.QAbstractButton]:
-        return [c for c in [self.voice_chip, *self.share_chips] if c.isVisible()]
+    def _share_nav(self) -> list[QtWidgets.QWidget]:
+        cards = [c for c in (self.format_card, self.voice_card, self.size_card) if c.isVisible() and c.isEnabled()]
+        return cards + [self.share_cancel, self.share_go]
+
+    def _more_nav(self) -> list[QtWidgets.QWidget]:
+        return [c for c in (self.fav_btn, self.edit_chip, self.folder_chip, self.external_chip, self.del_btn)
+                if c.isVisible()]
+
+    # ---- More, only the video, sound on / off
+    def toggle_more(self):
+        self._set_more(not self.more_open)
+
+    def _set_more(self, on: bool):
+        self.more_open = on
+        self._sync()
+        if on:
+            self.fav_btn.setFocus()
+        else:
+            self._reset_delete()
+            self.setFocus()
+
+    def toggle_full(self):
+        self.full = not self.full
+        self._sync()
+        self.resizeEvent(QtGui.QResizeEvent(self.size(), self.size()))
+
+    def toggle_mute(self):
+        self._muted = not getattr(self, "_muted", False)
+        if self.player is not None:
+            self.audio.setMuted(self._muted)
+        self.vol_btn.setIcon(qicon("volume-off" if self._muted else "volume"))
+
+    def _sync(self):
+        """Shows what goes with the state: one panel at a time, its buttons in the footer."""
+        panel = self.trimming or self.sounding or self.sharing
+        full = self.full
+        self.head.setVisible(not full)
+        self.trim_panel.setVisible(self.trimming and not full)
+        self.sound_panel.setVisible(self.sounding and not full)
+        self.share_panel.setVisible(self.sharing and not full)
+        self.actions_row.setVisible(not panel and not self.more_open and not full)
+        self.more_row.setVisible(self.more_open and not panel and not full)
+        self.footer.setVisible(not full)
+        self.trim_buttons.setVisible(self.trimming)
+        self.sound_buttons.setVisible(self.sounding)
+        self.share_buttons.setVisible(self.sharing)
+        self.full_btn.setIcon(qicon("minimize" if full else "maximize"))
+        self.edit_dim.setVisible(self.editing)
+        self.edit_panel.setVisible(self.editing)
+        if self.editing:
+            self._place_dialog()
+            self.edit_dim.raise_()
+            self.edit_panel.raise_()
+        self.update_hints()
+
+    def _place_dialog(self):
+        if not self.edit_panel.isVisible():
+            return
+        card = self.card.geometry()
+        self.edit_dim.setGeometry(card)
+        w = self.edit_panel.width()
+        h = self.edit_panel.layout().totalHeightForWidth(w) if self.edit_panel.layout().hasHeightForWidth()             else self.edit_panel.sizeHint().height()
+        self.edit_panel.setGeometry(card.center().x() - w // 2, card.center().y() - h // 2, w, h)
 
     def update_hints(self):
         pad, mode = INPUT.mode != "keyboard", INPUT.mode
-        if self.sounding:
-            self.sound_hints.set_items(
-                [("DPAD_UD", "Move"), ("DPAD_LR", "Change"), ("X", "Preview"), ("A", "Save"), ("B", "Cancel")]
-                if pad else [("k:↑ ↓", "Move"), ("k:← →", "Change"), ("k:P", "Preview"), ("k:Enter", "Save"),
-                             ("k:Esc", "Cancel")], mode)
-            return
-        if self.sharing:
-            self.share_hints.set_items(
-                [("DPAD_LR", "Choose"), ("A", "Select"), ("B", "Back")] if pad
-                else [("k:← →", "Choose"), ("k:Enter", "Select"), ("k:Esc", "Back")], mode)
-            return
-        if self.trimming:
-            self.trim_hints.set_items(
-                [("X", "Start"), ("Y", "End"), ("L1", "Preview"), ("A", "Save"), ("B", "Cancel")] if pad
-                else [("k:I", "Start"), ("k:O", "End"), ("k:P", "Preview"), ("k:Enter", "Save"),
-                      ("k:Esc", "Cancel")], mode)
+        if self.editing:
+            items = [("B", "Cancel")] if pad else [("k:Enter", "Save"), ("k:Esc", "Cancel")]
+        elif self.sounding:
+            items = ([("DPAD_UD", "Switch"), ("DPAD_LR", "Change"), ("Y", "Mute"), ("X", "Preview"), ("A", "Save"),
+                      ("B", "Cancel")] if pad else
+                     [("k:↑ ↓", "Switch"), ("k:← →", "Change"), ("k:M", "Mute"), ("k:P", "Preview"),
+                      ("k:Enter", "Save"), ("k:Esc", "Cancel")])
+        elif self.sharing or self.more_open:
+            items = ([("DPAD_LR", "Move"), ("A", "Select"), ("B", "Back")] if pad
+                     else [("k:← →", "Move"), ("k:Enter", "Select"), ("k:Esc", "Back")])
+        elif self.trimming:
+            items = ([("X", "Start"), ("Y", "End"), ("L1", "Preview"), ("A", "Save"), ("B", "Cancel")] if pad
+                     else [("k:I", "Start"), ("k:O", "End"), ("k:P", "Preview"), ("k:Enter", "Save"),
+                           ("k:Esc", "Cancel")])
         elif self.is_video():
-            self.keys_hint.set_items(
-                [("A", "Play/pause"), ("L1R1", "Newer/older"), ("X", "Trim"), ("L3", "Sound"), ("OPT", "Share"),
-                 ("DPAD_U", "Favorite"), ("B", "Back")] if pad
-                else [("k:Space", "Play/pause"), ("k:A D", "Newer/older"), ("k:T", "Trim"), ("k:V", "Sound"),
-                      ("k:E", "Share"), ("k:F", "Favorite"), ("k:N", "Rename"), ("k:Esc", "Back")], mode)
+            items = ([("A", "Play/pause"), ("L1R1", "Newer/older"), ("DPAD_U", "Favorite"), ("B", "Back")] if pad
+                     else [("k:Space", "Play/pause"), ("k:A D", "Newer/older"), ("k:F", "Favorite"),
+                           ("k:N", "Rename"), ("k:Esc", "Back")])
         else:
-            self.keys_hint.set_items(
-                [("L1R1", "Newer/older"), ("OPT", "Share"), ("DPAD_U", "Favorite"), ("Y", "Delete"),
-                 ("B", "Back")] if pad
-                else [("k:A D", "Newer/older"), ("k:E", "Share"), ("k:F", "Favorite"),
-                      ("k:N", "Rename"), ("k:Del", "Delete"), ("k:Esc", "Back")], mode)
+            items = ([("L1R1", "Newer/older"), ("DPAD_U", "Favorite"), ("B", "Back")] if pad
+                     else [("k:A D", "Newer/older"), ("k:F", "Favorite"), ("k:N", "Rename"), ("k:Esc", "Back")])
+        self.keys_hint.set_items(items, mode)
 
     def _timeline_seek(self, ms: int):
         if self.player:
@@ -4093,11 +4605,12 @@ class Viewer(QtWidgets.QWidget):
         self.hide()
 
     def delete_current(self):
-        if not self.del_btn.property("danger"):
-            self.del_btn.setProperty("danger", True)
-            self.del_btn.setText(tr("Press again to delete"))
-            self.del_btn.setIcon(qicon("trash", "#ff6961"))
-            self._repolish(self.del_btn)
+        if not self.more_open:            # Delete lives in More: open it there, ready to confirm
+            self._set_more(True)
+        if not self.del_btn.danger:
+            self.del_btn.danger = True
+            self.del_btn.setText("Press again to delete")
+            self.del_btn.setFocus()
             self._disarm.start(3000)
             return
         self._release()
@@ -4116,10 +4629,8 @@ class Viewer(QtWidgets.QWidget):
         self.show_item()
 
     def _reset_delete(self):
-        self.del_btn.setProperty("danger", False)
-        self.del_btn.setText(tr("Delete"))
-        self.del_btn.setIcon(qicon("trash"))
-        self._repolish(self.del_btn)
+        self.del_btn.danger = False
+        self.del_btn.setText("Delete")
 
     @staticmethod
     def _repolish(w):
@@ -4137,9 +4648,11 @@ class Viewer(QtWidgets.QWidget):
             rows = [self.voice_row, self.game_row]
             row = next((r for r in rows if r.slider.hasFocus()), self.voice_row)
             if k in (Qt.Key_Up, Qt.Key_Down):
-                rows[1 if k == Qt.Key_Down else 0].setFocus()
+                rows[1 if row is self.voice_row else 0].setFocus()
             elif k in (Qt.Key_Left, Qt.Key_Right):   # only when a bar doesn't have the keys itself
                 row.step(1 if k == Qt.Key_Right else -1)   # the bars run left to right everywhere
+            elif k == Qt.Key_M:
+                row.toggle_mute()
             elif k == Qt.Key_P:
                 self.preview_sound()
             elif k in (Qt.Key_Return, Qt.Key_Enter):
@@ -4149,16 +4662,19 @@ class Viewer(QtWidgets.QWidget):
             elif k == Qt.Key_Space:
                 self.toggle_play()
             return
-        if self.sharing:
-            nav = self._share_nav()
+        if self.sharing or self.more_open:
+            nav = self._share_nav() if self.sharing else self._more_nav()
             focused = self.focusWidget()
-            i = nav.index(focused) if focused in nav else 0
+            i = nav.index(focused) if focused in nav else len(nav) - 1 if self.sharing else 0
             if k in (Qt.Key_Left, Qt.Key_Right) and nav:
                 nav[max(0, min(len(nav) - 1, i + forward(k)))].setFocus()
             elif k in (Qt.Key_Return, Qt.Key_Enter, Qt.Key_Space) and nav:
-                nav[i].click()
-            elif k in (Qt.Key_Escape, Qt.Key_Backspace):
-                self._set_sharing(False)
+                item = nav[i]
+                item.next() if isinstance(item, OptionCard) else item.click()
+            elif k == Qt.Key_Delete and self.more_open:
+                self.delete_current()
+            elif k in (Qt.Key_Escape, Qt.Key_Backspace) or (k == Qt.Key_M and self.more_open):
+                self.go_back()
             return
         if self.trimming:
             handlers = {
@@ -4180,6 +4696,8 @@ class Viewer(QtWidgets.QWidget):
                 Qt.Key_E: self.enter_share,
                 Qt.Key_F: self.toggle_favorite,
                 Qt.Key_N: self.start_edit,
+                Qt.Key_M: self.toggle_more,
+                Qt.Key_F11: self.toggle_full,
                 Qt.Key_C: lambda: self.ctl.copy(self.current),
             }
         handlers.update({
@@ -4905,76 +5423,6 @@ class LevelSlider(QtWidgets.QSlider):
     def focusOutEvent(self, e):
         super().focusOutEvent(e)
         self.parent().update()
-
-
-class LevelRow(QtWidgets.QWidget):
-    """One line of the Sound panel: what it is, a volume bar, and how loud (100% = as recorded)."""
-
-    changed = QtCore.Signal()
-
-    def __init__(self, label: str, describe: str, maximum: int):
-        super().__init__()
-        self.setFixedHeight(76)
-        lay = QtWidgets.QHBoxLayout(self)
-        lay.setContentsMargins(18, 0, 18, 0)
-        lay.setSpacing(24)
-        names = QtWidgets.QVBoxLayout()
-        names.setSpacing(2)
-        self.name = QtWidgets.QLabel(tr(label))
-        self.name.setFont(font(15, QtGui.QFont.DemiBold))
-        self.desc = QtWidgets.QLabel(tr(describe))
-        self.desc.setFont(font(13))
-        self.desc.setStyleSheet(f"color: {MUTED};")
-        names.addStretch()
-        names.addWidget(self.name)
-        names.addWidget(self.desc)
-        names.addStretch()
-        lay.addLayout(names, 1)
-        self.slider = LevelSlider(Qt.Horizontal)
-        self.slider.setLayoutDirection(Qt.LeftToRight)   # louder to the right in every language, like the video bar
-        self.slider.setRange(0, maximum)
-        self.slider.setSingleStep(LEVEL_STEP)
-        self.slider.setPageStep(LEVEL_STEP * 2)
-        self.slider.setFixedWidth(380)
-        self.slider.setCursor(Qt.PointingHandCursor)
-        self.slider.valueChanged.connect(self._on_value)
-        lay.addWidget(self.slider)
-        self.amount = QtWidgets.QLabel()
-        self.amount.setFont(font(15, QtGui.QFont.DemiBold))
-        self.amount.setFixedWidth(170)
-        self.amount.setAlignment(Qt.AlignCenter)
-        lay.addWidget(self.amount)
-
-    @property
-    def value(self) -> int:
-        return self.slider.value()
-
-    def set_value(self, percent: int):
-        self.slider.setValue(percent)
-        self._on_value(self.slider.value())
-
-    def step(self, delta: int):
-        self.slider.setValue(self.slider.value() + delta * LEVEL_STEP)
-
-    def _on_value(self, v: int):
-        snapped = round(v / LEVEL_STEP) * LEVEL_STEP     # a drag lands on the nearest 25 %
-        if snapped != v:
-            self.slider.setValue(snapped)
-            return
-        self.amount.setText(level_text(v))
-        self.amount.setStyleSheet(f"color: {RED if v == 0 else INK};")
-        self.changed.emit()
-
-    def setFocus(self, *args):
-        self.slider.setFocus(*args)
-
-    def paintEvent(self, _):
-        if self.slider.hasFocus():
-            p = QtGui.QPainter(self)
-            p.setRenderHint(QtGui.QPainter.Antialiasing)
-            p.setPen(Qt.NoPen)
-            p.setBrush(QtGui.QColor(255, 255, 255, 22))
-            p.drawRoundedRect(QtCore.QRectF(self.rect()).adjusted(0, 3, 0, -3), 10, 10)
 
 
 class SectionTitle(QtWidgets.QLabel):
