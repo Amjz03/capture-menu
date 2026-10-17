@@ -5401,27 +5401,59 @@ class Gallery(QtWidgets.QWidget):
 
 # ---------------------------------------------------------------- settings
 
+# Starting with Windows goes through the registry Run list, not the Startup folder: Windows
+# sometimes skips the whole Startup folder at sign-in, while the Run list is always run.
+RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
+RUN_NAME = "Capture Menu"
+
+
 def startup_shortcut() -> Path:
+    """Where versions up to 0.0.8 started from; only removed now."""
     return (Path(os.environ.get("APPDATA", str(Path.home()))) / "Microsoft" / "Windows" / "Start Menu"
             / "Programs" / "Startup" / "Capture Menu.lnk")
 
 
+def start_command() -> str:
+    if FROZEN:
+        return f'"{sys.executable}"'
+    return f'"{Path(sys.executable).with_name("pythonw.exe")}" "{APP_DIR / "capture_menu.py"}"'
+
+
+def starts_with_windows() -> bool:
+    if not IS_WINDOWS:
+        return False
+    import winreg
+    try:
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, RUN_KEY) as key:
+            winreg.QueryValueEx(key, RUN_NAME)
+        return True
+    except OSError:
+        return startup_shortcut().exists()
+
+
 def set_start_with_windows(on: bool):
-    """Adds or removes the Startup shortcut that setup.ps1 made."""
+    """Adds or removes the Run entry (and the old Startup shortcut either way)."""
     if not IS_WINDOWS:
         return
-    lnk = startup_shortcut()
-    if not on:
-        lnk.unlink(missing_ok=True)
-        return
-    target, args = (sys.executable, "") if FROZEN else (str(Path(sys.executable).with_name("pythonw.exe")),
-                                                         f'"{APP_DIR / "capture_menu.py"}"')
-    ps = ("$s = (New-Object -ComObject WScript.Shell).CreateShortcut($env:LNK); "
-          "$s.TargetPath = $env:TGT; $s.Arguments = $env:ARGS; $s.WorkingDirectory = $env:DIR; "
-          "$s.Description = 'Capture Menu'; $s.Save()")
-    env = dict(os.environ, LNK=str(lnk), TGT=target, ARGS=args, DIR=str(APP_DIR))
-    subprocess.run(["powershell", "-NoProfile", "-Command", ps], env=env, capture_output=True,
-                   creationflags=0x08000000)
+    import winreg
+    startup_shortcut().unlink(missing_ok=True)
+    try:
+        with winreg.CreateKey(winreg.HKEY_CURRENT_USER, RUN_KEY) as key:
+            if on:
+                winreg.SetValueEx(key, RUN_NAME, 0, winreg.REG_SZ, start_command())
+            else:
+                try:
+                    winreg.DeleteValue(key, RUN_NAME)
+                except FileNotFoundError:
+                    pass
+    except OSError:
+        log.exception("couldn't change start with Windows")
+
+
+def update_start_with_windows():
+    """At start: moves an old Startup shortcut to the Run list, and keeps the path current."""
+    if IS_WINDOWS and starts_with_windows():
+        set_start_with_windows(True)
 
 
 def restart_app():
@@ -5977,7 +6009,7 @@ class Settings(QtWidgets.QWidget):
     def changes(self) -> dict:
         current = dict(self.ctl.cfg)
         if IS_WINDOWS:
-            current["start_with_windows"] = startup_shortcut().exists()
+            current["start_with_windows"] = starts_with_windows()
         return {k: v for k, v in self.values().items() if current.get(k) != v}
 
     # ---- open / close
@@ -5991,7 +6023,7 @@ class Settings(QtWidgets.QWidget):
             (k, k) for k, v in RESOLUTIONS.items() if v < h]
         cfg = dict(self.ctl.cfg)
         if IS_WINDOWS:
-            cfg["start_with_windows"] = startup_shortcut().exists()
+            cfg["start_with_windows"] = starts_with_windows()
         for r in self.rows:
             r.set_value(cfg.get(r.key, DEFAULTS.get(r.key)))
         if self.encoder is None:
@@ -6208,6 +6240,7 @@ def main():
         log.info("already running, exiting")
         return
     app.aboutToQuit.connect(lock.unlock)
+    update_start_with_windows()
     problems: list[str] = []
 
     ctl = Controller(cfg)

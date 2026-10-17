@@ -42,6 +42,8 @@ Source: "config.json"; DestDir: "{app}"; Flags: onlyifdoesntexist
 
 [UninstallRun]
 Filename: "powershell.exe"; Parameters: "-NoProfile -Command ""Get-CimInstance Win32_Process | ? {{ $_.Name -eq 'CaptureMenu.exe' -or ($_.Name -like 'python*.exe' -and $_.CommandLine -like '*capture_menu.py*') } | % {{ Stop-Process -Id $_.ProcessId -Force }"""; Flags: runhidden; RunOnceId: "StopCaptureMenu"
+; setup.ps1 adds Capture Menu to the Run list so it starts with Windows
+Filename: "reg.exe"; Parameters: "delete ""HKCU\Software\Microsoft\Windows\CurrentVersion\Run"" /v ""Capture Menu"" /f"; Flags: runhidden; RunOnceId: "RemoveStartWithWindows"
 
 [UninstallDelete]
 ; setup.ps1 makes these; captures in Videos\Clips are never touched

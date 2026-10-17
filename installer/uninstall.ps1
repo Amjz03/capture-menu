@@ -30,6 +30,7 @@ Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
                    ($_.Name -like "python*.exe" -and $_.CommandLine -like "*capture_menu.py*") } |
     ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
 foreach ($lnk in $shortcuts) { Remove-Item $lnk -Force -ErrorAction SilentlyContinue }
+Remove-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run" -Name "Capture Menu" -ErrorAction SilentlyContinue
 Write-Host "  Stopped it and removed the shortcuts." -ForegroundColor Green
 
 # This window may be running from that folder, so a hidden helper deletes it a few seconds later

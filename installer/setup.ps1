@@ -228,23 +228,24 @@ if ($frozen) {
 }
 if (-not (Test-Path $target)) { Fail "Couldn't find $target" }
 $shell = New-Object -ComObject WScript.Shell
-$startup = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\Startup\Capture Menu.lnk"
-$targets = @(
-    (Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\Capture Menu.lnk"),
-    $startup
-)
-foreach ($lnk in $targets) {
-    $s = $shell.CreateShortcut($lnk)
-    $s.TargetPath = $target
-    $s.Arguments = $arguments
-    $s.WorkingDirectory = $InstallDir
-    $s.Description = "Capture Menu"
-    $s.Save()
-}
+$s = $shell.CreateShortcut((Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\Capture Menu.lnk"))
+$s.TargetPath = $target
+$s.Arguments = $arguments
+$s.WorkingDirectory = $InstallDir
+$s.Description = "Capture Menu"
+$s.Save()
+# Start with Windows through the registry Run list: Windows sometimes skips the whole Startup
+# folder at sign-in, the Run list it always runs. The Startup shortcut older versions made goes.
+$run = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run"
+if (-not (Test-Path $run)) { New-Item -Path $run -Force | Out-Null }
+Set-ItemProperty -Path $run -Name "Capture Menu" -Value ("`"$target`" $arguments").Trim()
+Remove-Item (Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\Startup\Capture Menu.lnk") -Force -ErrorAction SilentlyContinue
 # Windows keeps a per-app "allowed to start" switch (Task Manager > Startup apps); make sure it's on
-$approved = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\StartupFolder"
-if (Test-Path $approved) {
-    Remove-ItemProperty -Path $approved -Name "Capture Menu.lnk" -ErrorAction SilentlyContinue
+foreach ($approved in @("HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run",
+                        "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\StartupFolder")) {
+    if (Test-Path $approved) {
+        Remove-ItemProperty -Path $approved -Name "Capture Menu", "Capture Menu.lnk" -ErrorAction SilentlyContinue
+    }
 }
 Ok "Start menu + starts with Windows"
 
