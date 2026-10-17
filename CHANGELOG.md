@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.0.8 · 2026-10-17
 
 - **Less RAM while you play.** Once everything has been closed for a minute or two, the bar, the viewer, the gallery and Settings let go of their screen-sized windows (about 15 MB each at 1440p, 33 MB at 4K) and Qt's cache of drawn pictures, and the viewer drops the last screenshot it showed. After a session of browsing, Capture Menu goes back to about 70 MB instead of 120 MB. Pages still open instantly. The gallery keeps two screens of tiles instead of 160 tiles.
 
