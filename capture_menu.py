@@ -80,6 +80,7 @@ DEFAULTS = {
     "rumble": True,
     "storage_warn_gb": 200,
     "voice_track": True,
+    "hdr": "auto",              # auto: HDR clips while Windows HDR is on for the game's screen / off
     "resolution": "native",     # native / 1440p / 1080p / 720p
     "fps": 60,
     "quality": "balanced",      # light / balanced / high / max
@@ -642,6 +643,93 @@ def ui_screen(fresh: bool = False) -> QtGui.QScreen:
     return _ui_screen
 
 
+class _LUID(ctypes.Structure):
+    _fields_ = [("LowPart", ctypes.c_uint32), ("HighPart", ctypes.c_int32)]
+
+
+class _PathInfo(ctypes.Structure):     # DISPLAYCONFIG_PATH_INFO, flattened
+    _fields_ = [("src_adapter", _LUID), ("src_id", ctypes.c_uint32), ("src_mode", ctypes.c_uint32),
+                ("src_flags", ctypes.c_uint32), ("tgt_adapter", _LUID), ("tgt_id", ctypes.c_uint32),
+                ("tgt_mode", ctypes.c_uint32), ("tech", ctypes.c_uint32), ("rotation", ctypes.c_uint32),
+                ("scaling", ctypes.c_uint32), ("refresh_num", ctypes.c_uint32), ("refresh_den", ctypes.c_uint32),
+                ("scanline", ctypes.c_uint32), ("available", ctypes.c_int32), ("tgt_flags", ctypes.c_uint32),
+                ("flags", ctypes.c_uint32)]
+
+
+class _DeviceInfoHeader(ctypes.Structure):
+    _fields_ = [("type", ctypes.c_uint32), ("size", ctypes.c_uint32), ("adapter", _LUID), ("id", ctypes.c_uint32)]
+
+
+class _SourceName(ctypes.Structure):
+    _fields_ = [("header", _DeviceInfoHeader), ("name", ctypes.c_wchar * 32)]
+
+
+class _AdvancedColor(ctypes.Structure):       # ..._GET_ADVANCED_COLOR_INFO (and _2 on Windows 11 24H2)
+    _fields_ = [("header", _DeviceInfoHeader), ("value", ctypes.c_uint32), ("encoding", ctypes.c_uint32),
+                ("bits", ctypes.c_uint32), ("mode", ctypes.c_uint32)]
+
+
+def hdr_screens() -> dict[str, bool]:
+    """Windows HDR on or off for each screen, by its device name (DISPLAY1 and so on). Empty where it
+    can't be told. Windows 11 24H2 says it directly; before that, "advanced colour" on means HDR."""
+    if not IS_WINDOWS:
+        return {}
+    try:
+        user32 = ctypes.windll.user32
+        n_paths, n_modes = ctypes.c_uint32(), ctypes.c_uint32()
+        if user32.GetDisplayConfigBufferSizes(2, ctypes.byref(n_paths), ctypes.byref(n_modes)):  # active paths
+            return {}
+        paths = (_PathInfo * n_paths.value)()
+        modes = (ctypes.c_byte * (64 * n_modes.value))()
+        if user32.QueryDisplayConfig(2, ctypes.byref(n_paths), paths, ctypes.byref(n_modes), modes, None):
+            return {}
+        found = {}
+        for path in paths[:n_paths.value]:
+            src = _SourceName()
+            src.header.type, src.header.size = 1, ctypes.sizeof(src)       # GET_SOURCE_NAME
+            src.header.adapter, src.header.id = path.src_adapter, path.src_id
+            if user32.DisplayConfigGetDeviceInfo(ctypes.byref(src)):
+                continue
+            color = _AdvancedColor()
+            color.header.type, color.header.size = 15, ctypes.sizeof(color)    # GET_ADVANCED_COLOR_INFO_2
+            color.header.adapter, color.header.id = path.tgt_adapter, path.tgt_id
+            if not user32.DisplayConfigGetDeviceInfo(ctypes.byref(color)):
+                found[src.name] = color.mode == 2                               # ADVANCED_COLOR_MODE_HDR
+                continue
+            color.header.type, color.header.size = 9, ctypes.sizeof(color) - 4  # GET_ADVANCED_COLOR_INFO
+            if not user32.DisplayConfigGetDeviceInfo(ctypes.byref(color)):
+                found[src.name] = bool(color.value & 0b10)                      # advancedColorEnabled
+        return found
+    except Exception:
+        log.exception("could not read the HDR state")
+        return {}
+
+
+def main_screen_device() -> str | None:
+    """Windows' name for the main screen (the one at 0,0), like the keys of hdr_screens()."""
+    try:
+        user32 = ctypes.windll.user32
+        user32.MonitorFromPoint.restype = wintypes.HANDLE
+        user32.MonitorFromPoint.argtypes = [wintypes.POINT, wintypes.DWORD]
+        user32.GetMonitorInfoW.argtypes = [wintypes.HANDLE, ctypes.POINTER(_MONITORINFOEXW)]
+        info = _MONITORINFOEXW()
+        info.cbSize = ctypes.sizeof(info)
+        if user32.GetMonitorInfoW(user32.MonitorFromPoint(wintypes.POINT(0, 0), 1), ctypes.byref(info)):
+            return info.szDevice
+    except Exception:
+        log.exception("could not find the main screen")
+    return None
+
+
+def windows_hdr(device: str | None = None) -> bool:
+    """Is Windows HDR on for this screen (the main screen when not given)?"""
+    screens = hdr_screens()
+    device = device or (main_screen_device() if IS_WINDOWS else None)
+    if device in screens:
+        return screens[device]
+    return len(screens) == 1 and any(screens.values())
+
+
 def pick_monitor_item(items: list[dict], rect: tuple[int, int, int, int]) -> dict | None:
     """OBS lists monitors like "LG ULTRAGEAR: 2560x1440 @ 0,0 (Primary Monitor)".
     Finds the one at the same desktop position as rect (then by size if positions differ)."""
@@ -672,6 +760,35 @@ def has_encoder(name: str) -> bool:
     return f" {name} " in _encoders
 
 
+_color_cache: dict[tuple[str, float], str] = {}
+
+# HDR (PQ / HLG) to normal colours, tuned to look like Qt's own player: tone mapping that keeps
+# the contrast, at a brightness that matches it, and the colour that tone mapping takes away
+TO_SDR = ("zscale=t=linear:npl=50,format=gbrpf32le,zscale=p=bt709,tonemap=tonemap=hable:desat=0,"
+          "zscale=t=bt709:m=bt709:r=tv,format=yuv420p,eq=saturation=1.4")
+
+
+def is_hdr(path: Path) -> bool:
+    """An HDR video (PQ, as OBS and the NVIDIA app record it, or HLG)."""
+    if path.suffix.lower() == ".png":
+        return False
+    try:
+        key = (str(path), path.stat().st_mtime)
+    except OSError:
+        return False
+    if key not in _color_cache:
+        ffprobe = find_tool("ffprobe")
+        r = run_quiet([ffprobe, "-v", "error", "-select_streams", "v:0", "-show_entries",
+                       "stream=color_transfer", "-of", "csv=p=0", str(path)]) if ffprobe else None
+        _color_cache[key] = r.stdout.strip() if r else ""
+    return _color_cache[key] in ("smpte2084", "arib-std-b67")
+
+
+def sdr_filter(path: Path, vf: str) -> str:
+    """vf, after turning an HDR clip into normal colours (phones, Discord and thumbnails are SDR)."""
+    return f"{TO_SDR},{vf}" if is_hdr(path) else vf
+
+
 def video_codec(path: Path) -> str | None:
     ffprobe = find_tool("ffprobe")
     if not ffprobe:
@@ -690,11 +807,15 @@ def trim_clip(src: Path, start_ms: int, end_ms: int, out: Path) -> str:
         raise FileNotFoundError("ffmpeg is not installed")
     start, length = f"{start_ms / 1000:.3f}", f"{(end_ms - start_ms) / 1000:.3f}"
     enc = NVENC.get(video_codec(src) or "")
-    if enc and has_encoder(enc):
+    # an HDR clip stays HDR: 10-bit, with its BT.2020 / PQ colour tags (else: the lossless cut)
+    hdr = (["-pix_fmt", "p010le", "-color_primaries", "bt2020", "-color_trc", "smpte2084",
+            "-colorspace", "bt2020nc", "-color_range", "tv"] + (["-profile:v", "main10"] if enc == "hevc_nvenc" else [])
+           if enc in ("hevc_nvenc", "av1_nvenc") and is_hdr(src) else [])
+    if enc and has_encoder(enc) and (hdr or not is_hdr(src)):
         r = run_quiet([ffmpeg, "-y", "-v", "error", "-hwaccel", "auto",
                        "-ss", start, "-i", str(src), "-t", length,
                        "-map", "0:v:0", "-map", "0:a?",
-                       "-c:v", enc, "-preset", "p5", "-rc", "vbr", "-cq", "19", "-b:v", "0",
+                       "-c:v", enc, "-preset", "p5", "-rc", "vbr", "-cq", "19", "-b:v", "0", *hdr,
                        "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", str(out)])
         if r.returncode == 0 and out.exists() and out.stat().st_size > 0:
             return "precise"
@@ -718,7 +839,7 @@ def make_preview(src: Path, out: Path, on_progress=None) -> bool:
     encoders.append(["-c:v", "libx264", "-preset", "ultrafast", "-crf", "28"])
     for venc in encoders:
         cmd = [ffmpeg, "-y", "-v", "error", "-hwaccel", "auto", "-i", str(src),
-               "-vf", "scale=-2:720", "-pix_fmt", "yuv420p", *venc, "-c:a", "aac", "-b:a", "128k",
+               "-vf", sdr_filter(src, "scale=-2:720"), "-pix_fmt", "yuv420p", *venc, "-c:a", "aac", "-b:a", "128k",
                "-movflags", "+faststart", "-progress", "pipe:1", "-nostats", str(tmp)]
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True,
                                 creationflags=QUIET)
@@ -740,7 +861,7 @@ def filmstrip_frame(src: Path, at_ms: int, out: Path) -> bool:
     if not ffmpeg:
         return False
     run_quiet([ffmpeg, "-y", "-v", "error", "-ss", f"{at_ms / 1000:.3f}", "-i", str(src),
-               "-frames:v", "1", "-vf", "scale=-2:90", "-q:v", "5", str(out)])
+               "-frames:v", "1", "-vf", sdr_filter(src, "scale=-2:90"), "-q:v", "5", str(out)])
     return out.exists()
 
 
@@ -829,7 +950,8 @@ def export_for_share(src: Path, out: Path, size_mb: int | None, without_voice: b
                         "-b:v", f"{video_kbps}k", "-maxrate", f"{int(video_kbps * 1.15)}k",
                         "-bufsize", f"{video_kbps * 2}k"]
             cmd = [ffmpeg, "-y", "-v", "error", "-i", str(src), "-map", "0:v:0", "-map", audio_map,
-                   "-vf", f"scale=-2:{plan['height']},fps={plan['fps']}", "-pix_fmt", "yuv420p", *rate,
+                   "-vf", sdr_filter(src, f"scale=-2:{plan['height']},fps={plan['fps']}"), "-pix_fmt", "yuv420p",
+                   *rate, "-color_primaries", "bt709", "-color_trc", "bt709", "-colorspace", "bt709",
                    "-c:a", "aac", "-b:a", f"{plan['audio_kbps']}k", "-ac", "2",
                    "-movflags", "+faststart", str(out)]
             if run_ffmpeg(cmd, seconds, on_progress) == 0 and out.exists():
@@ -973,7 +1095,7 @@ def make_thumb(path: Path, thumbs_dir: Path) -> Path | None:
         return None
     seek = [] if path.suffix.lower() == ".png" else ["-sseof", "-1"]
     run_quiet([ffmpeg, "-y", "-v", "error", *seek, "-i", str(path), "-frames:v", "1",
-               "-vf", "scale=480:-2", "-q:v", "4", str(thumb)])
+               "-vf", sdr_filter(path, "scale=480:-2"), "-q:v", "4", str(thumb)])
     return thumb if thumb.exists() else None
 
 
@@ -1076,7 +1198,7 @@ def pick_bitrate(encoder: str, width: int, height: int, fps: int = 60, quality: 
     return int(round(BITRATE_1440P[codec_of(encoder)] * scale / 500) * 500)
 
 
-def obs_plan(cfg: dict, width: int, height: int, encoder: str, obs_version: str) -> dict:
+def obs_plan(cfg: dict, width: int, height: int, encoder: str, obs_version: str, hdr: bool = False) -> dict:
     """The OBS settings Capture Menu wants: video size/FPS and simple-output profile keys.
     With voice_track on, recordings get 3 audio tracks: 1 = everything, 2 = game, 3 = mic.
     OBS's Simple mode only writes extra tracks with a quality preset (not "same as stream"),
@@ -1090,6 +1212,7 @@ def obs_plan(cfg: dict, width: int, height: int, encoder: str, obs_version: str)
     voice = bool(cfg.get("voice_track", True))
     major_minor = tuple(int(x) for x in re.findall(r"\d+", obs_version)[:2] or [0, 0])
     fmt = "hybrid_mp4" if major_minor >= (30, 2) else "mp4"
+    hdr = hdr and codec_of(encoder) in ("hevc", "av1")      # H.264 has no 10-bit HDR
     return {
         "video": {"baseWidth": width, "baseHeight": height, "outputWidth": out_w,
                   "outputHeight": out_h, "fpsNumerator": fps, "fpsDenominator": 1},
@@ -1111,11 +1234,15 @@ def obs_plan(cfg: dict, width: int, height: int, encoder: str, obs_version: str)
             # a ceiling; RAM in use is what the game actually produces.
             ("SimpleOutput", "RecRBSize",
              str(int(bitrate * buffer_s / 8 / 1000 * (2.5 if voice else 1.25)))),
+            ("Video", "ColorFormat", "P010" if hdr else "NV12"),
+            ("Video", "ColorSpace", "2100PQ" if hdr else "709"),
+            ("Video", "ColorRange", "Partial"),
         ],
+        "hdr": hdr,
         "voice_track": voice,
         "summary": (f"{out_w}×{out_h} · {fps} FPS · {encoder.replace('_', ' ').upper()} · "
                     + (f"{quality} quality · voice on its own track" if voice else f"{bitrate} Kbps")
-                    + f" · {buffer_s // 60} min"),
+                    + f" · {buffer_s // 60} min" + (" · HDR" if hdr else "")),
     }
 
 
@@ -1563,7 +1690,11 @@ class Controller(QtCore.QObject):
         encoder = pick_encoder(gpu_names())
         self.best_encoder = encoder
         version = self.obs.raw("GetVersion").get("obsVersion", "0")
-        plan = obs_plan(self.cfg, width, height, encoder, version)
+        # OBS records at the main screen's size, so that screen's HDR decides (a game on another
+        # screen is converted by OBS either way)
+        hdr = self.cfg.get("hdr", "auto") == "auto" and windows_hdr()
+        plan = obs_plan(self.cfg, width, height, encoder, version, hdr)
+        log.info("OBS plan: %s (Windows HDR %s)", plan["summary"], "on" if hdr else "off")
         if self.blocked:
             # OBS writes its replays to Videos by default, which Controlled folder access blocks for
             # OBS too: let it write next to our captures (the files are moved into place afterwards)
@@ -5262,7 +5393,7 @@ def restart_app():
 
 # ---------------------------------------------------------------- updates (only when asked)
 
-APP_VERSION = "0.0.4"     # the release workflow stamps this from the version being released
+APP_VERSION = "0.0.6"     # the release workflow stamps this from the version being released
 REPO = "Amjz03/capture-menu"
 
 
@@ -5631,6 +5762,9 @@ class Settings(QtWidgets.QWidget):
                   custom=lambda v: tr("{n} min", n=v))
         self._row("voice_track", "Voice on its own track", "bool",
                   describe=lambda v: "So you can share a clip with or without your voice")
+        self._row("hdr", "HDR", "choice", [("auto", "Auto"), ("off", "Off")],
+                  lambda v: "HDR clips while Windows HDR is on. Shared copies get normal colours"
+                  if v == "auto" else "Always normal colours (SDR)")
         self._row("capture_follow_game", "Follow the game's screen", "bool",
                   describe=lambda v: "Records the monitor or TV the game is on")
         self._row("record_indicator", "Recording indicator", "choice",

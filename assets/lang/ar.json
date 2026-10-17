@@ -328,5 +328,8 @@
   "Everything else you can do with this capture": "كل شي ثاني تقدر تسويه بهذا المقطع",
   "Select all": "تحديد الكل",
   "Select none": "إلغاء تحديد الكل",
-  "Done": "تم"
+  "Done": "تم",
+  "HDR": "HDR",
+  "HDR clips while Windows HDR is on. Shared copies get normal colours": "يسجّل HDR لما يكون HDR ويندوز شغال. النسخ اللي تشاركها تتحول لألوان عادية",
+  "Always normal colours (SDR)": "ألوان عادية دايماً (SDR)"
 }

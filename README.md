@@ -213,7 +213,7 @@ Titles like "Boss down on the first try" show in the viewer, Recent row and gall
 
 Open it from the **Settings** tile at the end of the bar, **,** on the keyboard, or the tray icon. Move with ↑ ↓, change with ← →, **S** (△ / Y) saves, **Esc** (◯ / B) cancels. **Restore defaults** goes back to the original setup.
 
-- **Recording:** resolution (Native, 1440p, 1080p, 720p), frame rate (30, 60, 120), quality (Light, Balanced, High, Max), video format (Auto, AV1, HEVC, H.264), replay buffer (5 to 60 min), voice on its own track, follow the game's screen, REC indicator (top left, top right, off).
+- **Recording:** resolution (Native, 1440p, 1080p, 720p), frame rate (30, 60, 120), quality (Light, Balanced, High, Max), video format (Auto, AV1, HEVC, H.264), replay buffer (5 to 60 min), voice on its own track, HDR (Auto, Off), follow the game's screen, REC indicator (top left, top right, off).
 - **Controls:** keyboard shortcut, controller button, press or hold, double-press to save, rumble, sounds.
 - **Library:** clips folder, screenshots folder (the clips folder unless you pick another), storage warning.
 - **General:** start with Windows, language (same as Windows, English or العربية), updates.
@@ -253,6 +253,10 @@ The Settings page writes to `config.json` in the install folder. You can also ed
   "FortniteClient-Win64-Shipping.exe": "Fortnite"
 }
 ```
+
+### HDR
+
+With **HDR** on **Auto** (the default), clips are recorded in HDR (10-bit, Rec.2100 PQ) whenever Windows HDR is on for your main screen and the video format is AV1 or HEVC; otherwise in normal colours. Capture Menu checks this when it starts, and sets OBS up again (restarting it once) when it changes. HDR clips keep their HDR when trimmed. Copies you share, thumbnails and previews are converted to normal colours, so they look right on phones, Discord and WhatsApp instead of grey and washed out. Set **HDR** to **Off** to always record normal colours.
 
 ## Performance
 
