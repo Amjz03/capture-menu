@@ -2243,14 +2243,25 @@ class Sounds:
 # ---------------------------------------------------------------- UI
 
 def trim_memory():
-    """While the app only waits for the hotkey, hand its idle pages back to Windows.
-    They stay in RAM's standby list, so the menu still opens instantly."""
-    import gc
+    """While the app only waits for the hotkey, give back what it doesn't need: Qt's cache of drawn
+    pixmaps (refilled as pages are drawn), source lines kept for tracebacks, free heap. Its idle pages
+    go back to Windows too; they stay in RAM's standby list, so the menu still opens instantly."""
+    import gc, linecache
     gc.collect()
+    linecache.clearcache()        # PySide6 reads every module imported after it into this cache
+    QtGui.QPixmapCache.clear()    # up to 10 MB of style and icon pixmaps
     if IS_WINDOWS:
         k32 = ctypes.windll.kernel32
+        k32.GetProcessHeap.restype = ctypes.c_void_p
+        k32.HeapCompact.argtypes = [ctypes.c_void_p, ctypes.c_uint32]
+        k32.HeapCompact(k32.GetProcessHeap(), 0)     # decommits the heap's large free blocks
         k32.SetProcessWorkingSetSize.argtypes = [ctypes.c_void_p, ctypes.c_size_t, ctypes.c_size_t]
         k32.SetProcessWorkingSetSize(k32.GetCurrentProcess(), ctypes.c_size_t(-1), ctypes.c_size_t(-1))
+    else:
+        try:
+            ctypes.CDLL(None).malloc_trim(0)           # glibc keeps freed heap otherwise
+        except (OSError, AttributeError):
+            pass
 
 
 def bring_to_front(w: QtWidgets.QWidget):
@@ -2312,6 +2323,27 @@ def glass(w: QtWidgets.QWidget) -> bool:
 def sheet_color(w: QtWidgets.QWidget) -> QtGui.QColor:
     """The page's own dark layer: light over glass, nearly solid without it."""
     return QtGui.QColor(11, 11, 14, GLASS_SHEET if getattr(w, "glassy", False) else 250)
+
+
+def dress(w: QtWidgets.QWidget, frosted: bool = True):
+    """What lives on a page's native window: kept out of captures, glass behind it. Done when the page
+    is made, and again on opening it after release_window() let the window go."""
+    if getattr(w, "dressed", False):
+        return
+    hide_from_capture(w)
+    if frosted:
+        w.glassy = glass(w)
+    w.dressed = True
+
+
+def release_window(w: QtWidgets.QWidget):
+    """A hidden page keeps a picture of itself the size of the screen (about 15 MB at 1440p, 33 MB at 4K)
+    for as long as its native window lives. Letting the window go gives that back; opening the page
+    makes a new one, dressed again."""
+    if w.isVisible():
+        return
+    w.destroy()
+    w.dressed = False
 
 
 # ---- look: neutral console palette; white is the focus colour, red only means recording
@@ -2826,7 +2858,7 @@ class Menu(QtWidgets.QWidget):
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setStyleSheet(BAR_STYLE)
         self.setFont(font(13))
-        hide_from_capture(self)
+        dress(self, frosted=False)
         # chip order follows the PS5: Full video first, then shortest to longest
         self.options: list[int | None] = [None] + sorted(ctl.cfg["durations_seconds"])[:8]
         self.last_choice = self.options.index(60) if 60 in self.options else 1
@@ -2958,6 +2990,7 @@ class Menu(QtWidgets.QWidget):
             self.viewer.close_viewer()
         g = ui_screen(fresh).geometry()   # the screen the game is on, TV or monitor
         h = self.BAR_H + self.HEADROOM
+        dress(self, frosted=False)
         self.setGeometry(g.left(), g.bottom() - h + 1, g.width(), h)
         self.game_label.setText(self.game_label.fontMetrics().elidedText(self.game, Qt.ElideRight, 420))
         self.status.setText("")
@@ -3900,8 +3933,7 @@ class Viewer(QtWidgets.QWidget):
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setStyleSheet(VIEWER_STYLE)
         self.setFont(font(13))
-        hide_from_capture(self)
-        self.glassy = glass(self)
+        dress(self)
 
         lay = QtWidgets.QVBoxLayout(self)
         lay.setContentsMargins(64, 36, 64, 24)
@@ -4219,6 +4251,7 @@ class Viewer(QtWidgets.QWidget):
         self._drop_timer.stop()
         self.items, self.index = list(items), index
         self._pending_trim = trim and items[index].suffix.lower() != ".png"
+        dress(self)
         self.setGeometry(ui_screen(fresh).geometry())   # covers the game's screen, like the PS5 viewer
         self.show()
         bring_to_front(self)
@@ -4246,6 +4279,7 @@ class Viewer(QtWidgets.QWidget):
 
     def close_viewer(self):
         self._release()
+        self.image.clear()       # a screenshot fitted to the screen: up to 15 MB
         self.hide()
         self._drop_timer.start()
         self.closed.emit()
@@ -4279,14 +4313,17 @@ class Viewer(QtWidgets.QWidget):
         return True
 
     def _drop_player(self):
-        """Gives the decoder's memory back once the viewer has been closed for a while."""
-        if self.player is None or self.isVisible():
+        """Gives the decoder's memory back once the viewer has been closed for a while,
+        and the window's picture of itself with it."""
+        if self.isVisible():
             return
-        self._release()
-        self.stage.removeWidget(self.video)
-        for obj in (self.player, self.audio, self.video):
-            obj.deleteLater()
-        self.player = self.audio = self.video = None
+        if self.player is not None:
+            self._release()
+            self.stage.removeWidget(self.video)
+            for obj in (self.player, self.audio, self.video):
+                obj.deleteLater()
+            self.player = self.audio = self.video = None
+        release_window(self)
 
     # ---- showing a capture
     def show_item(self):
@@ -4895,12 +4932,15 @@ class Viewer(QtWidgets.QWidget):
 class TileDelegate(QtWidgets.QStyledItemDelegate):
     """Draws gallery tiles as they scroll into view, so 1000 captures cost no more than 30."""
 
-    CACHE = 160
-
     def __init__(self, gallery: "Gallery"):
         super().__init__(gallery)
         self.g = gallery
         self.cache: dict[str, QtGui.QPixmap] = {}   # insertion order = least recently used first
+
+    def limit(self) -> int:
+        """Two screens of tiles (each 150-600 KB): scrolling back is instant, a long gallery costs no more."""
+        view, cell = self.g.grid.viewport().size(), self.g.grid.gridSize()
+        return 2 * max(1, view.width() // cell.width()) * (view.height() // cell.height() + 2)
 
     def pixmap(self, path: Path) -> QtGui.QPixmap:
         key = str(path)
@@ -4909,7 +4949,8 @@ class TileDelegate(QtWidgets.QStyledItemDelegate):
             pm = rounded_pixmap(self.g.ctl.thumb(path), self.g.TW, self.g.TH, 10,
                                 max(1.0, self.g.devicePixelRatioF()))
         self.cache[key] = pm
-        while len(self.cache) > self.CACHE:
+        limit = self.limit()
+        while len(self.cache) > limit:
             self.cache.pop(next(iter(self.cache)))
         return pm
 
@@ -5004,8 +5045,7 @@ class Gallery(QtWidgets.QWidget):
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setStyleSheet(GALLERY_STYLE)
         self.setFont(font(13))
-        hide_from_capture(self)
-        self.glassy = glass(self)
+        dress(self)
         self.cats: list[tuple[str, list[Path]]] = []
         self.items: list[Path] = []
         self.marked: set[Path] = set()
@@ -5104,6 +5144,7 @@ class Gallery(QtWidgets.QWidget):
     def open(self, game: str | None = None, back_to=None, fresh: bool = False):
         """fresh: opened from outside (the tray), not from another page."""
         self.back_to = back_to      # what Back returns to (None: just close)
+        dress(self)
         self.setGeometry(ui_screen(fresh).geometry())
         self._load(select=game)
         self.show()
@@ -5672,8 +5713,7 @@ class Settings(QtWidgets.QWidget):
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setStyleSheet(GALLERY_STYLE + "QScrollArea, #rows { background: transparent; border: none; }")
         self.setFont(font(13))
-        hide_from_capture(self)
-        self.glassy = glass(self)
+        dress(self)
 
         lay = QtWidgets.QVBoxLayout(self)
         lay.setContentsMargins(64, 40, 64, 32)
@@ -5960,6 +6000,7 @@ class Settings(QtWidgets.QWidget):
             threading.Thread(target=lambda: safe_emit(self.encoder_ready, pick_encoder(gpu_names())),
                              daemon=True).start()
         self._refresh()
+        dress(self)
         self.setGeometry(ui_screen(fresh).geometry())
         self.show()
         bring_to_front(self)
@@ -6309,15 +6350,18 @@ def main():
             toast.show_message(moved_notice, "info")
             save_state(load_state() | {"fallback_told": str(ctl.blocked)})
         QtCore.QTimer.singleShot(7000, tell_moved)   # after the notice above has been read
-    # once everything has been closed for a while, trim memory (once per idle stretch)
-    idle = {"armed": True}
+    # once everything has been closed for a while, give memory back (once per idle stretch): a page
+    # that has been open since holds a native window again, so even a quick look counts
+    pages = (menu, viewer, gallery, settings)
 
     def idle_check():
-        if any(w.isVisible() for w in (menu, viewer, gallery, settings)):
-            idle["armed"] = True
-        elif idle["armed"]:
-            idle["armed"] = False
-            trim_memory()
+        if any(w.isVisible() for w in pages) or not any(w.testAttribute(Qt.WA_WState_Created) for w in pages):
+            return
+        for w in (menu, gallery, settings):
+            release_window(w)
+        if viewer.player is None:    # otherwise the viewer lets its window go with the player
+            release_window(viewer)
+        trim_memory()
     QtCore.QTimer(app, interval=90_000, timeout=idle_check).start()
 
     primary = app.primaryScreen()

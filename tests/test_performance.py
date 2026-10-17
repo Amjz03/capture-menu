@@ -23,6 +23,20 @@ viewer.close_viewer()
 gallery.open(); app.processEvents(); assert gallery.grid.count() == 1
 gallery.close_gallery(); assert gallery.grid.count() == 0 and not gallery.tiles.cache
 gallery.open(); assert gallery.grid.count() == 1, "reopens fine"
+assert len(gallery.tiles.cache) <= gallery.tiles.limit() and gallery.tiles.limit() >= 2
+gallery.close_gallery()
+# hidden pages let their native window (and its screen-sized picture) go, and make a new one on opening
+created = lambda w: w.testAttribute(QtCore.Qt.WA_WState_Created)
+for w in (menu, gallery): cm.release_window(w); assert not created(w) and not w.dressed
+viewer._drop_player(); assert not created(viewer) and not viewer.dressed
+menu.show_menu(); app.processEvents(); assert menu.isVisible() and created(menu) and menu.dressed
+cm.release_window(menu); assert created(menu), "never while it's open"
+menu.hide_menu(); gallery.open(); app.processEvents(); assert gallery.isVisible() and gallery.grid.count() == 1
+gallery.close_gallery()
+viewer.open([clip], 0); end = time.time() + 1
+while time.time() < end: app.processEvents()
+assert viewer.isVisible() and viewer.dressed and viewer.stage.currentWidget() is viewer.video, "plays again"
+viewer.close_viewer(); viewer._drop_player()
 cm.trim_memory()
 assert (cm.QUIET != 0) == cm.IS_WINDOWS
 plan = cm.obs_plan(dict(cm.DEFAULTS), 2560, 1440, "nvenc_av1", "31.0")
