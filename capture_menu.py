@@ -2614,7 +2614,32 @@ class HintBar(QtWidgets.QWidget):
         self._layout(p)
 
 
-class Card(QtWidgets.QAbstractButton):
+class HoverFocus:
+    """Hover only lends the white highlight: the item under the mouse lights up, and when the mouse
+    leaves, the highlight goes back to where it was. A click (or a key) keeps it where it is."""
+
+    def hover_in(self):
+        before = QtWidgets.QApplication.focusWidget()
+        if before is not self:
+            self._lent = True
+            self._lent_from = before
+        self.setFocus(Qt.MouseFocusReason)
+
+    def hover_out(self):
+        lent, before = getattr(self, "_lent", False), getattr(self, "_lent_from", None)
+        self.keep_focus()
+        if not lent or not self.hasFocus():
+            return                          # clicked, or a key moved on meanwhile: that stays
+        if before is not None and before.isVisible() and before.window() is self.window():
+            before.setFocus(Qt.MouseFocusReason)
+        else:
+            self.clearFocus()
+
+    def keep_focus(self):
+        self._lent, self._lent_from = False, None
+
+
+class Card(HoverFocus, QtWidgets.QAbstractButton):
     """Base for the bar's focusable tiles: hover and a white focus ring, nothing else."""
 
     RADIUS = 12
@@ -2641,7 +2666,20 @@ class Card(QtWidgets.QAbstractButton):
     def enterEvent(self, e):
         super().enterEvent(e)
         if self.hover_focus():
-            self.setFocus(Qt.MouseFocusReason)   # hover and keyboard share one focus, like a console
+            self.hover_in()
+
+    def leaveEvent(self, e):
+        super().leaveEvent(e)
+        if self.hover_focus():
+            self.hover_out()
+
+    def mousePressEvent(self, e):
+        self.keep_focus()
+        super().mousePressEvent(e)
+
+    def keyPressEvent(self, e):
+        self.keep_focus()
+        super().keyPressEvent(e)
 
     def paint_ring(self, p: QtGui.QPainter):
         if self.hasFocus() or self.active:
@@ -2809,7 +2847,7 @@ def chip_label(seconds: int | None) -> str:
     return tr("Last {n}h", n=seconds // 3600)
 
 
-class Chip(QtWidgets.QAbstractButton):
+class Chip(HoverFocus, QtWidgets.QAbstractButton):
     """A pill in the Save recent gameplay row; the focused one turns light, like the PS5."""
 
     H = 40
@@ -2835,7 +2873,19 @@ class Chip(QtWidgets.QAbstractButton):
 
     def enterEvent(self, e):
         super().enterEvent(e)
-        self.setFocus(Qt.MouseFocusReason)
+        self.hover_in()
+
+    def leaveEvent(self, e):
+        super().leaveEvent(e)
+        self.hover_out()
+
+    def mousePressEvent(self, e):
+        self.keep_focus()
+        super().mousePressEvent(e)
+
+    def keyPressEvent(self, e):
+        self.keep_focus()
+        super().keyPressEvent(e)
 
     def paintEvent(self, _):
         p = QtGui.QPainter(self)
@@ -5594,7 +5644,7 @@ def hotkey_from_event(e: QtGui.QKeyEvent) -> str | None:
     return "+".join(mods + [key])
 
 
-class SettingRow(QtWidgets.QWidget):
+class SettingRow(HoverFocus, QtWidgets.QWidget):
     """One line in Settings: name and explanation on the left, its value on the right.
     Choices change with ← → (or a click), switches flip, actions (folder, shortcut) open with Enter."""
 
@@ -5664,18 +5714,24 @@ class SettingRow(QtWidgets.QWidget):
             self.set_value(values[(i + 1) % len(values)], emit=True)
 
     def keyPressEvent(self, e):
+        self.keep_focus()
         self.window().keyPressEvent(e)   # the page decides; the scroll area would eat the arrows
 
     def enterEvent(self, e):
         super().enterEvent(e)
-        self.setFocus(Qt.MouseFocusReason)
+        self.hover_in()
+
+    def leaveEvent(self, e):
+        super().leaveEvent(e)
+        if not self.listening:           # waiting for a new shortcut: stay put
+            self.hover_out()
 
     def focusInEvent(self, e):
         super().focusInEvent(e)
         parent = self.parent()
         while parent is not None and not isinstance(parent, QtWidgets.QScrollArea):
             parent = parent.parent()
-        if parent is not None:
+        if parent is not None and e.reason() != Qt.MouseFocusReason:   # the mouse never scrolls the page
             parent.ensureWidgetVisible(self, 0, 40)
         self.update()
         self.parent().update()     # the card hides the lines next to the focused row
@@ -5687,6 +5743,7 @@ class SettingRow(QtWidgets.QWidget):
         self.parent().update()
 
     def mousePressEvent(self, e):
+        self.keep_focus()
         if self.kind == "choice" and e.position().x() < self._value_rect().left() + 28:
             self.step(-1)
         elif self.kind == "choice":
