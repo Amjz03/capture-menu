@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Glass.** The viewer, the gallery and Settings sit on frosted glass: the game shows through behind them, blurred and dimmed, like the PS5. It's Windows' own acrylic blur, so it costs the game nothing; where Windows can't do it the pages stay solid as before.
 - **A calmer viewer.** The video sits in its own card with play, the timeline, sound on / off and "only the video" built in. Under it, four big buttons show the controller button that does each one: ▢ Trim, L3 Adjust audio, Options Share / Export, △ More. Favorite, Show in folder, Open in your video player and Delete moved into **More** (△ / M); △ no longer deletes, and Delete still needs a second press.
 - **Adjust audio** shows your voice and the game as two cards, each with a volume bar and a **Mute** switch (M / △).
 - **Share / Export** is three cards (Format, Your voice, Size limit) and one Export & copy button, instead of a row of presets.

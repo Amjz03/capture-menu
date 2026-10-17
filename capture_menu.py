@@ -2148,6 +2148,41 @@ def hide_from_capture(w: QtWidgets.QWidget):
         ctypes.windll.user32.SetWindowDisplayAffinity(int(w.winId()), 0x11)  # WDA_EXCLUDEFROMCAPTURE
 
 
+class _AccentPolicy(ctypes.Structure):
+    _fields_ = [("AccentState", ctypes.c_int), ("AccentFlags", ctypes.c_int),
+                ("GradientColor", ctypes.c_uint), ("AnimationId", ctypes.c_int)]
+
+
+class _WindowCompositionData(ctypes.Structure):
+    _fields_ = [("Attribute", ctypes.c_int), ("Data", ctypes.c_void_p), ("SizeOfData", ctypes.c_size_t)]
+
+
+GLASS_TINT = 0x70            # how much of the near-black tint lies over the blur (0-255)
+GLASS_SHEET = 96             # and how dark the page paints over that; 250 without glass
+
+
+def glass(w: QtWidgets.QWidget) -> bool:
+    """Frosted glass behind a page, like the PS5: the game shows through, blurred and dimmed.
+    Windows' own acrylic blur (Windows 10 1803+), drawn by the system, so it costs the game nothing.
+    False where it isn't available; the page then stays solid."""
+    if not IS_WINDOWS or os.environ.get("QT_QPA_PLATFORM", "").startswith("offscreen"):
+        return False
+    try:
+        tint = (GLASS_TINT << 24) | (0x0e << 16) | (0x0b << 8) | 0x0b        # AABBGGRR: #0b0b0e
+        accent = _AccentPolicy(4, 2, tint, 0)                                 # ACCENT_ENABLE_ACRYLICBLURBEHIND
+        data = _WindowCompositionData(19, ctypes.cast(ctypes.pointer(accent), ctypes.c_void_p),
+                                      ctypes.sizeof(accent))                  # WCA_ACCENT_POLICY
+        return bool(ctypes.windll.user32.SetWindowCompositionAttribute(int(w.winId()), ctypes.byref(data)))
+    except Exception:
+        log.exception("glass background not available")
+        return False
+
+
+def sheet_color(w: QtWidgets.QWidget) -> QtGui.QColor:
+    """The page's own dark layer: light over glass, nearly solid without it."""
+    return QtGui.QColor(11, 11, 14, GLASS_SHEET if getattr(w, "glassy", False) else 250)
+
+
 # ---- look: neutral console palette; white is the focus colour, red only means recording
 INK = "#f4f4f6"
 MUTED = "rgba(244,244,246,0.66)"
@@ -3735,6 +3770,7 @@ class Viewer(QtWidgets.QWidget):
         self.setStyleSheet(VIEWER_STYLE)
         self.setFont(font(13))
         hide_from_capture(self)
+        self.glassy = glass(self)
 
         lay = QtWidgets.QVBoxLayout(self)
         lay.setContentsMargins(64, 36, 64, 24)
@@ -4036,7 +4072,7 @@ class Viewer(QtWidgets.QWidget):
 
     def paintEvent(self, _):
         p = QtGui.QPainter(self)      # the sheet: the game stays faintly visible behind it
-        p.fillRect(self.rect(), QtGui.QColor(11, 11, 14, 250))
+        p.fillRect(self.rect(), sheet_color(self))
 
     @property
     def current(self) -> Path:
@@ -4838,6 +4874,7 @@ class Gallery(QtWidgets.QWidget):
         self.setStyleSheet(GALLERY_STYLE)
         self.setFont(font(13))
         hide_from_capture(self)
+        self.glassy = glass(self)
         self.cats: list[tuple[str, list[Path]]] = []
         self.items: list[Path] = []
         self.marked: set[Path] = set()
@@ -4930,7 +4967,7 @@ class Gallery(QtWidgets.QWidget):
 
     def paintEvent(self, _):
         p = QtGui.QPainter(self)      # the sheet: the game stays faintly visible behind it
-        p.fillRect(self.rect(), QtGui.QColor(11, 11, 14, 250))
+        p.fillRect(self.rect(), sheet_color(self))
 
     # ---- open / close
     def open(self, game: str | None = None, back_to=None, fresh: bool = False):
@@ -5505,6 +5542,7 @@ class Settings(QtWidgets.QWidget):
         self.setStyleSheet(GALLERY_STYLE + "QScrollArea, #rows { background: transparent; border: none; }")
         self.setFont(font(13))
         hide_from_capture(self)
+        self.glassy = glass(self)
 
         lay = QtWidgets.QVBoxLayout(self)
         lay.setContentsMargins(64, 40, 64, 32)
@@ -5809,7 +5847,7 @@ class Settings(QtWidgets.QWidget):
 
     def paintEvent(self, _):
         p = QtGui.QPainter(self)
-        p.fillRect(self.rect(), QtGui.QColor(11, 11, 14, 250))
+        p.fillRect(self.rect(), sheet_color(self))
 
     # ---- actions
     def restore_defaults(self):
