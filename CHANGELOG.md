@@ -3,6 +3,8 @@
 ## 0.0.9 · 2026-10-17
 
 - **Starts with Windows every time.** Capture Menu now starts from Windows' startup list in the registry instead of the Startup folder, which Windows sometimes skips at sign-in, so it didn't come back after a restart. Updating moves it over on its own; Settings → Start with Windows works as before.
+- **Clearer Settings.** Each section sits on its own card, every value lines up in one column, choices show ‹ › on every row so it's clear they can change, and folders, the shortcut and updates end with › like a button.
+- Fixed: in Arabic, Settings' names and descriptions started in the middle of the row instead of on the right, and so did captions in the gallery.
 
 ## 0.0.8 · 2026-10-17
 

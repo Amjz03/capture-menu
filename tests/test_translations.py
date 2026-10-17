@@ -34,7 +34,7 @@ for n in ast.walk(tree):
                             for s in map(const, ast.walk(t)) if s and " " in s)
         elif name in ("button",) and len(a) >= 2 and const(a[1]):
             keys.add(const(a[1]))
-        elif name in ("Chip", "SectionTitle", "_show_msg") and a and const(a[0]):
+        elif name in ("Chip", "SectionTitle", "_section", "_show_msg") and a and const(a[0]):
             keys.add(const(a[0]))
         elif name == "panel_head":
             keys.update(filter(None, map(const, a[1:3])))

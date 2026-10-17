@@ -142,8 +142,9 @@ def is_rtl() -> bool:
 
 
 def lead():
-    """Where a line of text starts: the left, or the right in a right-to-left language."""
-    return Qt.AlignRight if is_rtl() else Qt.AlignLeft
+    """Where a line of text starts: the left, or the right in a right-to-left language.
+    Absolute, because Qt mirrors left and right again on its own in a right-to-left window."""
+    return (Qt.AlignRight | Qt.AlignAbsolute) if is_rtl() else Qt.AlignLeft
 
 
 def forward(key: int) -> int:
@@ -5618,11 +5619,13 @@ class SettingRow(QtWidgets.QWidget):
         if parent is not None:
             parent.ensureWidgetVisible(self, 0, 40)
         self.update()
+        self.parent().update()     # the card hides the lines next to the focused row
 
     def focusOutEvent(self, e):
         super().focusOutEvent(e)
         self.listening = False
         self.update()
+        self.parent().update()
 
     def mousePressEvent(self, e):
         if self.kind == "choice" and e.position().x() < self._value_rect().left() + 28:
@@ -5651,7 +5654,7 @@ class SettingRow(QtWidgets.QWidget):
             p.setBrush(QtGui.QColor(255, 255, 255, 14))
             p.drawRoundedRect(r, 10, 10)
         ink = QtGui.QColor("#111114") if focused else QtGui.QColor(INK)
-        soft = QtGui.QColor(17, 17, 20, 165) if focused else QtGui.QColor(244, 244, 246, 120)
+        soft = QtGui.QColor(17, 17, 20, 165) if focused else QtGui.QColor(244, 244, 246, 150)
         desc = self.describe(self.value)
         left = QtCore.QRectF(322 if is_rtl() else 18, 0, self.width() - 340, self.height())
         p.setPen(ink)
@@ -5676,19 +5679,36 @@ class SettingRow(QtWidgets.QWidget):
             p.drawEllipse(QtCore.QPointF(track.right() - 13 if on else track.left() + 13, track.center().y()), 10, 10)
             return
         p.setFont(font(15, QtGui.QFont.DemiBold if focused else QtGui.QFont.Normal))
-        p.setPen(ink if focused or self.listening else QtGui.QColor(244, 244, 246, 200))
-        if self.kind == "choice":
+        p.setPen(ink if focused or self.listening else QtGui.QColor(244, 244, 246, 220))
+        if self.kind == "choice":   # a pill with ‹ › on every row, so it's clear the value can change
             values = [c[0] for c in self.choices]
             i = values.index(self.value) if self.value in values else 0
+            pill = QtCore.QRectF(v.left(), v.center().y() - 19, v.width(), 38)
+            p.save()
+            p.setPen(Qt.NoPen)
+            p.setBrush(QtGui.QColor(17, 17, 20, 22) if focused else QtGui.QColor(255, 255, 255, 16))
+            p.drawRoundedRect(pill, 19, 19)
+            p.restore()
             arrow = "#111114" if focused else INK
-            if focused and i > 0:
-                p.drawPixmap(QtCore.QPointF(v.left(), v.center().y() - 9), icon_pixmap("left", 18, arrow))
-            if focused and i < len(values) - 1:
-                p.drawPixmap(QtCore.QPointF(v.right() - 18, v.center().y() - 9), icon_pixmap("right", 18, arrow))
-            p.drawText(v.adjusted(24, 0, -24, 0), Qt.AlignCenter, self.text())
-        else:
-            text = p.fontMetrics().elidedText(self.text(), Qt.ElideMiddle, int(v.width()))
-            p.drawText(v, (Qt.AlignLeft if is_rtl() else Qt.AlignRight) | Qt.AlignVCenter, text)
+            for name, x, can in (("left", pill.left() + 10, i > 0),
+                                 ("right", pill.right() - 28, i < len(values) - 1)):
+                p.setOpacity((1.0 if focused else 0.6) if can else 0.16)
+                p.drawPixmap(QtCore.QPointF(x, pill.center().y() - 9), icon_pixmap(name, 18, arrow))
+            p.setOpacity(1.0)
+            p.drawText(pill.adjusted(34, 0, -34, 0), Qt.AlignCenter,
+                       p.fontMetrics().elidedText(self.text(), Qt.ElideRight, int(pill.width() - 68)))
+        else:   # a folder, the shortcut, updates: the value, then › like a button that opens something
+            edge = (Qt.AlignLeft | Qt.AlignAbsolute) if is_rtl() else Qt.AlignRight
+            room = 0 if self.listening else 26     # room for the ›
+            text_rect = v.adjusted(room, 0, 0, 0) if is_rtl() else v.adjusted(0, 0, -room, 0)
+            text = p.fontMetrics().elidedText(self.text(), Qt.ElideMiddle, int(text_rect.width()))
+            p.drawText(text_rect, edge | Qt.AlignVCenter, text)
+            if not self.listening:
+                p.setOpacity(1.0 if focused else 0.6)
+                x = v.left() if is_rtl() else v.right() - 18
+                p.drawPixmap(QtCore.QPointF(x, v.center().y() - 9),
+                             icon_pixmap("left" if is_rtl() else "right", 18, "#111114" if focused else INK))
+                p.setOpacity(1.0)
 
 
 def back_button(on_click) -> QtWidgets.QPushButton:
@@ -5723,8 +5743,33 @@ class LevelSlider(QtWidgets.QSlider):
 
 class SectionTitle(QtWidgets.QLabel):
     def __init__(self, text: str):
-        super().__init__(tr(text))
-        self.setStyleSheet(f"color: {MUTED}; font-size: 13px; font-weight: 600; padding: 22px 18px 6px 18px;")
+        text = tr(text)
+        super().__init__(text.capitalize() if text.isupper() else text)   # the keys are capitals
+        self.setStyleSheet(f"color: {INK}; font-size: 17px; font-weight: 600; padding: 28px 8px 10px 8px;")
+
+
+class SettingsCard(QtWidgets.QWidget):
+    """A section's rows on their own darker panel, so they read clearly over any game,
+    with thin lines between them."""
+
+    def __init__(self):
+        super().__init__()
+        self.rows = QtWidgets.QVBoxLayout(self)
+        self.rows.setContentsMargins(6, 6, 6, 6)
+        self.rows.setSpacing(0)
+
+    def paintEvent(self, _):
+        p = QtGui.QPainter(self)
+        p.setRenderHint(QtGui.QPainter.Antialiasing)
+        p.setPen(QtGui.QPen(QtGui.QColor(255, 255, 255, 20), 1))
+        p.setBrush(QtGui.QColor(18, 18, 22, 190))
+        p.drawRoundedRect(QtCore.QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5), 16, 16)
+        rows = [self.rows.itemAt(i).widget() for i in range(self.rows.count())]
+        p.setPen(QtGui.QPen(QtGui.QColor(255, 255, 255, 16), 1))
+        for above, below in zip(rows, rows[1:]):
+            if not (above.hasFocus() or below.hasFocus()):
+                y = below.geometry().top() + 0.5
+                p.drawLine(QtCore.QPointF(24, y), QtCore.QPointF(self.width() - 24, y))
 
 
 class Settings(QtWidgets.QWidget):
@@ -5811,13 +5856,18 @@ class Settings(QtWidgets.QWidget):
     def _row(self, *args, **kw) -> SettingRow:
         row = SettingRow(*args, **kw)
         row.changed.connect(self._refresh)
-        self.rows_layout.addWidget(row)
+        self.card.rows.addWidget(row)
         self.rows.append(row)
         return row
 
+    def _section(self, title: str):
+        """A title, then a card that the next rows go into."""
+        self.rows_layout.addWidget(SectionTitle(title))
+        self.card = SettingsCard()
+        self.rows_layout.addWidget(self.card)
+
     def _build_rows(self):
-        add = self.rows_layout.addWidget
-        add(SectionTitle("RECORDING"))
+        self._section("RECORDING")
         self.res_row = self._row("resolution", "Resolution", "choice", [("native", "Native")],
                                  lambda v: "Lower uses less RAM and space; Native looks sharpest")
         self._row("fps", "Frame rate", "choice", [(30, "30 FPS"), (60, "60 FPS"), (120, "120 FPS")],
@@ -5843,7 +5893,7 @@ class Settings(QtWidgets.QWidget):
                   [("top-left", "Top left"), ("top-right", "Top right"), ("off", "Off")],
                   lambda v: "A small REC timer while you record by hand. It never shows up in captures"
                   if v != "off" else "Nothing on screen while recording")
-        add(SectionTitle("CONTROLS"))
+        self._section("CONTROLS")
         hk = self._row("hotkey", "Keyboard shortcut", "action",
                        describe=lambda v: "Opens the menu. Press Enter, then the new keys")
         hk.on_activate = self._listen_hotkey
@@ -5860,24 +5910,24 @@ class Settings(QtWidgets.QWidget):
                   "Double-pressing does nothing extra", custom=lambda v: tr("{n} sec", n=v))
         self._row("rumble", "Rumble", "bool", describe=lambda v: "A short buzz on the controller when something is saved")
         self._row("sounds", "Sounds", "bool", describe=lambda v: "A short sound when something is saved")
-        add(SectionTitle("LIBRARY"))
+        self._section("LIBRARY")
         # a folder Windows refused shows where captures really go (the setting itself is kept)
         in_use = lambda v: str(self.ctl.clips_dir) if self.ctl.blocked and v == str(self.ctl.blocked) else v
         folder = self._row("clips_dir", "Clips folder", "action",
                            describe=lambda v: "Windows Security protects the folder you picked, so captures "
-                                              "are saved here. Press Enter to change"
-                           if in_use(v) != v else "Clips and recordings, a folder per game. Press Enter to change",
+                                              "are saved here"
+                           if in_use(v) != v else "Clips and recordings, a folder per game",
                            display=in_use)
         folder.on_activate = self._pick_folder
         shots = self._row("screenshots_dir", "Screenshots folder", "action",
-                          describe=lambda v: "A folder per game here too. Press Enter to change",
+                          describe=lambda v: "A folder per game here too",
                           display=lambda v: v or tr("Same as the clips folder"))
         shots.on_activate = self._pick_folder
         self._row("storage_warn_gb", "Warn me when captures pass", "choice",
                   [(0, "Never"), (50, "50 GB"), (100, "100 GB"), (200, "200 GB"), (500, "500 GB"),
                    (1000, "1 TB")], lambda v: "Only a notice. Nothing is ever deleted for you",
                   custom=lambda v: tr("{n} GB", n=v))
-        add(SectionTitle("GENERAL"))
+        self._section("GENERAL")
         self._row("start_with_windows", "Start with Windows", "bool",
                   describe=lambda v: "Capture Menu and OBS start when you sign in")
         self._row("language", "Language", "choice",
