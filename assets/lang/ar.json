@@ -331,5 +331,22 @@
   "Done": "تم",
   "HDR": "HDR",
   "HDR clips while Windows HDR is on. Shared copies get normal colours": "يسجّل HDR لما يكون HDR ويندوز شغال. النسخ اللي تشاركها تتحول لألوان عادية",
-  "Always normal colours (SDR)": "ألوان عادية دايماً (SDR)"
+  "Always normal colours (SDR)": "ألوان عادية دايماً (SDR)",
+  "DEVICES": "الأجهزة",
+  "Recording screen": "شاشة التسجيل",
+  "Follow the game": "تتبّع اللعبة",
+  "Microphone": "المايك",
+  "Picked before": "اخترته قبل",
+  "A screen that isn't connected": "شاشة مو موصولة",
+  "A microphone that isn't connected": "مايك مو موصول",
+  "{name} · {w}×{h} · main": "{name} · {w}×{h} · الرئيسية",
+  "Not connected now, so the game's screen is recorded": "مو موصولة الحين، فتنسجل شاشة اللعبة",
+  "Always records this screen, wherever the game is": "يسجّل هالشاشة دايم، وين ما كانت اللعبة",
+  "Asking OBS which microphones it can use…": "نسأل OBS عن المايكات اللي يقدر يستخدمها…",
+  "OBS isn't running, so its microphones can't be listed": "OBS مو شغّال، فما نقدر نعرض المايكات",
+  "OBS has no microphone yet · add one in OBS under Settings → Audio": "ما في مايك في OBS للحين · أضف واحد في OBS من الإعدادات ← الصوت",
+  "The microphone Windows uses. Your voice goes on its own track": "المايك اللي يستخدمه ويندوز. صوتك ينحفظ في مسار مستقل",
+  "Not connected now": "مو موصول الحين",
+  "Your voice is recorded from this microphone": "صوتك يتسجّل من هالمايك",
+  "Screen {n}": "شاشة {n}"
 }

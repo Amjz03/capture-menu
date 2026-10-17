@@ -72,7 +72,8 @@ DEFAULTS = {
     "game_names": {},
     "controller_button": "create",
     "controller_hold_ms": 0,
-    "capture_follow_game": True,
+    "capture_screen": "follow",  # follow (the game's screen) / main / a screen's id from screen_id()
+    "mic_device": "default",    # default (Windows' microphone) / an OBS device id
     "obs_display_source": "",
     "obs_auto_setup": True,
     "double_press_seconds": 30,
@@ -158,6 +159,8 @@ def load_config() -> dict:
     if CONFIG_PATH.exists():
         user = json.loads(CONFIG_PATH.read_text(encoding="utf-8-sig"))
         cfg.update({k: v for k, v in user.items() if v not in ("", None)})
+        if user.get("capture_follow_game") is False and "capture_screen" not in user:
+            cfg["capture_screen"] = "main"   # up to 0.0.10 "Follow the game's screen" off kept the main screen
     return cfg
 
 
@@ -193,6 +196,13 @@ def clock(ms: int) -> str:
 
 class ObsOffline(Exception):
     pass
+
+
+def mic_name(name: str) -> str:
+    """Windows names microphones "Headset Microphone (3- A50 X Mic)": the device is in the brackets
+    (after the number Windows adds), and it's what tells two microphones apart."""
+    m = re.fullmatch(r"[^(]*\((?:\d+- )?(.+)\)\s*", name)
+    return m.group(1).strip() if m else name
 
 
 class Obs:
@@ -310,6 +320,29 @@ class Obs:
         for m in mics:
             self.raw("SetInputMute", {"inputName": m, "inputMuted": muted})
         return bool(mics)
+
+    def mic_devices(self) -> tuple[str, list[tuple[str, str]]] | None:
+        """(the microphone OBS records now, [(device id, name)] of every microphone it can record).
+        None when OBS has no microphone input. "default" means Windows' default microphone."""
+        _, mics = self.audio_inputs()
+        if not mics:
+            return None
+        items = self.raw("GetInputPropertiesListPropertyItems",
+                         {"inputName": mics[0], "propertyName": "device_id"}).get("propertyItems", [])
+        current = self.raw("GetInputSettings", {"inputName": mics[0]}).get("inputSettings", {})
+        return (current.get("device_id") or "default",
+                [(i["itemValue"], mic_name(i["itemName"])) for i in items
+                 if i.get("itemValue") not in (None, "", "default") and i.get("itemEnabled", True)])
+
+    def set_mic_device(self, device: str) -> bool:
+        """Points OBS's (first) microphone input at device. Returns True if it changed."""
+        found = self.mic_devices()
+        if found is None or found[0] == device:
+            return False
+        _, mics = self.audio_inputs()
+        self.raw("SetInputSettings", {"inputName": mics[0], "overlay": True,
+                                      "inputSettings": {"device_id": device}})
+        return True
 
     def display_source(self) -> str | None:
         name = self.cfg.get("obs_display_source")
@@ -624,6 +657,44 @@ def screen_for(info: dict | None) -> QtGui.QScreen:
             if (s.geometry().left(), s.geometry().top()) == info["rect"][:2]:
                 return s
     return QtGui.QGuiApplication.screenAt(QtGui.QCursor.pos()) or QtGui.QGuiApplication.primaryScreen()
+
+
+def screen_id(s: QtGui.QScreen) -> str:
+    """A screen's lasting name for config.json: its model and serial number (Windows' DISPLAY1, 2…
+    can swap after a restart or a new cable)."""
+    return f"{s.model() or s.name()}#{s.serialNumber() or s.name()}"
+
+
+def screen_px_rect(s: QtGui.QScreen) -> tuple[int, int, int, int]:
+    """The screen on Windows' desktop in real pixels, like foreground_screen()'s rect (Qt keeps
+    the native top-left corner, but its size is scaled down by Windows' display scale)."""
+    g, dpr = s.geometry(), s.devicePixelRatio()
+    return g.left(), g.top(), g.left() + round(g.width() * dpr), g.top() + round(g.height() * dpr)
+
+
+def screen_label(s: QtGui.QScreen) -> str:
+    left, top, right, bottom = screen_px_rect(s)
+    screens = QtGui.QGuiApplication.screens()
+    name = s.model() or tr("Screen {n}", n=screens.index(s) + 1 if s in screens else 1)
+    if s is QtGui.QGuiApplication.primaryScreen():
+        return tr("{name} · {w}×{h} · main", name=name, w=right - left, h=bottom - top)
+    return f"{name} · {right - left}×{bottom - top}"
+
+
+def chosen_screen(choice: str) -> QtGui.QScreen | None:
+    """The screen picked in Settings → Recording screen; None to follow the game (also when the
+    picked screen isn't connected right now)."""
+    if choice in ("", "follow"):
+        return None
+    if choice == "main":
+        return QtGui.QGuiApplication.primaryScreen()
+    screens = QtGui.QGuiApplication.screens()
+    exact = [s for s in screens if screen_id(s) == choice]
+    if exact:
+        return exact[0]
+    model = choice.split("#")[0]    # same screen on another cable or port: its model still matches
+    same = [s for s in screens if (s.model() or s.name()) == model]
+    return same[0] if len(same) == 1 else None
 
 
 def game_screen() -> QtGui.QScreen:
@@ -1703,6 +1774,20 @@ class Controller(QtCore.QObject):
             self.status.emit(st)
         threading.Thread(target=run, daemon=True).start()
 
+    def apply_mic(self):
+        """The microphone picked in Settings. Only once it was picked here, so a microphone chosen
+        in OBS itself is left alone until then."""
+        wanted = self.cfg.get("mic_device", "default")
+        state = load_state()
+        if not state.get("mic_picked") or state.get("mic_device") == wanted:
+            return
+        if self.obs.mic_devices() is None:
+            return      # no microphone in OBS (yet): try again next start
+        if self.obs.set_mic_device(wanted):
+            log.info("microphone: %s", wanted)
+        state["mic_device"] = wanted
+        save_state(state)
+
     def auto_setup(self, width: int, height: int):
         """First run (or a new monitor/GPU): configure OBS for this PC, then restart it once."""
         encoder = pick_encoder(gpu_names())
@@ -1766,17 +1851,20 @@ class Controller(QtCore.QObject):
         return False
 
     def start_following(self):
-        """Every 2 s: if a game fills a monitor, make sure OBS records that monitor."""
-        if not self.cfg.get("capture_follow_game", True):
-            return
+        """Every 2 s: make sure OBS records the screen picked in Settings, or else the monitor a
+        fullscreen game is on."""
         self._following = threading.Lock()
         self._follow_timer = QtCore.QTimer(self, interval=2000, timeout=self._follow_tick)
         self._follow_timer.start()
 
     def _follow_tick(self):
-        info = foreground_screen()
-        if not info or info["own"]:
-            return
+        screen = chosen_screen(self.cfg.get("capture_screen", "follow"))
+        if screen is not None:     # a screen picked in Settings: always that one
+            info = {"rect": screen_px_rect(screen), "fullscreen": True}
+        else:
+            info = foreground_screen()
+            if not info or info["own"]:
+                return
         # ask OBS only when the game's screen changed, or every 10 s to catch a vanished monitor
         key = (info["rect"], info["fullscreen"])
         now = time.monotonic()
@@ -1823,6 +1911,12 @@ class Controller(QtCore.QObject):
                 if p.suffix.lower() != ".png" and p not in self.lengths:
                     self.lengths[p] = media_duration(p)
             self.save_lengths()
+            try:
+                self.apply_mic()
+            except ObsOffline:
+                pass
+            except Exception:
+                log.exception("couldn't pick the microphone in OBS")
             if screen_size and self.cfg.get("obs_auto_setup", True):
                 try:
                     self.auto_setup(*screen_size)
@@ -5562,7 +5656,9 @@ def set_start_with_windows(on: bool):
 def update_start_with_windows():
     """At start: moves older setups (a Startup shortcut, a Run entry alone) to the sign-in task,
     and keeps the path current."""
-    if IS_WINDOWS and starts_with_windows():
+    # only the installed CaptureMenu.exe: a copy run from source (a test, a developer) must not point
+    # Windows at itself. The Python version gets this from Setup.cmd, which updates run again.
+    if IS_WINDOWS and FROZEN and starts_with_windows():
         set_start_with_windows(True)
 
 
@@ -5893,6 +5989,7 @@ class Settings(QtWidgets.QWidget):
     Nothing is written until Save; then the app restarts itself (and OBS if recording changed)."""
 
     encoder_ready = QtCore.Signal(str)
+    mics_ready = QtCore.Signal(object)       # Obs.mic_devices(), or None
     update_event = QtCore.Signal(dict)       # what the update check / download is doing
 
     def __init__(self, ctl: Controller):
@@ -5961,10 +6058,12 @@ class Settings(QtWidgets.QWidget):
 
         self.rows: list[SettingRow] = []
         self.update: dict = {"state": "idle"}
+        self.mics: tuple | None | str = "checking"   # Obs.mic_devices() once OBS has answered
         self.install = run_update_installer     # tests swap this out
         self._build_rows()
         self.update_event.connect(self._on_update_event)
         self.encoder_ready.connect(self._on_encoder)
+        self.mics_ready.connect(self._on_mics)
         INPUT.changed.connect(lambda _: self.update_hints())
         self.update_hints()
 
@@ -6003,12 +6102,16 @@ class Settings(QtWidgets.QWidget):
         self._row("hdr", "HDR", "choice", [("auto", "Auto"), ("off", "Off")],
                   lambda v: "HDR clips while Windows HDR is on. Shared copies get normal colours"
                   if v == "auto" else "Always normal colours (SDR)")
-        self._row("capture_follow_game", "Follow the game's screen", "bool",
-                  describe=lambda v: "Records the monitor or TV the game is on")
         self._row("record_indicator", "Recording indicator", "choice",
                   [("top-left", "Top left"), ("top-right", "Top right"), ("off", "Off")],
                   lambda v: "A small REC timer while you record by hand. It never shows up in captures"
                   if v != "off" else "Nothing on screen while recording")
+        self._section("DEVICES")
+        # the screens and microphones are filled in by open(): they change while the app runs
+        self.screen_row = self._row("capture_screen", "Recording screen", "choice",
+                                    [("follow", "Follow the game")], self._screen_text)
+        self.mic_row = self._row("mic_device", "Microphone", "choice",
+                                 [("default", "Same as Windows")], self._mic_text)
         self._section("CONTROLS")
         hk = self._row("hotkey", "Keyboard shortcut", "action",
                        describe=lambda v: "Opens the menu. Press Enter, then the new keys")
@@ -6076,6 +6179,63 @@ class Settings(QtWidgets.QWidget):
             return tr("Your graphics card can't record this, so {codec} is used", codec=used)
         return "H.264 plays everywhere; AV1 and HEVC make smaller files" if v == "h264" else \
             "Smaller files than H.264 at the same quality. Shared copies are always H.264"
+
+    def _screen_text(self, v) -> str:
+        if v == "follow":
+            return "Records the monitor or TV the game is on"
+        if chosen_screen(v) is None:
+            return "Not connected now, so the game's screen is recorded"
+        return "Always records this screen, wherever the game is"
+
+    def _mic_text(self, v) -> str:
+        if self.mics == "checking":
+            return "Asking OBS which microphones it can use…"
+        if self.mics == "offline":
+            return "OBS isn't running, so its microphones can't be listed"
+        if self.mics is None:
+            return "OBS has no microphone yet · add one in OBS under Settings → Audio"
+        if v == "default":
+            return "The microphone Windows uses. Your voice goes on its own track"
+        if v not in dict(self.mics[1]):
+            return "Not connected now"
+        return "Your voice is recorded from this microphone"
+
+    def _fill_screens(self, current: str):
+        """Follow the game, then every screen connected now (and the saved one, if it isn't)."""
+        choices = [("follow", tr("Follow the game"))]
+        choices += [(screen_id(s), screen_label(s)) for s in QtGui.QGuiApplication.screens()]
+        if current not in dict(choices):
+            choices.append((current, tr("A screen that isn't connected")))
+        self.screen_row.choices = choices
+
+    def _fill_mics(self, current: str):
+        choices = [("default", tr("Same as Windows"))]
+        if isinstance(self.mics, tuple):
+            choices += list(self.mics[1])
+        if current not in dict(choices):
+            choices.append((current, tr("Checking…") if self.mics == "checking" else
+                            tr("Picked before") if self.mics == "offline" else
+                            tr("A microphone that isn't connected")))
+        self.mic_row.choices = choices
+
+    def _on_mics(self, found):
+        dirty = "mic_device" in self.changes()
+        self.mics = found
+        value = self.mic_row.value if dirty else self._saved()["mic_device"]
+        self._fill_mics(value)
+        self.mic_row.set_value(value)
+        self._refresh()
+
+    def _saved(self) -> dict:
+        """The settings as they are now, in the rows' terms."""
+        cfg = dict(self.ctl.cfg)
+        if IS_WINDOWS:
+            cfg["start_with_windows"] = starts_with_windows()
+        if cfg.get("capture_screen") == "main":
+            cfg["capture_screen"] = screen_id(QtGui.QGuiApplication.primaryScreen())
+        if isinstance(self.mics, tuple) and not load_state().get("mic_picked"):
+            cfg["mic_device"] = self.mics[0]    # never picked here: show the one OBS records now
+        return cfg
 
     def _buffer_text(self, v) -> str:
         mb = buffer_memory_mb(dict(self._plan_cfg(), buffer_minutes=v or 30), *self.screen_px,
@@ -6173,9 +6333,7 @@ class Settings(QtWidgets.QWidget):
                            tr("{n} unsaved changes", n=len(dirty))) if dirty else tr("Changes apply when you save"))
 
     def changes(self) -> dict:
-        current = dict(self.ctl.cfg)
-        if IS_WINDOWS:
-            current["start_with_windows"] = starts_with_windows()
+        current = self._saved()
         return {k: v for k, v in self.values().items() if current.get(k) != v}
 
     # ---- open / close
@@ -6187,11 +6345,20 @@ class Settings(QtWidgets.QWidget):
         w, h = self.screen_px
         self.res_row.choices = [("native", tr("Native  {w}×{h}", w=w, h=h))] + [
             (k, k) for k, v in RESOLUTIONS.items() if v < h]
-        cfg = dict(self.ctl.cfg)
-        if IS_WINDOWS:
-            cfg["start_with_windows"] = starts_with_windows()
+        cfg = self._saved()
+        self._fill_screens(cfg["capture_screen"])
+        self.mics = "checking"
+        self._fill_mics(cfg["mic_device"])
         for r in self.rows:
             r.set_value(cfg.get(r.key, DEFAULTS.get(r.key)))
+
+        def ask_obs():
+            try:
+                found = self.ctl.obs.mic_devices()
+            except Exception:
+                found = "offline"
+            safe_emit(self.mics_ready, found)
+        threading.Thread(target=ask_obs, daemon=True).start()
         if self.encoder is None:
             self.encoder = getattr(self.ctl, "best_encoder", None)
         if self.encoder is None:
@@ -6237,6 +6404,10 @@ class Settings(QtWidgets.QWidget):
         save_config(changes)
         if "start_with_windows" in changes:
             set_start_with_windows(bool(changes["start_with_windows"]))
+        if "mic_device" in changes:      # from now on the microphone is picked here (see apply_mic)
+            state = load_state()
+            state["mic_picked"] = True
+            save_state(state)
         self.ctl.cfg.update(changes)
         log.info("settings saved: %s", ", ".join(changes))
         self.hide()

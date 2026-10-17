@@ -31,7 +31,7 @@
 - **Share in one step:** copies for phones and Discord (10 / 50 / 500 MB) go straight to the clipboard, with or without your voice.
 - **Gallery** with favorites, titles, notes, sizes, sorting and multi-delete.
 - **Works with a controller:** DualSense, Xbox and most others, with on-screen hints that match.
-- **Follows your game** across monitors and TVs, and never shows up in your recordings.
+- **Follows your game** across monitors and TVs, or always records the screen you pick, and never shows up in your recordings.
 - **English and Arabic:** the whole interface, mirrored right to left in Arabic, like the PS5.
 - **One-click install:** OBS Studio and FFmpeg are installed and set up for your PC automatically.
 
@@ -202,7 +202,7 @@ Titles like "Boss down on the first try" show in the viewer, Recent row and gall
 
 - **Mic.** The Mic tile (or **M**) mutes your microphone in OBS; it turns red when off.
 - **Your voice on its own track.** Recordings carry 3 audio tracks: everything, game only and mic only. Players use the first, so clips sound normal; *Without my voice* uses the second.
-- **Monitors and TVs.** The bar, notifications and viewer open on the screen of the window in front. When a game fills a screen, OBS switches to record that screen within about 2 seconds, scaled to your recording resolution. Alt-tabbing to another screen doesn't move it. The replay buffer keeps what was captured at the time, so minutes before a move show the old screen.
+- **Monitors and TVs.** The bar, notifications and viewer open on the screen of the window in front. When a game fills a screen, OBS switches to record that screen within about 2 seconds, scaled to your recording resolution. Alt-tabbing to another screen doesn't move it. The replay buffer keeps what was captured at the time, so minutes before a move show the old screen. To always record one screen instead, pick it in Settings → Devices → Recording screen.
 - **REC timer.** A manual recording shows a small red *REC 12:34* in a corner. Clicks go through it, and it never shows up in captures.
 - **Storage warning.** Past 200 GB of captures, or under 20 GB free on the drive, you get a notice. Nothing is ever deleted for you.
 - **Sounds and vibration.** A chime when a clip is saved, a shutter click for screenshots and a tone when recording starts; the controller buzzes too while you're using it. Replace the `.wav` files in `assets\sounds` with your own if you like.
@@ -213,7 +213,8 @@ Titles like "Boss down on the first try" show in the viewer, Recent row and gall
 
 Open it from the **Settings** tile at the end of the bar, **,** on the keyboard, or the tray icon. Move with ↑ ↓, change with ← →, **S** (△ / Y) saves, **Esc** (◯ / B) cancels. **Restore defaults** goes back to the original setup.
 
-- **Recording:** resolution (Native, 1440p, 1080p, 720p), frame rate (30, 60, 120), quality (Light, Balanced, High, Max), video format (Auto, AV1, HEVC, H.264), replay buffer (5 to 60 min), voice on its own track, HDR (Auto, Off), follow the game's screen, REC indicator (top left, top right, off).
+- **Recording:** resolution (Native, 1440p, 1080p, 720p), frame rate (30, 60, 120), quality (Light, Balanced, High, Max), video format (Auto, AV1, HEVC, H.264), replay buffer (5 to 60 min), voice on its own track, HDR (Auto, Off), REC indicator (top left, top right, off).
+- **Devices:** recording screen (follow the game, or one of your screens by name), microphone (the one Windows uses, or any microphone OBS can record).
 - **Controls:** keyboard shortcut, controller button, press or hold, double-press to save, rumble, sounds.
 - **Library:** clips folder, screenshots folder (the clips folder unless you pick another), storage warning.
 - **General:** start with Windows, language (same as Windows, English or العربية), updates.
@@ -237,7 +238,8 @@ The Settings page writes to `config.json` in the install folder. You can also ed
 | `controller_button` | `create`, `ps`, `options`, `touchpad`, `mute`, `share` (Xbox Series), `view`, or a combo like `l1+r1` |
 | `controller_hold_ms` | Hold time before the bar opens; `0` = on press. Use `400` if your game uses the same button |
 | `double_press_seconds` | Seconds saved by a double press; `0` = off |
-| `capture_follow_game` | `true`: OBS records the screen your game is on |
+| `capture_screen` | `follow`: OBS records the screen your game is on; or one screen, as picked in Settings |
+| `mic_device` | `default`: Windows' microphone; or a microphone's id, as picked in Settings |
 | `obs_display_source` | The OBS Display Capture source to switch. Empty = the first one |
 | `obs_auto_setup` | `true`: set OBS up for this PC on first run |
 | `voice_track` | Record your voice on its own audio track |

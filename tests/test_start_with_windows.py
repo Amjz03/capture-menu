@@ -7,6 +7,7 @@ if not cm.IS_WINDOWS:
 import winreg
 # a throwaway key, task and APPDATA, so the real Run list, tasks and Startup folder are never touched
 cm.RUN_KEY = r"Software\CaptureMenuTest\Run"
+cm.FROZEN = True    # act like the installed CaptureMenu.exe (a source copy leaves Windows alone)
 cm.logon_task_name = lambda: "Capture Menu test (delete me)"
 os.environ["APPDATA"] = tempfile.mkdtemp()
 def run_value():
