@@ -234,8 +234,22 @@ $s.Arguments = $arguments
 $s.WorkingDirectory = $InstallDir
 $s.Description = "Capture Menu"
 $s.Save()
-# Start with Windows through the registry Run list: Windows sometimes skips the whole Startup
-# folder at sign-in, the Run list it always runs. The Startup shortcut older versions made goes.
+# Start with Windows through a Task Scheduler task that runs the moment you sign in: the Startup
+# folder and the Run list wait half a minute or more and Windows sometimes skips them. The Run
+# entry stays as a backup (a second copy quietly does nothing). The Startup shortcut older versions made goes.
+$me = "$env:USERDOMAIN\$env:USERNAME"
+try {
+    $action = if ($arguments) { New-ScheduledTaskAction -Execute $target -Argument $arguments -WorkingDirectory $InstallDir }
+              else { New-ScheduledTaskAction -Execute $target -WorkingDirectory $InstallDir }
+    Register-ScheduledTask -TaskName "Capture Menu ($env:USERNAME)" -Force -ErrorAction Stop `
+        -Description "Starts Capture Menu when you sign in" -Action $action `
+        -Trigger (New-ScheduledTaskTrigger -AtLogOn -User $me) `
+        -Principal (New-ScheduledTaskPrincipal -UserId $me -LogonType Interactive -RunLevel Limited) `
+        -Settings (New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries `
+                   -ExecutionTimeLimit ([TimeSpan]::Zero) -Priority 5 -MultipleInstances IgnoreNew) | Out-Null
+} catch {
+    Warn "Couldn't add the sign-in task, so Capture Menu starts a little later after sign-in"
+}
 $run = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run"
 if (-not (Test-Path $run)) { New-Item -Path $run -Force | Out-Null }
 Set-ItemProperty -Path $run -Name "Capture Menu" -Value ("`"$target`" $arguments").Trim()

@@ -5402,10 +5402,51 @@ class Gallery(QtWidgets.QWidget):
 
 # ---------------------------------------------------------------- settings
 
-# Starting with Windows goes through the registry Run list, not the Startup folder: Windows
-# sometimes skips the whole Startup folder at sign-in, while the Run list is always run.
+# Starting with Windows: a Task Scheduler task that runs the moment you sign in. The Startup folder
+# and the registry Run list both wait half a minute or more, one app at a time, and Windows sometimes
+# skips entries in them. The Run entry stays as a backup; a second copy quietly does nothing.
 RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
 RUN_NAME = "Capture Menu"
+
+
+def logon_task_name() -> str:
+    """One task per Windows user (task names are shared by everyone on the PC)."""
+    return f"Capture Menu ({os.environ.get('USERNAME', 'user')})"
+
+
+def set_logon_task(on: bool):
+    """Adds or removes the sign-in task. Returns quietly if Task Scheduler refuses."""
+    name = logon_task_name()
+    if not on:
+        subprocess.run(["schtasks", "/Delete", "/TN", name, "/F"], capture_output=True,
+                       creationflags=0x08000000)
+        return
+    from xml.sax.saxutils import escape
+    user = escape(f"{os.environ.get('USERDOMAIN', '')}\\{os.environ.get('USERNAME', '')}".lstrip("\\"))
+    exe, args = ((sys.executable, "") if FROZEN else
+                 (str(Path(sys.executable).with_name("pythonw.exe")), f'"{APP_DIR / "capture_menu.py"}"'))
+    # no time limit (the default stops a task after 3 days), runs on battery, normal priority (not 7)
+    xml = f"""<?xml version="1.0" encoding="UTF-16"?>
+<Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
+  <RegistrationInfo><Description>Starts Capture Menu when you sign in</Description></RegistrationInfo>
+  <Triggers><LogonTrigger><Enabled>true</Enabled><UserId>{user}</UserId></LogonTrigger></Triggers>
+  <Principals><Principal id="Author"><UserId>{user}</UserId><LogonType>InteractiveToken</LogonType>
+    <RunLevel>LeastPrivilege</RunLevel></Principal></Principals>
+  <Settings><MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>
+    <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries><StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>
+    <ExecutionTimeLimit>PT0S</ExecutionTimeLimit><Priority>5</Priority></Settings>
+  <Actions Context="Author"><Exec><Command>{escape(exe)}</Command><Arguments>{escape(args)}</Arguments>
+    <WorkingDirectory>{escape(str(APP_DIR))}</WorkingDirectory></Exec></Actions>
+</Task>"""
+    file = Path(tempfile.gettempdir()) / "capture-menu-task.xml"
+    try:
+        file.write_text(xml, encoding="utf-16")
+        done = subprocess.run(["schtasks", "/Create", "/TN", name, "/XML", str(file), "/F"],
+                              capture_output=True, creationflags=0x08000000)
+        if done.returncode:
+            log.warning("couldn't add the sign-in task: %s", done.stderr.decode(errors="replace").strip())
+    finally:
+        file.unlink(missing_ok=True)
 
 
 def startup_shortcut() -> Path:
@@ -5433,11 +5474,12 @@ def starts_with_windows() -> bool:
 
 
 def set_start_with_windows(on: bool):
-    """Adds or removes the Run entry (and the old Startup shortcut either way)."""
+    """Adds or removes the sign-in task and the Run entry (and the old Startup shortcut either way)."""
     if not IS_WINDOWS:
         return
     import winreg
     startup_shortcut().unlink(missing_ok=True)
+    set_logon_task(on)
     try:
         with winreg.CreateKey(winreg.HKEY_CURRENT_USER, RUN_KEY) as key:
             if on:
@@ -5452,7 +5494,8 @@ def set_start_with_windows(on: bool):
 
 
 def update_start_with_windows():
-    """At start: moves an old Startup shortcut to the Run list, and keeps the path current."""
+    """At start: moves older setups (a Startup shortcut, a Run entry alone) to the sign-in task,
+    and keeps the path current."""
     if IS_WINDOWS and starts_with_windows():
         set_start_with_windows(True)
 
@@ -6290,7 +6333,7 @@ def main():
         log.info("already running, exiting")
         return
     app.aboutToQuit.connect(lock.unlock)
-    update_start_with_windows()
+    threading.Thread(target=update_start_with_windows, daemon=True).start()   # schtasks takes a moment
     problems: list[str] = []
 
     ctl = Controller(cfg)
