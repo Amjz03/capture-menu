@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.0.11 · 2026-10-17
+
+- **Pick the recording screen.** Settings → Devices → Recording screen: **Follow the game** (the default, as before) or any of your screens by name, like `LG TV · 3840×2160`. A picked screen is always recorded, wherever the game is; while it isn't connected, the game's screen is. If you had turned off "Follow the game's screen", it becomes your main screen.
+- **Pick the microphone.** Settings → Devices → Microphone: **Same as Windows** (the default) or any microphone OBS can record, shown by its device name. A microphone you chose in OBS itself is kept until you pick one here.
+- **Hover only lends the highlight.** Moving the mouse over Settings, the bar or the Save recent row lights up what's under it only while it's there; when the mouse leaves, the highlight goes back. A click or a key keeps it. Hovering in Settings no longer scrolls the page.
+
 ## 0.0.10 · 2026-10-17
 
 - **Starts the moment you sign in.** Capture Menu now starts from a Task Scheduler task that runs right at sign-in, instead of Windows' startup list, which waits half a minute or more and sometimes skipped it. Updating sets it up on its own; Settings → Start with Windows turns it on and off.
