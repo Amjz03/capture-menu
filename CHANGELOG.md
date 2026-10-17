@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.0.7 · 2026-10-17
 
 - **HDR.** Settings → HDR: **Auto** records in HDR (10-bit, Rec.2100 PQ, AV1 or HEVC) while Windows HDR is on for your main screen. Trims stay HDR; shared copies, thumbnails and previews are turned into normal colours, tuned to look like the built-in player, so they don't come out grey on phones or Discord. **Off** always records normal colours.
 - **Glass.** The viewer, the gallery and Settings sit on frosted glass: the game shows through behind them, blurred and dimmed, like the PS5. It's Windows' own acrylic blur, so it costs the game nothing; where Windows can't do it the pages stay solid as before.
