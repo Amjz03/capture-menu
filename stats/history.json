@@ -53,8 +53,8 @@
    "uniques": 0
   },
   "2026-10-16": {
-   "count": 0,
-   "uniques": 0
+   "count": 40,
+   "uniques": 16
   }
  },
  "downloads": {
@@ -79,20 +79,127 @@
    },
    "setup_exe": 7,
    "total": 11
+  },
+  "2026-10-17": {
+   "by_release": {
+    "v0.0.1": {
+     "CaptureMenu-Setup.exe": 0,
+     "CaptureMenu.zip": 2
+    },
+    "v0.0.2": {
+     "CaptureMenu-Setup.exe": 5,
+     "CaptureMenu.zip": 2
+    },
+    "v0.0.3": {
+     "CaptureMenu-Setup.exe": 2,
+     "CaptureMenu.zip": 2
+    },
+    "v0.0.4": {
+     "CaptureMenu-Setup.exe": 6,
+     "CaptureMenu.zip": 2
+    },
+    "v0.0.5": {
+     "CaptureMenu-Setup.exe": 0,
+     "CaptureMenu.zip": 2
+    },
+    "v0.0.6": {
+     "CaptureMenu-Setup.exe": 2,
+     "CaptureMenu.zip": 2
+    },
+    "v0.0.7": {
+     "CaptureMenu-Setup.exe": 1,
+     "CaptureMenu.zip": 2
+    },
+    "v0.0.8": {
+     "CaptureMenu-Setup.exe": 1,
+     "CaptureMenu.zip": 2
+    }
+   },
+   "setup_exe": 17,
+   "total": 33
   }
  },
  "paths": {
-  "2026-10-16": []
+  "2026-10-16": [],
+  "2026-10-17": [
+   {
+    "count": 16,
+    "path": "/Amjz03/capture-menu/releases/tag/v0.0.2",
+    "title": "/releases/tag/v0.0.2",
+    "uniques": 14
+   },
+   {
+    "count": 8,
+    "path": "/Amjz03/capture-menu",
+    "title": "Overview",
+    "uniques": 4
+   },
+   {
+    "count": 2,
+    "path": "/Amjz03/capture-menu/releases/tag/v0.0.4",
+    "title": "/releases/tag/v0.0.4",
+    "uniques": 2
+   },
+   {
+    "count": 1,
+    "path": "/Amjz03/capture-menu/blob/main/docs/icon.png",
+    "title": "/blob/main/docs/icon.png",
+    "uniques": 1
+   },
+   {
+    "count": 1,
+    "path": "/Amjz03/capture-menu/blob/main/docs/preview.jpg",
+    "title": "/blob/main/docs/preview.jpg",
+    "uniques": 1
+   },
+   {
+    "count": 1,
+    "path": "/Amjz03/capture-menu/blob/main/docs/screenshots/running-notice.jpg",
+    "title": "/blob/main/docs/screenshots/running-notice.jpg",
+    "uniques": 1
+   },
+   {
+    "count": 1,
+    "path": "/Amjz03/capture-menu/blob/main/docs/screenshots/save-recent.jpg",
+    "title": "/blob/main/docs/screenshots/save-recent.jpg",
+    "uniques": 1
+   },
+   {
+    "count": 1,
+    "path": "/Amjz03/capture-menu/blob/main/docs/screenshots/settings.jpg",
+    "title": "/blob/main/docs/screenshots/settings.jpg",
+    "uniques": 1
+   },
+   {
+    "count": 1,
+    "path": "/Amjz03/capture-menu/releases",
+    "title": "/releases",
+    "uniques": 1
+   },
+   {
+    "count": 1,
+    "path": "/Amjz03/capture-menu/releases/tag/v0.0.1",
+    "title": "/releases/tag/v0.0.1",
+    "uniques": 1
+   }
+  ]
  },
  "referrers": {
-  "2026-10-16": []
+  "2026-10-16": [],
+  "2026-10-17": [
+   {
+    "count": 10,
+    "referrer": "t.co",
+    "uniques": 10
+   }
+  ]
  },
  "repo": {
   "forks": 0,
   "stars": 0,
   "watchers": 0
  },
- "updated": "2026-10-16T20:03:00+00:00",
+ "updated": "2026-10-17T07:52:25+00:00",
  "views": {
   "2026-10-03": {
    "count": 0,
@@ -147,8 +254,8 @@
    "uniques": 0
   },
   "2026-10-16": {
-   "count": 0,
-   "uniques": 0
+   "count": 36,
+   "uniques": 15
   }
  }
 }
