@@ -7,6 +7,8 @@
 - **Share / Export** is three cards (Format, Your voice, Size limit) and one Export & copy button, instead of a row of presets.
 - **Rename** opens a small dialog over the video, with the note tucked away until you add one.
 - Fixed: on a 1920×1080 screen some viewer buttons lost the end of their names.
+- **More** in the viewer is a titled panel with the same big icon buttons; the star turns yellow once favorited.
+- **Select in the gallery.** A Select button at the top: then a click picks captures instead of opening them, every tile shows a circle that fills in, and the top bar becomes Select all · Delete · Cancel. ▢ / Space and Ctrl+click still pick right away.
 
 ## 0.0.6 · 2026-10-17
 

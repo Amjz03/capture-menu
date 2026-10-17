@@ -2172,7 +2172,7 @@ ICON_FILES = {
     "gallery": "layout-grid", "drive": "hard-drive", "settings": "settings",
     "volume": "volume-2", "volume-off": "volume-x", "maximize": "maximize", "minimize": "minimize",
     "pencil": "pencil", "audio": "audio-lines", "export": "upload", "more": "ellipsis",
-    "gamepad": "gamepad-2", "info": "info", "file-video": "file-video",
+    "gamepad": "gamepad-2", "info": "info", "file-video": "file-video", "select": "square-check-big",
 }
 _icon_cache: dict = {}
 
@@ -2483,8 +2483,9 @@ class ActionCard(Card):
 
 def draw_capture_tile(p: QtGui.QPainter, r: QtCore.QRectF, pixmap: QtGui.QPixmap, path: Path | None,
                       length: float | None, favorite: bool, dim: int = 0, radius: int = 10,
-                      marked: bool = False):
-    """A capture thumbnail with its badges: length (or screenshot) and a favourite star."""
+                      marked: bool = False, selecting: bool = False):
+    """A capture thumbnail with its badges: length (or screenshot) and a favourite star.
+    selecting: every tile shows the circle that a pick fills in."""
     p.setRenderHint(QtGui.QPainter.Antialiasing)
     p.drawPixmap(r.topLeft(), pixmap)
     if dim:
@@ -2519,6 +2520,11 @@ def draw_capture_tile(p: QtGui.QPainter, r: QtCore.QRectF, pixmap: QtGui.QPixmap
         p.setPen(QtGui.QPen(QtGui.QColor("#111114"), 2.4, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
         p.drawPolyline(QtGui.QPolygonF([c + QtCore.QPointF(-5, 0), c + QtCore.QPointF(-1.5, 3.5),
                                         c + QtCore.QPointF(5, -4)]))
+    elif selecting:
+        c = QtCore.QPointF(r.right() - 17, r.top() + 17)
+        p.setPen(QtGui.QPen(QtGui.QColor(INK), 2))
+        p.setBrush(QtGui.QColor(0, 0, 0, 120))
+        p.drawEllipse(c, 10, 10)
     if favorite:
         star = QtCore.QRectF(r.left() + 6, r.top() + 6, 22, 22)
         p.setPen(Qt.NoPen)
@@ -4758,7 +4764,7 @@ class TileDelegate(QtWidgets.QStyledItemDelegate):
         tile = QtCore.QRectF(r.x() + (r.width() - self.g.TW) / 2, r.y() + 8, self.g.TW, self.g.TH)
         ctl = self.g.ctl
         draw_capture_tile(p, tile, self.pixmap(path), path, ctl.length_of(path), ctl.is_favorite(path),
-                          dim=0 if selected else 40, marked=path in self.g.marked)
+                          dim=0 if selected else 40, marked=path in self.g.marked, selecting=self.g.selecting)
         if selected:
             p.setPen(QtGui.QPen(QtGui.QColor(INK), 2))
             p.setBrush(Qt.NoBrush)
@@ -4836,6 +4842,7 @@ class Gallery(QtWidgets.QWidget):
         self.items: list[Path] = []
         self.marked: set[Path] = set()
         self.by_size = False
+        self.select_mode = False      # Select pressed: a click (or ✕ / Enter) picks instead of opening
 
         lay = QtWidgets.QVBoxLayout(self)
         lay.setContentsMargins(64, 40, 64, 32)
@@ -4856,10 +4863,20 @@ class Gallery(QtWidgets.QWidget):
         self.sort_btn.setCursor(Qt.PointingHandCursor)
         self.sort_btn.clicked.connect(self.toggle_sort)
         head.addWidget(self.sort_btn)
-        self.clear_btn = QtWidgets.QPushButton(tr("Clear selection"))
+        head.addSpacing(4)
+        self.select_btn = QtWidgets.QPushButton("  " + tr("Select"))
+        self.select_btn.setIcon(qicon("select"))
+        self.select_btn.setIconSize(QtCore.QSize(18, 18))
+        self.select_btn.setFocusPolicy(Qt.NoFocus)
+        self.select_btn.setCursor(Qt.PointingHandCursor)
+        self.select_btn.clicked.connect(self.start_selecting)
+        head.addWidget(self.select_btn)
+        self.all_btn = QtWidgets.QPushButton(tr("Select all"))
         self.del_btn = QtWidgets.QPushButton(tr("Delete selected"))
         self.del_btn.setIcon(qicon("trash"))
-        for b, fn in ((self.clear_btn, self.clear_marks), (self.del_btn, self.delete_marked)):
+        self.clear_btn = QtWidgets.QPushButton(tr("Cancel"))
+        for b, fn in ((self.all_btn, self.mark_all), (self.del_btn, self.delete_marked),
+                      (self.clear_btn, self.stop_selecting)):
             b.setFocusPolicy(Qt.NoFocus)
             b.setCursor(Qt.PointingHandCursor)
             b.clicked.connect(fn)
@@ -4867,7 +4884,7 @@ class Gallery(QtWidgets.QWidget):
             head.addWidget(b)
         self._disarm = QtCore.QTimer(self, singleShot=True, timeout=self._reset_delete)
         for text, icon, fn in (("", "folder", self.ctl.open_folder), ("", "close", self.close_gallery)):
-            b = QtWidgets.QPushButton(text, objectName="" if text else "icon")
+            b = QtWidgets.QPushButton(text, objectName="" if text else "round")
             b.setToolTip(tr("Open the clips folder") if icon == "folder" else tr("Close (Esc)"))
             b.setIcon(qicon(icon))
             b.setIconSize(QtCore.QSize(18, 18))
@@ -4895,7 +4912,7 @@ class Gallery(QtWidgets.QWidget):
         self.grid.setUniformItemSizes(True)
         self.grid.setWordWrap(True)
         self.grid.setSpacing(4)
-        self.grid.itemDoubleClicked.connect(lambda _: self.open_selected())
+        self.grid.itemDoubleClicked.connect(lambda _: None if self.selecting else self.open_selected())
         self.grid.itemClicked.connect(self._clicked)
         self.grid.currentRowChanged.connect(lambda _: self._update_info())
         self.grid.installEventFilter(self)
@@ -4925,10 +4942,26 @@ class Gallery(QtWidgets.QWidget):
         bring_to_front(self)
         self.grid.setFocus()
 
+    @property
+    def selecting(self) -> bool:
+        return self.select_mode or bool(self.marked)
+
+    def start_selecting(self):
+        self.select_mode = True
+        self._update_info()
+        self.update_hints()
+        self.grid.viewport().update()
+        self.grid.setFocus()
+
+    def stop_selecting(self):
+        self.select_mode = False
+        self.clear_marks()
+        self.update_hints()
+
     def go_back(self):
         """A selection is let go first; then back to wherever the gallery was opened from."""
-        if self.marked:
-            self.clear_marks()
+        if self.selecting:
+            self.stop_selecting()
             return
         back, self.back_to = getattr(self, "back_to", None), None
         self.close_gallery()
@@ -4936,6 +4969,7 @@ class Gallery(QtWidgets.QWidget):
             back()
 
     def close_gallery(self):
+        self.select_mode = False
         self.clear_marks()
         self.hide()
         self.grid.clear()        # the tiles' pixmaps go with it; reopening rebuilds them in ~0.1 s
@@ -5025,8 +5059,14 @@ class Gallery(QtWidgets.QWidget):
             text = (tr("{n} selected", n=len(self.marked)) + "  ·  "
                     f"{human_size(sum(file_size(p) for p in self.marked))}  ·  {text}")
         self.info.setText(text)
-        self.clear_btn.setVisible(bool(self.marked))
-        self.del_btn.setVisible(bool(self.marked))
+        picking = self.selecting
+        self.select_btn.setVisible(not picking)
+        self.sort_btn.setVisible(not picking)
+        for b in (self.all_btn, self.del_btn, self.clear_btn):
+            b.setVisible(picking)
+        self.del_btn.setEnabled(bool(self.marked))
+        self.all_btn.setText(tr("Select none") if self.items and self.marked == set(self.items) else tr("Select all"))
+        self.update_hints()
         if not self.del_btn.property("danger"):
             self.del_btn.setText(tr("Delete {n}", n=len(self.marked)))
 
@@ -5041,8 +5081,8 @@ class Gallery(QtWidgets.QWidget):
         self.refresh()
 
     def _clicked(self, item):
-        if QtWidgets.QApplication.keyboardModifiers() & Qt.ControlModifier:
-            self.toggle_mark()       # Ctrl+click marks, like Explorer
+        if self.selecting or QtWidgets.QApplication.keyboardModifiers() & Qt.ControlModifier:
+            self.toggle_mark()       # while selecting a click picks; Ctrl+click always does, like Explorer
 
     def toggle_mark(self):
         row = self.grid.currentRow()
@@ -5112,6 +5152,12 @@ class Gallery(QtWidgets.QWidget):
 
     def update_hints(self):
         pad = INPUT.mode != "keyboard"
+        if self.selecting:
+            self.hints.set_items(
+                [("DPAD_LR", "Move"), ("A", "Select"), ("OPT", "Delete selected"), ("B", "Done")] if pad
+                else [("k:← →", "Move"), ("k:Enter", "Select"), ("k:Ctrl A", "Select all"),
+                      ("k:Del", "Delete selected"), ("k:Esc", "Done")], INPUT.mode)
+            return
         self.hints.set_items(
             [("DPAD_LR", "Move"), ("A", "Open"), ("X", "Select"), ("OPT", "Delete selected"),
              ("L1R1", "Game"), ("Y", "Favorite"), ("B", "Back")] if pad
@@ -5131,9 +5177,10 @@ class Gallery(QtWidgets.QWidget):
             super().keyPressEvent(e)
 
     def _key(self, k: int) -> bool:
+        open_or_pick = self.toggle_mark if self.selecting else self.open_selected
         actions = {Qt.Key_Escape: self.go_back,
-                   Qt.Key_Return: self.open_selected,
-                   Qt.Key_Enter: self.open_selected, Qt.Key_BracketLeft: lambda: self.step_game(-1),
+                   Qt.Key_Return: open_or_pick,
+                   Qt.Key_Enter: open_or_pick, Qt.Key_BracketLeft: lambda: self.step_game(-1),
                    Qt.Key_BracketRight: lambda: self.step_game(1), Qt.Key_F: self.toggle_favorite,
                    Qt.Key_Space: self.toggle_mark, Qt.Key_Delete: self.delete_marked,
                    Qt.Key_S: self.toggle_sort}

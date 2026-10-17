@@ -325,5 +325,8 @@
   "Title": "الاسم",
   "Your microphone in this clip": "المايك في هذا المقطع",
   "Your microphone is in the video": "صوت المايك موجود في الفيديو",
-  "Everything else you can do with this capture": "كل شي ثاني تقدر تسويه بهذا المقطع"
+  "Everything else you can do with this capture": "كل شي ثاني تقدر تسويه بهذا المقطع",
+  "Select all": "تحديد الكل",
+  "Select none": "إلغاء تحديد الكل",
+  "Done": "تم"
 }

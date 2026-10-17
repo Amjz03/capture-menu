@@ -194,7 +194,7 @@ Copies go into a `Shared` folder in the game's folder and are **copied to the cl
 
 - Arrows move, **Enter** opens the viewer, **[ ]** (L1 / R1) switches game, **F** (△ / Y) stars.
 - **S** sorts by Newest or **Largest**, which also puts the biggest games first.
-- **Space** (▢ / X, or Ctrl+click) marks captures, **Ctrl+A** marks all, **Del** deletes them to the Recycle Bin after a confirmation that mentions any favorites.
+- **Select** (top right) lets you pick captures with a click: every tile shows a circle that fills in when picked, and the top bar becomes **Select all · Delete · Cancel**. **Space** (▢ / X) or Ctrl+click picks one without pressing Select, **Ctrl+A** picks all, and **Del** deletes them to the Recycle Bin after a confirmation that mentions any favorites. Esc (◯ / B) stops selecting.
 
 Titles like "Boss down on the first try" show in the viewer, Recent row and gallery, and name the copies you share; the file keeps its name.
 
