@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.0.10 · 2026-10-17
+
+- **Starts the moment you sign in.** Capture Menu now starts from a Task Scheduler task that runs right at sign-in, instead of Windows' startup list, which waits half a minute or more and sometimes skipped it. Updating sets it up on its own; Settings → Start with Windows turns it on and off.
+- **No more "Run in Safe Mode?" from OBS after a restart.** When Windows restarted while OBS was still closing, OBS asked about Safe Mode the next time and recorded nothing until you answered. Capture Menu now clears what OBS left behind before starting it.
+
 ## 0.0.9 · 2026-10-17
 
 - **Starts with Windows every time.** Capture Menu now starts from Windows' startup list in the registry instead of the Startup folder, which Windows sometimes skips at sign-in, so it didn't come back after a restart. Updating moves it over on its own; Settings → Start with Windows works as before.
