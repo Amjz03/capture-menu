@@ -4,6 +4,8 @@ name: Release
 # CaptureMenu.zip (the Python version, no tests or screenshots), and publishes them as a release.
 # Three ways to start it: change the VERSION file on main (e.g. to v0.0.2), run it from the
 # Actions tab with a version, or push a tag that starts with "v".
+# Both .exe files are signed through SignPath (free for open source) once the SIGNPATH_API_TOKEN
+# secret and the SIGNPATH_ORGANIZATION_ID variable are set; until then they are published unsigned.
 on:
   workflow_dispatch:
     inputs:
@@ -22,6 +24,8 @@ permissions:
 jobs:
   release:
     runs-on: windows-latest
+    env:
+      SIGN: ${{ secrets.SIGNPATH_API_TOKEN != '' && vars.SIGNPATH_ORGANIZATION_ID != '' }}
     defaults:
       run:
         shell: bash
@@ -63,6 +67,34 @@ jobs:
             --add-data "assets;assets" --collect-all sdl2dll --collect-all obsws_python capture_menu.py
           test -f dist/CaptureMenu/CaptureMenu.exe
 
+      - name: Upload CaptureMenu.exe for signing
+        id: unsigned-app
+        if: steps.version.outputs.skip != 'true' && env.SIGN == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: CaptureMenu-unsigned
+          path: dist/CaptureMenu/CaptureMenu.exe
+
+      - name: Sign CaptureMenu.exe
+        if: steps.version.outputs.skip != 'true' && env.SIGN == 'true'
+        uses: signpath/github-action-submit-signing-request@v3
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: capture-menu
+          signing-policy-slug: release-signing
+          github-artifact-id: ${{ steps.unsigned-app.outputs.artifact-id }}
+          wait-for-completion-timeout-in-seconds: 3600
+          output-artifact-directory: signed/app
+
+      - name: Put the signed CaptureMenu.exe in place
+        if: steps.version.outputs.skip != 'true' && env.SIGN == 'true'
+        shell: pwsh
+        run: |
+          $sig = Get-AuthenticodeSignature signed/app/CaptureMenu.exe
+          if ($sig.Status -ne 'Valid') { throw "CaptureMenu.exe signature: $($sig.Status)" }
+          Copy-Item signed/app/CaptureMenu.exe dist/CaptureMenu/CaptureMenu.exe -Force
+
       - name: Build CaptureMenu-Setup.exe
         if: steps.version.outputs.skip != 'true'
         env:
@@ -72,6 +104,34 @@ jobs:
           [ -f "$ISCC" ] || choco install innosetup -y --no-progress
           "$ISCC" //Q "//DAppVersion=${TAG#v}" installer/installer.iss
           ls -la Output/CaptureMenu-Setup.exe
+
+      - name: Upload CaptureMenu-Setup.exe for signing
+        id: unsigned-setup
+        if: steps.version.outputs.skip != 'true' && env.SIGN == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: CaptureMenu-Setup-unsigned
+          path: Output/CaptureMenu-Setup.exe
+
+      - name: Sign CaptureMenu-Setup.exe
+        if: steps.version.outputs.skip != 'true' && env.SIGN == 'true'
+        uses: signpath/github-action-submit-signing-request@v3
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: capture-menu
+          signing-policy-slug: release-signing
+          github-artifact-id: ${{ steps.unsigned-setup.outputs.artifact-id }}
+          wait-for-completion-timeout-in-seconds: 3600
+          output-artifact-directory: signed/setup
+
+      - name: Put the signed CaptureMenu-Setup.exe in place
+        if: steps.version.outputs.skip != 'true' && env.SIGN == 'true'
+        shell: pwsh
+        run: |
+          $sig = Get-AuthenticodeSignature signed/setup/CaptureMenu-Setup.exe
+          if ($sig.Status -ne 'Valid') { throw "CaptureMenu-Setup.exe signature: $($sig.Status)" }
+          Copy-Item signed/setup/CaptureMenu-Setup.exe Output/CaptureMenu-Setup.exe -Force
 
       - name: Build CaptureMenu.zip
         if: steps.version.outputs.skip != 'true'

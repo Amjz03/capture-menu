@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The artifact configuration for the capture-menu project on SignPath: each release
+     uploads one .exe (CaptureMenu.exe, then CaptureMenu-Setup.exe) and it is Authenticode-signed. -->
+<artifact-configuration xmlns="http://signpath.io/artifact-configuration/v1">
+  <zip-file>
+    <pe-file path="*.exe">
+      <authenticode-sign />
+    </pe-file>
+  </zip-file>
+</artifact-configuration>

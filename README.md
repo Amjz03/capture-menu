@@ -322,6 +322,8 @@ docs/                images for this README
 
 ## Code signing policy
 
+Free code signing provided by [SignPath.io](https://about.signpath.io), certificate by [SignPath Foundation](https://signpath.org).
+
 Release files are built only by the [release workflow](.github/workflows/release.yml) on GitHub Actions, from the code in this repository. Nothing built on a personal computer is published.
 
 - Committers and reviewers: [Amjz03](https://github.com/Amjz03)
