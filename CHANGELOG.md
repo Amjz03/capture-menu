@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.0.19 · 2026-10-23
+
+- **Clips and screenshots look like Windows' own screenshots.** With Windows HDR on, OBS turned the HDR screen into normal colours itself, which lifted the blacks (black came out dark grey) and dimmed the whites (white came out at 81 %): everything looked grey and flat. Capture Menu now has Windows do that conversion (OBS's Display Capture → Force SDR), the same one the Snipping Tool uses, so blacks are black and whites are white. Colours → Natural now matches Windows exactly; Soft, Vivid and Max add colour on top. HDR clips (HDR → Auto) are unchanged.
+
 ## 0.0.18 · 2026-10-23
 
 - **Pick how colourful.** Settings → Recording → Colours now has four levels for an HDR screen recorded in normal colours: **Natural** (as OBS records it), **Soft** (×1.3 colour), **Vivid** (×1.6, the default) and **Max** (×2). The change shows up in OBS as soon as you save.
