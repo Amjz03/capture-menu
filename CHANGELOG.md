@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.0.25 · 2026-10-23
+
+- **Move around the viewer with the controller, like a mouse.** The D-pad moves a highlight over everything on screen (Back, Rename, newer / older, Close, Play, the seek bar, sound, full screen and every action button), and ✕ presses what's highlighted. On the seek bar, ← → move through the video. A clip starts on Play and a screenshot on Share. L1 / R1, □, △, Options, L3 and ◯ still work as shortcuts, and the keyboard keeps its own keys.
+- ↑ and ↓ no longer stand for Favorite and Share in the viewer: they move the highlight. Favorite is the star button, or F on the keyboard.
+
 ## 0.0.24 · 2026-10-23
 
 - **No More button in the viewer.** Favorite, Show in folder, Open in your video player and Delete are small icon buttons at the end of the main row, so they're one click away (their names show when you point at them). With a controller, △ moves the highlight onto them; on the keyboard, M. Delete still needs a second press, and Rename stays next to the title.
