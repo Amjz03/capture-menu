@@ -82,7 +82,7 @@ DEFAULTS = {
     "storage_warn_gb": 200,
     "voice_track": True,
     "hdr": "auto",              # auto: HDR clips while Windows HDR is on for the game's screen / off
-    "colours": "vivid",         # vivid: a light colour boost when an HDR screen is recorded in normal colours / natural
+    "colours": "vivid",         # natural / soft / vivid / max: COLOUR_BOOST for an HDR screen recorded in normal colours
     "resolution": "native",     # native / 1440p / 1080p / 720p
     "fps": 60,
     "quality": "balanced",      # light / balanced / high / max
@@ -288,25 +288,25 @@ class Obs:
                                      "inputKind": "monitor_capture", "inputSettings": {},
                                      "sceneItemEnabled": True})
             self.fit_to_canvas("Display Capture")
-        self.set_vivid(bool(plan.get("vivid")))
+        self.set_vivid(plan.get("vivid"))
         return changed
 
     VIVID = "Capture Menu colour"
-    VIVID_SETTINGS = {"saturation": 0.6, "contrast": 0.1}   # like ffmpeg eq=saturation=1.6:contrast=1.1
 
-    def set_vivid(self, on: bool):
-        """An HDR screen recorded in normal colours looks flat next to the HDR game: a light colour
-        correction on the display capture gives back some of the colour. Filters apply live."""
+    def set_vivid(self, boost: dict | None):
+        """An HDR screen recorded in normal colours looks flat next to the HDR game: a colour
+        correction (boost, see COLOUR_BOOST) on the display capture gives back some of the colour.
+        None removes it. Filters apply live."""
         source = self.display_source()
         if not source:
             return
         filters = [f["filterName"] for f in self.raw("GetSourceFilterList", {"sourceName": source}).get("filters", [])]
-        if on and self.VIVID in filters:
+        if boost and self.VIVID in filters:
             self.raw("SetSourceFilterSettings", {"sourceName": source, "filterName": self.VIVID,
-                                                 "filterSettings": self.VIVID_SETTINGS})
-        elif on:
+                                                 "filterSettings": boost})
+        elif boost:
             self.raw("CreateSourceFilter", {"sourceName": source, "filterName": self.VIVID,
-                                            "filterKind": "color_filter_v2", "filterSettings": self.VIVID_SETTINGS})
+                                            "filterKind": "color_filter_v2", "filterSettings": boost})
         elif self.VIVID in filters:
             self.raw("RemoveSourceFilter", {"sourceName": source, "filterName": self.VIVID})
 
@@ -1325,6 +1325,16 @@ def pick_bitrate(encoder: str, width: int, height: int, fps: int = 60, quality: 
     return int(round(BITRATE_1440P[codec_of(encoder)] * scale / 500) * 500)
 
 
+# Settings → Colours: OBS colour correction for an HDR screen recorded in normal colours
+# (saturation 0.6 is like ffmpeg eq=saturation=1.6)
+COLOUR_BOOST = {
+    "natural": None,
+    "soft": {"saturation": 0.3, "contrast": 0.06},
+    "vivid": {"saturation": 0.6, "contrast": 0.1},
+    "max": {"saturation": 1.0, "contrast": 0.15},
+}
+
+
 def obs_plan(cfg: dict, width: int, height: int, encoder: str, obs_version: str, hdr: bool = False,
              white: int | None = None) -> dict:
     """The OBS settings Capture Menu wants: video size/FPS and simple-output profile keys.
@@ -1343,7 +1353,7 @@ def obs_plan(cfg: dict, width: int, height: int, encoder: str, obs_version: str,
     fmt = "hybrid_mp4" if major_minor >= (30, 2) else "mp4"
     hdr = hdr and codec_of(encoder) in ("hevc", "av1")      # H.264 has no 10-bit HDR
     # an HDR screen recorded in normal colours gets a light colour boost, unless Colours is Natural
-    vivid = bool(white) and not hdr and cfg.get("colours", "vivid") == "vivid"
+    vivid = COLOUR_BOOST.get(cfg.get("colours", "vivid")) if white and not hdr else None
     return {
         "video": {"baseWidth": width, "baseHeight": height, "outputWidth": out_w,
                   "outputHeight": out_h, "fpsNumerator": fps, "fpsDenominator": 1},
@@ -1375,7 +1385,7 @@ def obs_plan(cfg: dict, width: int, height: int, encoder: str, obs_version: str,
         "summary": (f"{out_w}×{out_h} · {fps} FPS · {encoder.replace('_', ' ').upper()} · "
                     + (f"{quality} quality · voice on its own track" if voice else f"{bitrate} Kbps")
                     + f" · {buffer_s // 60} min" + (" · HDR" if hdr else "")
-                    + (f" · {white} nits" if white else "") + (" · vivid" if vivid else "")),
+                    + (f" · {white} nits" if white else "") + (f" · {cfg.get('colours', 'vivid')} colours" if vivid else "")),
     }
 
 
@@ -6189,9 +6199,10 @@ class Settings(QtWidgets.QWidget):
         self._row("hdr", "HDR", "choice", [("auto", "Auto"), ("off", "Off")],
                   lambda v: "HDR clips while Windows HDR is on. Shared copies get normal colours"
                   if v == "auto" else "Always normal colours (SDR)")
-        self._row("colours", "Colours", "choice", [("vivid", "Vivid"), ("natural", "Natural")],
-                  lambda v: "A little more colour and contrast when an HDR screen is recorded in normal colours"
-                  if v == "vivid" else "Colours exactly as OBS records them")
+        self._row("colours", "Colours", "choice",
+                  [("natural", "Natural"), ("soft", "Soft"), ("vivid", "Vivid"), ("max", "Max")],
+                  lambda v: "Colours exactly as OBS records them" if v == "natural"
+                  else "More colour and contrast when an HDR screen is recorded in normal colours")
         self._row("record_indicator", "Recording indicator", "choice",
                   [("top-left", "Top left"), ("top-right", "Top right"), ("off", "Off")],
                   lambda v: "A small REC timer while you record by hand. It never shows up in captures"
