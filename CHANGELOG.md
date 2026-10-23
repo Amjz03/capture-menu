@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.0.15 · 2026-10-23
+
+- **Copied HDR clips keep their colours.** Discord, WhatsApp and most video players show HDR clips grey and washed out. Copy now puts a normal-colour copy of an HDR clip on the clipboard (made like Share → Phone & WhatsApp, full quality, saved in the game's Shared folder), so it looks right wherever you paste it. Normal clips are copied as they are.
+
 ## 0.0.14 · 2026-10-23
 
 - **Pick the colours.** Settings → Recording → Colours: **Vivid** (the default) adds a little colour and contrast when an HDR screen is recorded in normal colours; **Natural** keeps the colours exactly as OBS records them. HDR clips (HDR → Auto) are never changed.
