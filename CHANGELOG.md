@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.0.27 · 2026-10-24
+
+- **Rename takes your typing after a controller press.** Pressing Rename with ✕ opened the box, but Windows kept the keyboard on the game, so nothing you typed showed up. The viewer now takes the keyboard when the box opens.
+- **Show in folder and Open in your video player get Capture Menu out of the way.** The viewer (and the gallery behind it) closes first, so the folder or the player isn't covered. The gallery's own folder button does the same.
+
 ## 0.0.26 · 2026-10-23
 
 - **The D-pad reaches the buttons along the top of the gallery and Settings too.** In the gallery, ↑ from the top row of captures goes to Back, Sort, Select, the folder and Close, and ← → walk them; the side of the grid leads to the games list, and ↓ comes back down. In Settings, ↑ from the first setting goes to Back, Restore defaults, Cancel and Save, and ↓ goes back to the setting you came from. ✕ presses what's highlighted.
