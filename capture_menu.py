@@ -288,18 +288,21 @@ class Obs:
                                      "inputKind": "monitor_capture", "inputSettings": {},
                                      "sceneItemEnabled": True})
             self.fit_to_canvas("Display Capture")
-        self.set_vivid(plan.get("vivid"))
+        self.set_colours(plan.get("force_sdr", False), plan.get("vivid"))
         return changed
 
     VIVID = "Capture Menu colour"
 
-    def set_vivid(self, boost: dict | None):
-        """An HDR screen recorded in normal colours looks flat next to the HDR game: a colour
-        correction (boost, see COLOUR_BOOST) on the display capture gives back some of the colour.
-        None removes it. Filters apply live."""
+    def set_colours(self, force_sdr: bool, boost: dict | None):
+        """force_sdr: Windows turns an HDR screen into normal colours, as its own screenshots do
+        (OBS's own conversion lifts the blacks and dims the whites: grey and washed out).
+        boost: a colour correction on the display capture (see COLOUR_BOOST), None removes it.
+        Both apply live."""
         source = self.display_source()
         if not source:
             return
+        if self.raw("GetInputSettings", {"inputName": source}).get("inputSettings", {}).get("force_sdr", False) != force_sdr:
+            self.raw("SetInputSettings", {"inputName": source, "inputSettings": {"force_sdr": force_sdr}, "overlay": True})
         filters = [f["filterName"] for f in self.raw("GetSourceFilterList", {"sourceName": source}).get("filters", [])]
         if boost and self.VIVID in filters:
             self.raw("SetSourceFilterSettings", {"sourceName": source, "filterName": self.VIVID,
@@ -1381,6 +1384,7 @@ def obs_plan(cfg: dict, width: int, height: int, encoder: str, obs_version: str,
         ] + ([("Video", "SdrWhiteLevel", str(white))] if white else []),
         "hdr": hdr,
         "vivid": vivid,
+        "force_sdr": not hdr,   # an HDR screen in normal colours: Windows' conversion (no-op on SDR screens)
         "voice_track": voice,
         "summary": (f"{out_w}×{out_h} · {fps} FPS · {encoder.replace('_', ' ').upper()} · "
                     + (f"{quality} quality · voice on its own track" if voice else f"{bitrate} Kbps")
@@ -1903,7 +1907,7 @@ class Controller(QtCore.QObject):
             plan["summary"] += f" · {incoming}"
         state = load_state()
         if state.get("obs_setup") == plan["summary"]:
-            self.obs.set_vivid(plan["vivid"])   # filters apply live: keeps the boost up to date
+            self.obs.set_colours(plan["force_sdr"], plan["vivid"])   # live: keeps the colours up to date
             return
         recording, _ = self.obs.record_status()
         if recording:
@@ -6201,7 +6205,7 @@ class Settings(QtWidgets.QWidget):
                   if v == "auto" else "Always normal colours (SDR)")
         self._row("colours", "Colours", "choice",
                   [("natural", "Natural"), ("soft", "Soft"), ("vivid", "Vivid"), ("max", "Max")],
-                  lambda v: "Colours exactly as OBS records them" if v == "natural"
+                  lambda v: "Colours exactly as Windows shows them" if v == "natural"
                   else "More colour and contrast when an HDR screen is recorded in normal colours")
         self._row("record_indicator", "Recording indicator", "choice",
                   [("top-left", "Top left"), ("top-right", "Top right"), ("off", "Off")],

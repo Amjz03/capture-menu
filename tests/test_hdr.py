@@ -30,6 +30,7 @@ assert not natural["vivid"] and natural["summary"] != bright["summary"], "Colour
 levels = [cm.obs_plan(dict(cfg, colours=c), 2560, 1440, "nvenc_av1", "31.0.0", white=240)["vivid"]["saturation"]
           for c in ("soft", "vivid", "max")]
 assert levels == sorted(levels) and len(set(levels)) == 3, "Soft < Vivid < Max"
+assert off["force_sdr"] and not on["force_sdr"], "normal colours come from Windows' conversion; HDR clips stay HDR"
 assert not cm.obs_plan(cfg, 2560, 1440, "nvenc_av1", "31.0.0", hdr=True, white=240)["vivid"], "HDR clips stay as they are"
 assert cm.sdr_white() is None or 80 <= cm.sdr_white() <= 1000
 screens = cm.hdr_screens()
