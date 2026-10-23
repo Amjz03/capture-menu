@@ -2522,7 +2522,7 @@ def glass(w: QtWidgets.QWidget) -> bool:
     if not IS_WINDOWS or os.environ.get("QT_QPA_PLATFORM", "").startswith("offscreen"):
         return False
     try:
-        tint = (GLASS_TINT << 24) | (0x0e << 16) | (0x0b << 8) | 0x0b        # AABBGGRR: #0b0b0e
+        tint = (GLASS_TINT << 24) | (NIGHT[2] << 16) | (NIGHT[1] << 8) | NIGHT[0]   # AABBGGRR
         accent = _AccentPolicy(4, 2, tint, 0)                                 # ACCENT_ENABLE_ACRYLICBLURBEHIND
         data = _WindowCompositionData(19, ctypes.cast(ctypes.pointer(accent), ctypes.c_void_p),
                                       ctypes.sizeof(accent))                  # WCA_ACCENT_POLICY
@@ -2534,7 +2534,7 @@ def glass(w: QtWidgets.QWidget) -> bool:
 
 def sheet_color(w: QtWidgets.QWidget) -> QtGui.QColor:
     """The page's own dark layer: light over glass, nearly solid without it."""
-    return QtGui.QColor(11, 11, 14, GLASS_SHEET if getattr(w, "glassy", False) else 250)
+    return QtGui.QColor(*NIGHT, GLASS_SHEET if getattr(w, "glassy", False) else 250)
 
 
 def dress(w: QtWidgets.QWidget, frosted: bool = True):
@@ -2558,14 +2558,16 @@ def release_window(w: QtWidgets.QWidget):
     w.dressed = False
 
 
-# ---- look: neutral console palette; white is the focus colour, red only means recording
-INK = "#f4f4f6"
-MUTED = "rgba(244,244,246,0.66)"
-FAINT = "rgba(244,244,246,0.46)"
-BASE = "#0b0b0e"            # every surface sits on this near-black
-SHEET = "rgba(11,11,14,0.94)"
+# ---- look: the PS5's night blue; white is the focus colour, red only means recording
+INK = "#f4f6fb"
+MUTED = "rgba(236,240,250,0.66)"
+FAINT = "rgba(236,240,250,0.46)"
+NIGHT = (7, 10, 20)         # every surface sits on this blue-black, like the PS5's menus
+PANEL = "rgba(24,29,44,0.92)"   # a raised card: notices, dialogs
+DARK = "#0d1120"            # ink on a white (focused) surface
 RED = "#ff453a"
 GREEN = "#32d74b"
+BLUE = "#2f7bf5"            # PlayStation blue: a switch that's on
 AMBER = "#ffb340"
 FONT = '"Segoe UI Variable Text", "Segoe UI", "Inter", sans-serif'
 DISPLAY = '"Segoe UI Variable Display", "Segoe UI", "Inter", sans-serif'
@@ -2794,7 +2796,7 @@ class HintBar(QtWidgets.QWidget):
             if glyph and not rtl:
                 x += draw_glyph(p, x, cy, glyph, self.mode) + self.GAP
             p.setFont(font(13))
-            p.setPen(QtGui.QColor(244, 244, 246, 168))
+            p.setPen(QtGui.QColor(236, 240, 250, 168))
             w = p.fontMetrics().horizontalAdvance(label)
             p.drawText(QtCore.QRectF(x, 0, w + 2, self.height()), Qt.AlignVCenter | Qt.AlignLeft, label)
             x += w
@@ -2834,15 +2836,69 @@ class HoverFocus:
         self._lent, self._lent_from = False, None
 
 
-class Card(HoverFocus, QtWidgets.QAbstractButton):
-    """Base for the bar's focusable tiles: hover and a white focus ring, nothing else."""
+MOTION_MS = 180       # how long the focus takes to grow into place; 0 jumps (the render tools use that)
 
-    RADIUS = 12
+
+class Grow:
+    """The PS5's focus: the focused item grows a little and lights up, smoothly, and settles back
+    when the focus moves on. self.grow runs from 0 (at rest) to 1 (focused)."""
+
+    grow = 0.0
+
+    def grow_to(self, on: bool):
+        end = 1.0 if on else 0.0
+        anim = getattr(self, "_grow_anim", None)
+        if anim is None:
+            anim = self._grow_anim = QtCore.QVariantAnimation(self)
+            anim.setEasingCurve(QtCore.QEasingCurve.OutCubic)
+            anim.valueChanged.connect(self._on_grow)
+        anim.stop()
+        if not MOTION_MS or not self.isVisible() or self.grow == end:
+            self._on_grow(end)
+            return
+        anim.setDuration(MOTION_MS)
+        anim.setStartValue(self.grow)
+        anim.setEndValue(end)
+        anim.start()
+
+    def _on_grow(self, value):
+        self.grow = float(value)
+        self.update()
+
+
+def grown(r: QtCore.QRectF, amount: float) -> QtCore.QRectF:
+    """r made larger by amount (0.06 = 6 %) around its centre."""
+    dx, dy = r.width() * amount / 2, r.height() * amount / 2
+    return r.adjusted(-dx, -dy, dx, dy)
+
+
+def paint_focus(p: QtGui.QPainter, r: QtCore.QRectF, radius: float, t: float = 1.0, ring: bool = True):
+    """The PS5's focus frame around r: a soft white glow and, for pictures, a white ring.
+    t fades it in (0-1) as the item grows."""
+    if t <= 0.01:
+        return
+    p.save()
+    p.setBrush(Qt.NoBrush)
+    for out, width, alpha in ((8, 8, 10), (6, 5, 20), (4.5, 3, 34)):     # the glow, softest outside
+        p.setPen(QtGui.QPen(QtGui.QColor(255, 255, 255, int(alpha * t)), width))
+        p.drawRoundedRect(r.adjusted(-out, -out, out, out), radius + out, radius + out)
+    if ring:
+        p.setPen(QtGui.QPen(QtGui.QColor(255, 255, 255, int(255 * t)), 3))
+        p.drawRoundedRect(r.adjusted(-3.5, -3.5, 3.5, 3.5), radius + 3.5, radius + 3.5)
+    p.restore()
+
+
+class Card(Grow, HoverFocus, QtWidgets.QAbstractButton):
+    """Base for the bar's focusable tiles: hover, and the focus that grows the tile and rings it."""
+
+    RADIUS = 16
+    PAD = 12                                  # room around the tile to grow into, with its ring and glow
+    SCALE = 0.08                              # how much bigger the focused tile is
     BELOW = 0                                 # room under the tile for its label
 
     def __init__(self, w: int, h: int):
         super().__init__()
-        self.setFixedSize(w + 8, h + 8 + self.BELOW)   # 4 px around the tile for the focus ring
+        self.setFixedSize(w + 2 * self.PAD, h + 2 * self.PAD + self.BELOW)
         self.setFocusPolicy(Qt.StrongFocus)
         self.setCursor(Qt.PointingHandCursor)
         self.setAttribute(Qt.WA_Hover)
@@ -2851,12 +2907,27 @@ class Card(HoverFocus, QtWidgets.QAbstractButton):
         self.hover_focus = lambda: True
 
     def tile(self) -> QtCore.QRectF:
-        return QtCore.QRectF(4, 4, self.width() - 8, self.height() - 8 - self.BELOW)
+        """Where the tile sits at rest."""
+        return QtCore.QRectF(self.PAD, self.PAD, self.width() - 2 * self.PAD,
+                             self.height() - 2 * self.PAD - self.BELOW)
+
+    def lit(self) -> float:
+        """How focused it looks, 0-1: it grows into focus, and stays lit while its popover is open."""
+        return 1.0 if self.active else self.grow
+
+    def shown(self) -> QtCore.QRectF:
+        """Where the tile is drawn: grown as far as its focus has come."""
+        return grown(self.tile(), self.SCALE * self.lit())
 
     def focusInEvent(self, e):
         super().focusInEvent(e)
+        self.grow_to(True)
         if self.focused_cb:
             self.focused_cb(self)
+
+    def focusOutEvent(self, e):
+        super().focusOutEvent(e)
+        self.grow_to(False)
 
     def enterEvent(self, e):
         super().enterEvent(e)
@@ -2876,27 +2947,29 @@ class Card(HoverFocus, QtWidgets.QAbstractButton):
         self.keep_focus()
         super().keyPressEvent(e)
 
+    def radius(self) -> float:
+        """The corner radius as drawn, growing with the tile."""
+        return self.RADIUS * self.shown().width() / self.tile().width()
+
     def paint_ring(self, p: QtGui.QPainter):
-        if self.hasFocus() or self.active:
-            p.setPen(QtGui.QPen(QtGui.QColor(INK), 2))
-            p.setBrush(Qt.NoBrush)
-            p.drawRoundedRect(self.tile().adjusted(-3, -3, 3, 3), self.RADIUS + 3, self.RADIUS + 3)
+        paint_focus(p, self.shown(), self.radius(), self.lit())
 
 
 class ActionCard(Card):
-    """An icon tile with its name underneath. The focused one turns white, like the PS5 control center."""
+    """An icon tile with its name underneath. The focused one grows and turns white, like the PS5's
+    Create menu."""
 
-    SIZE = 96
+    SIZE = 100
     BELOW = 44
 
     def __init__(self, icon: str, label: str, hint: str = ""):
-        super().__init__(self.SIZE + 20, self.SIZE)
+        super().__init__(self.SIZE + 12, self.SIZE)
         self.icon_name, self.label, self.hint = icon, label, hint
         self.icon_color = INK
         self.tint: QtGui.QColor | None = None
 
     def tile(self) -> QtCore.QRectF:
-        return QtCore.QRectF((self.width() - self.SIZE) / 2, 4, self.SIZE, self.SIZE)
+        return QtCore.QRectF((self.width() - self.SIZE) / 2, self.PAD, self.SIZE, self.SIZE)
 
     def set_state(self, icon: str, label: str, icon_color: str = INK, tint: QtGui.QColor | None = None):
         self.icon_name, self.label, self.icon_color, self.tint = icon, label, icon_color, tint
@@ -2905,26 +2978,28 @@ class ActionCard(Card):
     def paintEvent(self, _):
         p = QtGui.QPainter(self)
         p.setRenderHint(QtGui.QPainter.Antialiasing)
-        r = self.tile()
+        r, t, radius = self.shown(), self.lit(), self.radius()
         focused = self.hasFocus() or self.active
+        paint_focus(p, r, radius, t, ring=False)
         p.setPen(Qt.NoPen)
-        if focused:
-            p.setBrush(QtGui.QColor(INK))
-        elif self.tint is not None:
-            p.setBrush(self.tint)
-        else:
-            p.setBrush(QtGui.QColor(255, 255, 255, 30 if self.underMouse() else 16))
-        p.drawRoundedRect(r, self.RADIUS, self.RADIUS)
-        color = ("#111114" if self.icon_color == INK else self.icon_color) if focused else self.icon_color
-        p.drawPixmap(QtCore.QPointF(r.center().x() - 16, r.center().y() - 16),
-                     icon_pixmap(self.icon_name, 32, color))
-        text_r = QtCore.QRectF(0, r.bottom() + 9, self.width(), 18)
-        p.setPen(QtGui.QColor(INK) if focused else QtGui.QColor(244, 244, 246, 175))
+        p.setBrush(self.tint if self.tint is not None else QtGui.QColor(255, 255, 255, 34 if self.underMouse() else 20))
+        p.drawRoundedRect(r, radius, radius)
+        if t > 0.01:      # the white comes in as the tile grows
+            white = QtGui.QColor(INK)
+            white.setAlphaF(t)
+            p.setBrush(white)
+            p.drawRoundedRect(r, radius, radius)
+        color = (DARK if self.icon_color == INK else self.icon_color) if focused else self.icon_color
+        size = 32 * r.width() / self.SIZE
+        p.drawPixmap(QtCore.QRectF(r.center().x() - size / 2, r.center().y() - size / 2, size, size).toRect(),
+                     icon_pixmap(self.icon_name, 34, color))
+        text_r = QtCore.QRectF(0, self.tile().bottom() + 14, self.width(), 18)
+        p.setPen(QtGui.QColor(INK) if focused else QtGui.QColor(236, 240, 250, 170))
         p.setFont(font(13, QtGui.QFont.DemiBold if focused else QtGui.QFont.Normal))
         p.drawText(text_r, Qt.AlignHCenter | Qt.AlignVCenter,
                    p.fontMetrics().elidedText(tr(self.label), Qt.ElideRight, self.width()))
         if self.hint:
-            p.setPen(QtGui.QColor(244, 244, 246, 110))
+            p.setPen(QtGui.QColor(236, 240, 250, 110))
             p.setFont(font(12))
             p.drawText(text_r.translated(0, 17), Qt.AlignHCenter | Qt.AlignVCenter, tr(self.hint))
 
@@ -2935,7 +3010,8 @@ def draw_capture_tile(p: QtGui.QPainter, r: QtCore.QRectF, pixmap: QtGui.QPixmap
     """A capture thumbnail with its badges: length (or screenshot) and a favourite star.
     selecting: every tile shows the circle that a pick fills in."""
     p.setRenderHint(QtGui.QPainter.Antialiasing)
-    p.drawPixmap(r.topLeft(), pixmap)
+    p.setRenderHint(QtGui.QPainter.SmoothPixmapTransform)
+    p.drawPixmap(r, pixmap, QtCore.QRectF(pixmap.rect()))     # r may be grown past the picture's own size
     if dim:
         p.setPen(Qt.NoPen)
         p.setBrush(QtGui.QColor(0, 0, 0, dim))
@@ -2965,7 +3041,7 @@ def draw_capture_tile(p: QtGui.QPainter, r: QtCore.QRectF, pixmap: QtGui.QPixmap
         p.setPen(Qt.NoPen)
         p.setBrush(QtGui.QColor(INK))
         p.drawEllipse(c, 11, 11)
-        p.setPen(QtGui.QPen(QtGui.QColor("#111114"), 2.4, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
+        p.setPen(QtGui.QPen(QtGui.QColor(DARK), 2.4, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
         p.drawPolyline(QtGui.QPolygonF([c + QtCore.QPointF(-5, 0), c + QtCore.QPointF(-1.5, 3.5),
                                         c + QtCore.QPointF(5, -4)]))
     elif selecting:
@@ -2982,8 +3058,8 @@ def draw_capture_tile(p: QtGui.QPainter, r: QtCore.QRectF, pixmap: QtGui.QPixmap
 
 
 class ThumbCard(Card):
-    RADIUS = 10
-    W, H = 171, 96
+    RADIUS = 14
+    W, H = 178, 100
     BELOW = 44
 
     def __init__(self):
@@ -3002,30 +3078,29 @@ class ThumbCard(Card):
     def paintEvent(self, _):
         p = QtGui.QPainter(self)
         focused = self.hasFocus() or self.active
-        dim = 0 if focused else 50 if self.underMouse() else 90   # quieter until focused, like the PS5
-        draw_capture_tile(p, self.tile(), self.pixmap, self.path, self.length, self.favorite, dim, self.RADIUS)
+        dim = int((50 if self.underMouse() else 100) * (1 - self.lit()))   # quieter until focused, like the PS5
+        draw_capture_tile(p, self.shown(), self.pixmap, self.path, self.length, self.favorite, dim, self.radius())
         self.paint_ring(p)
         if focused and self.path is not None:   # the focused capture says what it is, nothing else does
+            text = QtCore.QRectF(self.PAD, self.tile().bottom() + 14, self.width() - 2 * self.PAD, 18)
             p.setPen(QtGui.QColor(INK))
-            p.setFont(font(13, QtGui.QFont.DemiBold))
-            p.drawText(QtCore.QRectF(4, self.tile().bottom() + 9, self.width() - 8, 18),
-                       lead() | Qt.AlignVCenter,
-                       p.fontMetrics().elidedText(self.caption, Qt.ElideRight, self.width() - 8))
-            p.setPen(QtGui.QColor(244, 244, 246, 110))
+            p.setFont(font(14, QtGui.QFont.DemiBold))
+            p.drawText(text, lead() | Qt.AlignVCenter,
+                       p.fontMetrics().elidedText(self.caption, Qt.ElideRight, int(text.width())))
+            p.setPen(QtGui.QColor(236, 240, 250, 120))
             p.setFont(font(12))
-            p.drawText(QtCore.QRectF(4, self.tile().bottom() + 26, self.width() - 8, 18),
-                       lead() | Qt.AlignVCenter, self.when)
+            p.drawText(text.translated(0, 19), lead() | Qt.AlignVCenter, self.when)
 
 BAR_STYLE = f"""
 QLabel {{ color: {INK}; background: transparent; }}
-#game {{ font-family: {DISPLAY}; font-size: 26px; font-weight: 600; }}
+#game {{ font-family: {DISPLAY}; font-size: 30px; font-weight: 600; }}
 #status {{ color: {MUTED}; font-size: 14px; }}
 #caption {{ color: {INK}; font-size: 17px; font-weight: 600; }}
 #focusInfo {{ color: {FAINT}; font-size: 14px; }}
 #storage {{ color: {AMBER}; font-size: 14px; }}
 QPushButton#back {{
-    color: {INK}; font-size: 14px; font-weight: 600; border: none; border-radius: 8px;
-    background: rgba(255,255,255,16); padding: 0 16px 0 10px; min-height: 38px;
+    color: {INK}; font-size: 14px; font-weight: 600; border: none; border-radius: 20px;
+    background: rgba(255,255,255,16); padding: 0 18px 0 12px; min-height: 40px;
 }}
 QPushButton#back:hover {{ background: rgba(255,255,255,40); }}
 """
@@ -3042,10 +3117,11 @@ def chip_label(seconds: int | None) -> str:
     return tr("Last {n}h", n=seconds // 3600)
 
 
-class Chip(HoverFocus, QtWidgets.QAbstractButton):
-    """A pill in the Save recent gameplay row; the focused one turns light, like the PS5."""
+class Chip(Grow, HoverFocus, QtWidgets.QAbstractButton):
+    """A pill in the Save recent gameplay row; the focused one grows and turns white, like the PS5."""
 
-    H = 40
+    H = 44
+    PAD = 9           # room to grow into
 
     def __init__(self, text: str):
         super().__init__()
@@ -3059,7 +3135,8 @@ class Chip(HoverFocus, QtWidgets.QAbstractButton):
         self._fit()
 
     def _fit(self):
-        self.setFixedSize(QtGui.QFontMetrics(self.font()).horizontalAdvance(tr(self.text())) + 48, self.H + 8)
+        self.setFixedSize(QtGui.QFontMetrics(self.font()).horizontalAdvance(tr(self.text())) + 44 + 2 * self.PAD,
+                          self.H + 2 * self.PAD)
 
     def setText(self, text: str):
         super().setText(text)
@@ -3082,20 +3159,32 @@ class Chip(HoverFocus, QtWidgets.QAbstractButton):
         self.keep_focus()
         super().keyPressEvent(e)
 
+    def focusInEvent(self, e):
+        super().focusInEvent(e)
+        self.grow_to(True)
+
+    def focusOutEvent(self, e):
+        super().focusOutEvent(e)
+        self.grow_to(False)
+
     def paintEvent(self, _):
         p = QtGui.QPainter(self)
         p.setRenderHint(QtGui.QPainter.Antialiasing)
-        r = QtCore.QRectF(4, 4, self.width() - 8, self.height() - 8)
+        g = self.grow
+        r = QtCore.QRectF(self.rect()).adjusted(self.PAD - 4 * g, self.PAD - 2 * g, 4 * g - self.PAD, 2 * g - self.PAD)
         radius = r.height() / 2
         focused = self.hasFocus()
-        if focused:
-            p.setPen(Qt.NoPen)
-            p.setBrush(QtGui.QColor("#ff6961" if self.danger else INK))
-        else:
-            p.setPen(QtGui.QPen(QtGui.QColor(255, 105, 97, 150) if self.danger else QtGui.QColor(255, 255, 255, 46), 1))
-            p.setBrush(QtGui.QColor(255, 255, 255, 20 if self.underMouse() else 0))
+        paint_focus(p, r, radius, self.grow, ring=False)
+        p.setPen(QtGui.QPen(QtGui.QColor(255, 105, 97, 150) if self.danger else QtGui.QColor(255, 255, 255, 46), 1))
+        p.setBrush(QtGui.QColor(255, 255, 255, 34 if self.underMouse() else 14))
         p.drawRoundedRect(r.adjusted(0.5, 0.5, -0.5, -0.5), radius, radius)
-        text = QtGui.QColor("#1c1c21") if focused else QtGui.QColor("#ff8a82" if self.danger else INK)
+        if self.grow > 0.01:
+            fill = QtGui.QColor("#ff6961" if self.danger else INK)
+            fill.setAlphaF(self.grow)
+            p.setPen(Qt.NoPen)
+            p.setBrush(fill)
+            p.drawRoundedRect(r, radius, radius)
+        text = QtGui.QColor(DARK) if focused else QtGui.QColor("#ff8a82" if self.danger else INK)
         if self.dimmed and not focused:
             text.setAlpha(110)
         p.setPen(text)
@@ -3105,8 +3194,8 @@ class Chip(HoverFocus, QtWidgets.QAbstractButton):
 class Menu(QtWidgets.QWidget):
     """The Create bar: docks along the bottom of the screen so the game stays in view."""
 
-    BAR_H = 294
-    PICK_H = 230            # the bar is slimmer while choosing a duration
+    BAR_H = 316
+    PICK_H = 246            # the bar is slimmer while choosing a duration
     HEADROOM = 90           # fade above the bar
 
     def __init__(self, ctl: Controller, viewer: "Viewer"):
@@ -3148,7 +3237,7 @@ class Menu(QtWidgets.QWidget):
         self.main_row = QtWidgets.QWidget()
         row = QtWidgets.QHBoxLayout(self.main_row)
         row.setContentsMargins(0, 0, 0, 0)
-        row.setSpacing(4)
+        row.setSpacing(0)
         self.save_card = ActionCard("rewind", "Save recent", "last 30 min")
         self.shot_card = ActionCard("camera", "Screenshot")
         self.rec_card = ActionCard("record", "Record")
@@ -3159,13 +3248,13 @@ class Menu(QtWidgets.QWidget):
         self.rec_card.clicked.connect(lambda: self._act(self.ctl.toggle_record, self.game))
         for c in (self.save_card, self.shot_card, self.rec_card, self.mic_card):
             row.addWidget(c, 0, Qt.AlignTop)
-        row.addSpacing(36)
+        row.addSpacing(28)
         self.thumbs = [ThumbCard() for _ in range(8)]
         for i, t in enumerate(self.thumbs):
             t.clicked.connect(lambda _=False, i=i: self._view(i))
             row.addWidget(t, 0, Qt.AlignTop)
         self.empty_label = QtWidgets.QLabel(tr("Your captures will show up here"), objectName="focusInfo")
-        self.empty_label.setFixedHeight(ActionCard.SIZE + 8)
+        self.empty_label.setFixedHeight(ActionCard.SIZE + 2 * Card.PAD)
         row.addWidget(self.empty_label, 0, Qt.AlignTop)
         row.addSpacing(4)
         self.all_card = ActionCard("gallery", "All captures")
@@ -3218,6 +3307,10 @@ class Menu(QtWidgets.QWidget):
         self._buffer = {"active": False, "max_ms": 0, "held_ms": None}
         ctl.status.connect(self._on_status)
         self._timer = QtCore.QTimer(self, interval=1000, timeout=ctl.refresh_status)
+        self._rise = QtCore.QPropertyAnimation(self.bar, b"pos", self)    # opening slides the bar up, like the PS5
+        self._rise.setDuration(240)
+        self._rise.setEasingCurve(QtCore.QEasingCurve.OutCubic)
+        self._rise.valueChanged.connect(lambda _: self.update())
         INPUT.changed.connect(lambda _: self.update_hints())
         self.update_hints()
 
@@ -3242,6 +3335,7 @@ class Menu(QtWidgets.QWidget):
     def _place(self):
         """Pin the bar to the bottom edge at its current height."""
         h = self.PICK_H if self.picking else self.BAR_H
+        self._rise.stop()
         self.bar.setGeometry(0, self.height() - h, self.width(), h)
         self.update()
 
@@ -3260,9 +3354,15 @@ class Menu(QtWidgets.QWidget):
         self.refresh_recent()
         self.ctl.refresh_status()
         self._timer.start()
+        if fresh and MOTION_MS:
+            self._rise.setStartValue(QtCore.QPoint(0, self.height()))
+            self._rise.setEndValue(self.bar.pos())
+            self.bar.move(0, self.height())
         self.show()
         bring_to_front(self)
         self.save_card.setFocus()
+        if fresh and MOTION_MS:
+            self._rise.start()
 
     def hide_menu(self):
         self._timer.stop()
@@ -3323,9 +3423,9 @@ class Menu(QtWidgets.QWidget):
     # ---- content
     def refresh_recent(self):
         items = self.ctl.recent_items()
-        tile = self.save_card.width() + 4
+        tile = self.save_card.width()
         room = self.width() - 128 - 4 * tile - 40 - 2 * tile if self.width() > 0 else 1200
-        count = max(1, min(len(self.thumbs), room // (self.thumbs[0].width() + 4)))
+        count = max(1, min(len(self.thumbs), room // self.thumbs[0].width()))
         for i, card in enumerate(self.thumbs):
             path = items[i] if i < len(items) and i < count else None
             card.setVisible(path is not None)
@@ -3411,10 +3511,10 @@ class Menu(QtWidgets.QWidget):
         top = max(0, self.bar.y() - self.HEADROOM)
         grad = QtGui.QLinearGradient(0, top, 0, self.height())
         span = max(1, self.height() - top)
-        grad.setColorAt(0.0, QtGui.QColor(11, 11, 14, 0))
-        grad.setColorAt(min(0.9, self.HEADROOM * 0.55 / span), QtGui.QColor(11, 11, 14, 120))
-        grad.setColorAt(min(0.95, (self.HEADROOM + 24) / span), QtGui.QColor(11, 11, 14, 238))
-        grad.setColorAt(1.0, QtGui.QColor(11, 11, 14, 250))
+        grad.setColorAt(0.0, QtGui.QColor(*NIGHT, 0))
+        grad.setColorAt(min(0.9, self.HEADROOM * 0.55 / span), QtGui.QColor(*NIGHT, 120))
+        grad.setColorAt(min(0.95, (self.HEADROOM + 24) / span), QtGui.QColor(*NIGHT, 238))
+        grad.setColorAt(1.0, QtGui.QColor(*NIGHT, 250))
         p.fillRect(QtCore.QRect(0, top, self.width(), self.height() - top), grad)
 
     def mousePressEvent(self, e):
@@ -3479,7 +3579,7 @@ class RecIndicator(QtWidgets.QWidget):
         self.corner = corner
         self.started: float | None = None      # time.monotonic() when the recording began
         self.blink = True
-        self.setFont(font(13, QtGui.QFont.DemiBold))
+        self.setFont(font(14, QtGui.QFont.DemiBold))
         self._tick = QtCore.QTimer(self, interval=1000, timeout=self._on_tick)
 
     def text(self) -> str:
@@ -3507,8 +3607,8 @@ class RecIndicator(QtWidgets.QWidget):
 
     def _place(self):
         long = self.started is not None and time.monotonic() - self.started >= 3600
-        w = self.fontMetrics().horizontalAdvance("REC  0:00:00" if long else "REC  00:00") + 44  # steady width
-        self.resize(w, 30)
+        w = self.fontMetrics().horizontalAdvance("REC  0:00:00" if long else "REC  00:00") + 52  # steady width
+        self.resize(w, 34)
         g = game_screen().geometry()      # follows the game to the TV and back
         x = g.left() + 16 if self.corner == "top-left" else g.left() + g.width() - w - 16
         self.move(x, g.top() + 16)
@@ -3522,15 +3622,19 @@ class RecIndicator(QtWidgets.QWidget):
         p = QtGui.QPainter(self)
         p.setRenderHint(QtGui.QPainter.Antialiasing)
         r = QtCore.QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
-        p.setPen(Qt.NoPen)
-        p.setBrush(QtGui.QColor(11, 11, 14, 190))
+        p.setPen(QtGui.QPen(QtGui.QColor(255, 255, 255, 26), 1))
+        p.setBrush(QtGui.QColor(24, 29, 44, 215))
         p.drawRoundedRect(r, r.height() / 2, r.height() / 2)
         dot = QtGui.QColor(RED)
         dot.setAlpha(255 if self.blink else 110)   # a slow pulse, so it reads as live
+        p.setPen(Qt.NoPen)
+        if self.blink:     # a soft red halo while the dot is lit
+            p.setBrush(QtGui.QColor(255, 69, 58, 60))
+            p.drawEllipse(QtCore.QPointF(18, r.center().y()), 9, 9)
         p.setBrush(dot)
-        p.drawEllipse(QtCore.QPointF(15, r.center().y()), 5, 5)
+        p.drawEllipse(QtCore.QPointF(18, r.center().y()), 5.5, 5.5)
         p.setPen(QtGui.QColor(INK))
-        p.drawText(r.adjusted(27, 0, -10, 0), Qt.AlignLeft | Qt.AlignVCenter, self.text())
+        p.drawText(r.adjusted(32, 0, -12, 0), Qt.AlignLeft | Qt.AlignVCenter, self.text())
 
 class Toast(QtWidgets.QWidget):
     """Top-right notice, like the PS5's: never takes focus from the game.
@@ -3551,7 +3655,7 @@ class Toast(QtWidgets.QWidget):
         self.trim_btn.hide()
         self.unsetCursor()
         self.thumb.setPixmap(rounded_pixmap(make_thumb(Path(path), self.thumbs_dir or Path(path).parent),
-                                            112, 63, 8))
+                                            128, 72, 11))
         self.thumb.show()
         self.title.setText(tr("Ready to share"))
         self.sub.setText(detail.replace(" · ", "  ·  "))
@@ -3571,19 +3675,19 @@ class Toast(QtWidgets.QWidget):
         outer.setContentsMargins(0, 0, 0, 0)
         self.box = QtWidgets.QFrame(objectName="toastBox")
         self.box.setStyleSheet(
-            f"#toastBox {{ background: rgba(20,20,24,248); border-radius: 12px;"
-            f" border: 1px solid rgba(255,255,255,16); }}"
+            f"#toastBox {{ background: {PANEL}; border-radius: 18px;"
+            f" border: 1px solid rgba(255,255,255,22); }}"
             f"QLabel {{ background: transparent; border: none; }}")
         outer.addWidget(self.box)
         lay = QtWidgets.QHBoxLayout(self.box)
-        lay.setContentsMargins(10, 10, 18, 10)
-        lay.setSpacing(14)
+        lay.setContentsMargins(12, 12, 20, 12)
+        lay.setSpacing(16)
         self.thumb = QtWidgets.QLabel()
         lay.addWidget(self.thumb)
         col = QtWidgets.QVBoxLayout()
         col.setSpacing(2)
         self.title = QtWidgets.QLabel()
-        self.title.setFont(font(15, QtGui.QFont.DemiBold))
+        self.title.setFont(font(16, QtGui.QFont.DemiBold))
         self.title.setStyleSheet(f"color: {INK};")
         self.title.setTextFormat(Qt.RichText)
         self.sub = QtWidgets.QLabel()
@@ -3604,13 +3708,16 @@ class Toast(QtWidgets.QWidget):
         self.trim_btn.setIcon(qicon("scissors"))
         self.trim_btn.setCursor(Qt.PointingHandCursor)
         self.trim_btn.setStyleSheet(
-            f"QPushButton {{ background: rgba(255,255,255,22); color: {INK}; border: none; border-radius: 8px;"
-            f" padding: 7px 12px; font-size: 13px; font-weight: 600; }}"
+            f"QPushButton {{ background: rgba(255,255,255,22); color: {INK}; border: none; border-radius: 17px;"
+            f" padding: 8px 16px; font-size: 13px; font-weight: 600; }}"
             f"QPushButton:hover {{ background: rgba(255,255,255,44); }}")
         self.trim_btn.clicked.connect(lambda: self._open(trim=True))
         lay.addWidget(self.trim_btn, 0, Qt.AlignVCenter)
         self.trim_btn.hide()
         self._hide = QtCore.QTimer(self, singleShot=True, timeout=self.hide)
+        self._slide = QtCore.QPropertyAnimation(self, b"pos", self)
+        self._slide.setDuration(260)
+        self._slide.setEasingCurve(QtCore.QEasingCurve.OutCubic)
 
     def _open(self, trim: bool = False):
         if self.path:
@@ -3632,7 +3739,7 @@ class Toast(QtWidgets.QWidget):
         if kind == "Clip" and capture_kind(capture) == "Trimmed clip":
             kind = "Trimmed"
         thumb = make_thumb(capture, self.thumbs_dir or capture.parents[1] / ".thumbs")
-        self.thumb.setPixmap(rounded_pixmap(thumb, 112, 63, 8))
+        self.thumb.setPixmap(rounded_pixmap(thumb, 128, 72, 11))
         self.thumb.show()
         self.title.setText(tr(self.TITLES.get(kind, "Saved")))
         self.sub.setText("  ·  ".join(x for x in (detail, capture.parent.name) if x))
@@ -3695,7 +3802,15 @@ class Toast(QtWidgets.QWidget):
         page_open = any(w.isVisible() for w in QtWidgets.QApplication.topLevelWidgets()
                         if isinstance(w, (Menu, Viewer, Gallery, Settings)))
         g = (ui_screen() if page_open else game_screen()).geometry()   # beside the page in use
-        self.move(g.right() - self.width() - 28, g.top() + 28)
+        x, y = g.right() - self.width() - 28, g.top() + 28
+        if self.isVisible() or not MOTION_MS:
+            self._slide.stop()
+            self.move(x, y)
+        else:   # slides in from the edge, like the PS5's
+            self.move(x + 48, y)
+            self._slide.setStartValue(QtCore.QPoint(x + 48, y))
+            self._slide.setEndValue(QtCore.QPoint(x, y))
+            self._slide.start()
         self.show()
         self.raise_()
         self._hide.start(ms)
@@ -3705,65 +3820,65 @@ VIEWER_STYLE = f"""
 QWidget {{ font-family: {FONT}; }}
 #viewer {{ background: transparent; border: none; }}
 QLabel {{ color: {INK}; background: transparent; }}
-#vTitle {{ font-family: {DISPLAY}; font-size: 28px; font-weight: 600; }}
+#vTitle {{ font-family: {DISPLAY}; font-size: 32px; font-weight: 600; }}
 #vSub, #vNote {{ color: {MUTED}; font-size: 14px; }}
 #hint {{ color: {MUTED}; font-size: 14px; }}
-#panelTitle {{ font-family: {DISPLAY}; font-size: 22px; font-weight: 600; }}
+#panelTitle {{ font-family: {DISPLAY}; font-size: 24px; font-weight: 600; }}
 #panelSub {{ color: {MUTED}; font-size: 14px; }}
 #info {{ color: {MUTED}; font-size: 13px; }}
 #vMsg {{ color: {MUTED}; font-size: 16px; }}
 #time {{ color: {MUTED}; font-size: 14px; font-family: "Cascadia Mono", Consolas, monospace; }}
 #stage {{ background: transparent; }}
-#videoCard {{ background: #000000; border: 1px solid rgba(255,255,255,18); border-radius: 14px; }}
-#ctlBar {{ background: rgba(255,255,255,8); border-top: 1px solid rgba(255,255,255,14);
-           border-bottom-left-radius: 13px; border-bottom-right-radius: 13px; }}
+#videoCard {{ background: #000000; border: 1px solid rgba(255,255,255,22); border-radius: 20px; }}
+#ctlBar {{ background: rgba(24,29,44,200); border-top: 1px solid rgba(255,255,255,14);
+           border-bottom-left-radius: 19px; border-bottom-right-radius: 19px; }}
 #footer {{ border-top: 1px solid rgba(255,255,255,16); }}
 #rule {{ background: rgba(255,255,255,40); }}
-#dialog {{ background: #16161b; border: 1px solid rgba(255,255,255,26); border-radius: 16px; }}
-#dim {{ background: rgba(0,0,0,150); border-radius: 14px; }}
+#dialog {{ background: rgb(24,29,44); border: 1px solid rgba(255,255,255,26); border-radius: 22px; }}
+#dim {{ background: rgba(0,0,0,150); border-radius: 20px; }}
 #fieldLabel {{ font-size: 14px; font-weight: 600; }}
 QPushButton {{
     color: {INK}; font-size: 15px; font-weight: 600;
-    background: rgba(255,255,255,8); border: 1px solid rgba(255,255,255,30); border-radius: 10px;
-    padding: 0 20px; min-height: 44px;
+    background: rgba(255,255,255,10); border: 1px solid rgba(255,255,255,30); border-radius: 23px;
+    padding: 0 22px; min-height: 46px;
 }}
 QPushButton:hover {{ background: rgba(255,255,255,24); }}
-QPushButton:disabled {{ color: rgba(244,244,246,0.28); border-color: rgba(255,255,255,14); }}
-QPushButton#primary {{ background: {INK}; color: #16161b; border: none; padding: 0 24px; }}
+QPushButton:disabled {{ color: rgba(236,240,250,0.28); border-color: rgba(255,255,255,14); }}
+QPushButton#primary {{ background: {INK}; color: {DARK}; border: none; padding: 0 26px; }}
 QPushButton#primary:hover {{ background: #ffffff; }}
-QPushButton:focus {{ border: 2px solid {INK}; padding: 0 19px; }}
-QPushButton#primary:focus {{ border: 3px solid #16161b; padding: 0 21px; }}
+QPushButton:focus {{ border: 2px solid {INK}; padding: 0 21px; }}
+QPushButton#primary:focus {{ border: 3px solid {DARK}; padding: 0 23px; }}
 QPushButton#back {{ background: rgba(255,255,255,12); border: none; padding: 0 18px 0 12px; }}
 QPushButton#back:hover {{ background: rgba(255,255,255,32); }}
 QPushButton#round {{ padding: 0; min-width: 46px; max-width: 46px; min-height: 46px; max-height: 46px;
                      border-radius: 23px; border: none; background: rgba(255,255,255,12); }}
 QPushButton#round:hover {{ background: rgba(255,255,255,32); }}
-QPushButton#pill {{ min-height: 34px; padding: 0 14px; font-size: 13px; border-radius: 9px; }}
+QPushButton#pill {{ min-height: 34px; padding: 0 16px; font-size: 13px; border-radius: 17px; }}
 QPushButton#ctl {{ padding: 0; min-width: 40px; max-width: 40px; min-height: 40px; border: none;
                    background: transparent; border-radius: 20px; }}
 QPushButton#ctl:hover {{ background: rgba(255,255,255,24); }}
 QPushButton#noteToggle {{ text-align: left; padding: 0 16px; font-weight: 400; color: {MUTED}; }}
 QLineEdit {{
     color: {INK}; background: rgba(255,255,255,10); border: 1px solid rgba(255,255,255,40);
-    border-radius: 10px; padding: 0 14px; min-height: 48px; font-size: 16px;
+    border-radius: 14px; padding: 0 16px; min-height: 50px; font-size: 16px;
     selection-background-color: rgba(255,255,255,70);
 }}
-QLineEdit:focus {{ border: 2px solid {INK}; padding: 0 13px; }}
+QLineEdit:focus {{ border: 2px solid {INK}; padding: 0 15px; }}
 QSlider::groove:horizontal {{ height: 4px; background: rgba(255,255,255,46); border-radius: 2px; }}
 QSlider::sub-page:horizontal {{ background: {INK}; border-radius: 2px; }}
 QSlider::handle:horizontal {{ width: 16px; height: 16px; margin: -6px 0; border-radius: 8px; background: white; }}
 """
 
-# ---- the viewer's parts. One calm vocabulary: a faint surface with a hairline, corners of 12-14,
+# ---- the viewer's parts. One calm vocabulary: a faint surface with a hairline, round corners,
 # white only for focus and for the one main action on screen.
-CARD_RADIUS = 14
+CARD_RADIUS = 18
 
 
 def paint_card(p: QtGui.QPainter, r: QtCore.QRectF, focused: bool = False, hovered: bool = False,
                radius: float = CARD_RADIUS):
-    inset = 1.0 if focused else 0.5
-    p.setPen(QtGui.QPen(QtGui.QColor(INK) if focused else QtGui.QColor(255, 255, 255, 26), 2 if focused else 1))
-    p.setBrush(QtGui.QColor(255, 255, 255, 20 if (hovered or focused) else 11))
+    inset = 1.5 if focused else 0.5
+    p.setPen(QtGui.QPen(QtGui.QColor(INK) if focused else QtGui.QColor(255, 255, 255, 26), 3 if focused else 1))
+    p.setBrush(QtGui.QColor(255, 255, 255, 24 if (hovered or focused) else 12))
     p.drawRoundedRect(r.adjusted(inset, inset, -inset, -inset), radius, radius)
 
 
@@ -3778,7 +3893,7 @@ class ActionButton(QtWidgets.QAbstractButton):
     """A big viewer action: its icon, its name, and the button that does it (□ Trim, like the PS5).
     The main one on screen is white."""
 
-    H = 60
+    H = 64
 
     def __init__(self, text: str, icon: str, pad: str | None = None, key: str | None = None,
                  primary: bool = False):
@@ -3786,7 +3901,7 @@ class ActionButton(QtWidgets.QAbstractButton):
         self.icon_name, self.tokens, self.primary, self.danger = icon, (pad, key), primary, False
         self.icon_color: str | None = None     # e.g. a filled-in yellow star
         self.setText(text)
-        self.setFont(font(16, QtGui.QFont.DemiBold))
+        self.setFont(font(17, QtGui.QFont.DemiBold))
         self.setFixedHeight(self.H)
         self.setCursor(Qt.PointingHandCursor)
         self.setAttribute(Qt.WA_Hover)
@@ -3822,16 +3937,16 @@ class ActionButton(QtWidgets.QAbstractButton):
         if self.primary:
             p.setPen(Qt.NoPen)
             p.setBrush(QtGui.QColor("#ffffff" if hover else INK))
-            p.drawRoundedRect(r, 12, 12)
-            ink = QtGui.QColor("#16161b")
+            p.drawRoundedRect(r, 20, 20)
+            ink = QtGui.QColor(DARK)
         elif self.danger:
             p.setPen(QtGui.QPen(QtGui.QColor(INK), 2) if self.hasFocus() else
                      QtGui.QPen(QtGui.QColor(255, 105, 97, 150), 1))
             p.setBrush(QtGui.QColor(255, 69, 58, 46))
-            p.drawRoundedRect(r.adjusted(.5, .5, -.5, -.5), 12, 12)
+            p.drawRoundedRect(r.adjusted(.5, .5, -.5, -.5), 20, 20)
             ink = QtGui.QColor("#ff8a82")
         else:
-            paint_card(p, r, self.hasFocus(), hover, 12)
+            paint_card(p, r, self.hasFocus(), hover, 20)
             ink = QtGui.QColor(INK)
         p.setFont(self.font())
         text_w, glyph_w, total = self._parts()
@@ -3867,7 +3982,7 @@ class Switch(QtWidgets.QAbstractButton):
         p.drawRoundedRect(QtCore.QRectF(0.5, 0.5, 45, 25), 12.5, 12.5)
         knob = 30 if on != self.isRightToLeft() else 4
         p.setPen(Qt.NoPen)
-        p.setBrush(QtGui.QColor("#16161b") if on else QtGui.QColor(INK))
+        p.setBrush(QtGui.QColor(DARK) if on else QtGui.QColor(INK))
         p.drawEllipse(QtCore.QRectF(knob, 5, 16, 16) if on else QtCore.QRectF(knob + 1, 6, 14, 14))
 
 
@@ -4031,7 +4146,7 @@ class OptionCard(QtWidgets.QAbstractButton):
         p.setFont(font(16, QtGui.QFont.DemiBold))
         flags = Qt.AlignLeft | Qt.AlignVCenter    # Qt turns this to the right in Arabic by itself
         p.drawText(mirror(self, QtCore.QRectF(74, 18, self.width() - 94, 24)), flags, self.title)
-        p.setPen(QtGui.QColor(244, 244, 246, 168))
+        p.setPen(QtGui.QColor(236, 240, 250, 168))
         p.setFont(font(13))
         sub = self.note or (self.describe(self.value) if callable(self.describe) else self.describe)
         p.drawText(mirror(self, QtCore.QRectF(74, 42, self.width() - 94, 22)), flags,
@@ -4047,8 +4162,8 @@ class OptionCard(QtWidgets.QAbstractButton):
                 p.setPen(Qt.NoPen)
                 p.setBrush(QtGui.QColor(INK) if self.hasFocus() else QtGui.QColor(255, 255, 255, 44))
                 p.drawRoundedRect(seg, 7, 7)
-            p.setPen(QtGui.QColor("#16161b") if chosen and self.hasFocus()
-                     else QtGui.QColor(INK) if chosen else QtGui.QColor(244, 244, 246, 150))
+            p.setPen(QtGui.QColor(DARK) if chosen and self.hasFocus()
+                     else QtGui.QColor(INK) if chosen else QtGui.QColor(236, 240, 250, 150))
             p.drawText(seg, Qt.AlignCenter, p.fontMetrics().elidedText(self.choices[i][1], Qt.ElideRight,
                                                                          int(seg.width()) - 12))
 
@@ -4122,7 +4237,7 @@ class Timeline(QtWidgets.QWidget):
         for x in (x1, x2):
             p.setBrush(ink)
             p.drawRoundedRect(QtCore.QRectF(x - 6, 2, 12, h - 4), 5, 5)
-            p.setBrush(QtGui.QColor("#111114"))
+            p.setBrush(QtGui.QColor(DARK))
             p.drawRoundedRect(QtCore.QRectF(x - 1.25, h / 2 - 9, 2.5, 18), 1.25, 1.25)
         # playhead
         xp = self._x(self.pos)
@@ -4207,7 +4322,7 @@ class Viewer(QtWidgets.QWidget):
             label = tr(text).replace("&", "&&")   # "&" isn't a shortcut here
             b = QtWidgets.QPushButton(("  " + label) if icon and label else label, objectName=name)
             if icon:
-                b.setIcon(qicon(icon, "#16161b" if name == "primary" else INK))
+                b.setIcon(qicon(icon, DARK if name == "primary" else INK))
                 b.setIconSize(QtCore.QSize(18, 18))
             b.setCursor(Qt.PointingHandCursor)
             b.clicked.connect(fn)
@@ -5208,7 +5323,7 @@ class TileDelegate(QtWidgets.QStyledItemDelegate):
         key = str(path)
         pm = self.cache.pop(key, None)
         if pm is None:
-            pm = rounded_pixmap(self.g.ctl.thumb(path), self.g.TW, self.g.TH, 10,
+            pm = rounded_pixmap(self.g.ctl.thumb(path), self.g.TW, self.g.TH, 14,
                                 max(1.0, self.g.devicePixelRatioF()))
         self.cache[key] = pm
         limit = self.limit()
@@ -5223,29 +5338,30 @@ class TileDelegate(QtWidgets.QStyledItemDelegate):
             self.cache.pop(path, None)
 
     def sizeHint(self, option, index):
-        return QtCore.QSize(self.g.TW + 20, self.g.TH + 62)
+        return QtCore.QSize(self.g.TW + 2 * self.g.PAD, self.g.TH + self.g.PAD + 62)
 
     def paint(self, p: QtGui.QPainter, option, index):
         path = Path(index.data(Qt.UserRole))
         r = QtCore.QRectF(option.rect)
         selected = bool(option.state & QtWidgets.QStyle.State_Selected)
+        t = self.g.grow if selected else 0.0      # the current tile grows into focus, like the PS5
         p.save()
         p.setRenderHint(QtGui.QPainter.Antialiasing)
-        tile = QtCore.QRectF(r.x() + (r.width() - self.g.TW) / 2, r.y() + 8, self.g.TW, self.g.TH)
+        rest = QtCore.QRectF(r.x() + (r.width() - self.g.TW) / 2, r.y() + self.g.PAD, self.g.TW, self.g.TH)
+        tile = grown(rest, 0.06 * t)
+        radius = 14 * tile.width() / rest.width()
         ctl = self.g.ctl
         draw_capture_tile(p, tile, self.pixmap(path), path, ctl.length_of(path), ctl.is_favorite(path),
-                          dim=0 if selected else 40, marked=path in self.g.marked, selecting=self.g.selecting)
-        if selected:
-            p.setPen(QtGui.QPen(QtGui.QColor(INK), 2))
-            p.setBrush(Qt.NoBrush)
-            p.drawRoundedRect(tile.adjusted(-3, -3, 3, 3), 13, 13)
+                          dim=int(70 * (1 - t)), radius=radius, marked=path in self.g.marked,
+                          selecting=self.g.selecting)
+        paint_focus(p, tile, radius, t)
         title, _, sub = index.data(Qt.DisplayRole).partition("\n")
-        text = QtCore.QRectF(tile.left(), tile.bottom() + 10, tile.width(), 18)
-        p.setPen(QtGui.QColor(INK) if selected else QtGui.QColor(244, 244, 246, 200))
-        p.setFont(font(13, QtGui.QFont.DemiBold if selected else QtGui.QFont.Normal))
+        text = QtCore.QRectF(rest.left(), rest.bottom() + 14, rest.width(), 18)
+        p.setPen(QtGui.QColor(INK) if selected else QtGui.QColor(236, 240, 250, 200))
+        p.setFont(font(14, QtGui.QFont.DemiBold if selected else QtGui.QFont.Normal))
         p.drawText(text, lead() | Qt.AlignVCenter,
-                   p.fontMetrics().elidedText(title, Qt.ElideRight, int(tile.width())))
-        p.setPen(QtGui.QColor(244, 244, 246, 115))
+                   p.fontMetrics().elidedText(title, Qt.ElideRight, int(rest.width())))
+        p.setPen(QtGui.QColor(236, 240, 250, 115))
         p.setFont(font(12))
         p.drawText(text.translated(0, 19), lead() | Qt.AlignVCenter, sub)
         p.restore()
@@ -5255,7 +5371,7 @@ class CategoryDelegate(QtWidgets.QStyledItemDelegate):
     """Gallery sidebar rows: name on the left, count and size on the right; the current one is white."""
 
     def sizeHint(self, option, index):
-        return QtCore.QSize(option.rect.width(), 40)
+        return QtCore.QSize(option.rect.width(), 44)
 
     def paint(self, p: QtGui.QPainter, option, index):
         name, count, size = index.data(Qt.UserRole)
@@ -5266,15 +5382,15 @@ class CategoryDelegate(QtWidgets.QStyledItemDelegate):
         if selected:
             p.setPen(Qt.NoPen)
             p.setBrush(QtGui.QColor(INK))
-            p.drawRoundedRect(QtCore.QRectF(option.rect).adjusted(0, 2, 0, -2), 8, 8)
+            p.drawRoundedRect(QtCore.QRectF(option.rect).adjusted(0, 3, 0, -3), 19, 19)
         right = f"{count}"
         p.setFont(font(12))
-        p.setPen(QtGui.QColor(17, 17, 20, 150) if selected else QtGui.QColor(244, 244, 246, 105))
+        p.setPen(QtGui.QColor(13, 17, 32, 150) if selected else QtGui.QColor(236, 240, 250, 105))
         rw = p.fontMetrics().horizontalAdvance(right)
         rtl = is_rtl()    # the count sits at the far end of the line from the name
-        p.drawText(r, (Qt.AlignLeft if rtl else Qt.AlignRight) | Qt.AlignVCenter, right)
+        p.drawText(r, ((Qt.AlignLeft | Qt.AlignAbsolute) if rtl else Qt.AlignRight) | Qt.AlignVCenter, right)
         p.setFont(font(14, QtGui.QFont.DemiBold if selected else QtGui.QFont.Normal))
-        p.setPen(QtGui.QColor("#111114") if selected else QtGui.QColor(244, 244, 246, 200))
+        p.setPen(QtGui.QColor(DARK) if selected else QtGui.QColor(236, 240, 250, 200))
         p.drawText(r.adjusted(rw + 12, 0, 0, 0) if rtl else r.adjusted(0, 0, -rw - 12, 0), lead() | Qt.AlignVCenter,
                    p.fontMetrics().elidedText(name, Qt.ElideRight, int(r.width() - rw - 12)))
         p.restore()
@@ -5292,12 +5408,22 @@ QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height: 0; }}
 """
 
 
-class Gallery(QtWidgets.QWidget):
+class Gallery(Grow, QtWidgets.QWidget):
     """All captures, like the PS5 Media Gallery: games on the left, their captures on the right."""
 
     thumb_ready = QtCore.Signal(str)
     TW, TH = 256, 144
+    PAD = 18                 # room around a tile to grow into when it's the current one
     FAVORITES = "★  Favorites"
+
+    def _on_grow(self, value):
+        self.grow = float(value)
+        self.grid.viewport().update()
+
+    def _regrow(self):
+        """The current tile changed: it grows into focus."""
+        self.grow = 0.0
+        self.grow_to(True)
 
     def __init__(self, ctl: Controller, viewer: "Viewer"):
         super().__init__(None, Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool)
@@ -5376,7 +5502,7 @@ class Gallery(QtWidgets.QWidget):
         self.grid.setViewMode(QtWidgets.QListView.IconMode)
         self.tiles = TileDelegate(self)
         self.grid.setItemDelegate(self.tiles)
-        self.grid.setGridSize(QtCore.QSize(self.TW + 20, self.TH + 62))
+        self.grid.setGridSize(QtCore.QSize(self.TW + 2 * self.PAD, self.TH + self.PAD + 62))
         self.grid.setResizeMode(QtWidgets.QListView.Adjust)
         self.grid.setMovement(QtWidgets.QListView.Static)
         self.grid.setUniformItemSizes(True)
@@ -5384,7 +5510,7 @@ class Gallery(QtWidgets.QWidget):
         self.grid.setSpacing(4)
         self.grid.itemDoubleClicked.connect(lambda _: None if self.selecting else self.open_selected())
         self.grid.itemClicked.connect(self._clicked)
-        self.grid.currentRowChanged.connect(lambda _: self._update_info())
+        self.grid.currentRowChanged.connect(lambda _: (self._update_info(), self._regrow()))
         self.grid.installEventFilter(self)
         body.addWidget(self.grid, 1)
         lay.addLayout(body, 1)
@@ -5846,7 +5972,7 @@ class SettingRow(HoverFocus, QtWidgets.QWidget):
     Choices change with ← → (or a click), switches flip, actions (folder, shortcut) open with Enter."""
 
     changed = QtCore.Signal()
-    H = 68
+    H = 72
 
     def __init__(self, key: str, label: str, kind: str, choices: list | None = None, describe=None,
                  custom=None, display=None):
@@ -5961,22 +6087,22 @@ class SettingRow(HoverFocus, QtWidgets.QWidget):
         if focused:
             p.setPen(Qt.NoPen)
             p.setBrush(QtGui.QColor(INK))
-            p.drawRoundedRect(r, 10, 10)
+            p.drawRoundedRect(r, 16, 16)
         elif self.underMouse():
             p.setPen(Qt.NoPen)
             p.setBrush(QtGui.QColor(255, 255, 255, 14))
-            p.drawRoundedRect(r, 10, 10)
-        ink = QtGui.QColor("#111114") if focused else QtGui.QColor(INK)
-        soft = QtGui.QColor(17, 17, 20, 165) if focused else QtGui.QColor(244, 244, 246, 150)
+            p.drawRoundedRect(r, 16, 16)
+        ink = QtGui.QColor(DARK) if focused else QtGui.QColor(INK)
+        soft = QtGui.QColor(13, 17, 32, 165) if focused else QtGui.QColor(236, 240, 250, 150)
         desc = self.describe(self.value)
         left = QtCore.QRectF(322 if is_rtl() else 18, 0, self.width() - 340, self.height())
         p.setPen(ink)
-        p.setFont(font(15, QtGui.QFont.DemiBold if focused else QtGui.QFont.Normal))
+        p.setFont(font(16, QtGui.QFont.DemiBold if focused else QtGui.QFont.Normal))
         if desc:
             p.drawText(left.adjusted(0, 13, 0, 0), lead() | Qt.AlignTop, self.label)
             p.setPen(soft)
             p.setFont(font(13))
-            p.drawText(left.adjusted(0, 36, 0, 0), lead() | Qt.AlignTop,
+            p.drawText(left.adjusted(0, 39, 0, 0), lead() | Qt.AlignTop,
                        p.fontMetrics().elidedText(desc, Qt.ElideRight, int(left.width())))
         else:
             p.drawText(left, lead() | Qt.AlignVCenter, self.label)
@@ -5985,24 +6111,24 @@ class SettingRow(HoverFocus, QtWidgets.QWidget):
             track = QtCore.QRectF(v.left() if is_rtl() else v.right() - 46, v.center().y() - 13, 46, 26)
             on = bool(self.value) != is_rtl()   # the knob sits toward the line's end when on
             p.setPen(Qt.NoPen)
-            p.setBrush(QtGui.QColor(GREEN) if self.value else (QtGui.QColor(17, 17, 20, 60) if focused
+            p.setBrush(QtGui.QColor(BLUE) if self.value else (QtGui.QColor(13, 17, 32, 60) if focused
                                                         else QtGui.QColor(255, 255, 255, 50)))
             p.drawRoundedRect(track, 13, 13)
             p.setBrush(QtGui.QColor("white"))
             p.drawEllipse(QtCore.QPointF(track.right() - 13 if on else track.left() + 13, track.center().y()), 10, 10)
             return
         p.setFont(font(15, QtGui.QFont.DemiBold if focused else QtGui.QFont.Normal))
-        p.setPen(ink if focused or self.listening else QtGui.QColor(244, 244, 246, 220))
+        p.setPen(ink if focused or self.listening else QtGui.QColor(236, 240, 250, 220))
         if self.kind == "choice":   # a pill with ‹ › on every row, so it's clear the value can change
             values = [c[0] for c in self.choices]
             i = values.index(self.value) if self.value in values else 0
             pill = QtCore.QRectF(v.left(), v.center().y() - 19, v.width(), 38)
             p.save()
             p.setPen(Qt.NoPen)
-            p.setBrush(QtGui.QColor(17, 17, 20, 22) if focused else QtGui.QColor(255, 255, 255, 16))
+            p.setBrush(QtGui.QColor(13, 17, 32, 22) if focused else QtGui.QColor(255, 255, 255, 16))
             p.drawRoundedRect(pill, 19, 19)
             p.restore()
-            arrow = "#111114" if focused else INK
+            arrow = DARK if focused else INK
             for name, x, can in (("left", pill.left() + 10, i > 0),
                                  ("right", pill.right() - 28, i < len(values) - 1)):
                 p.setOpacity((1.0 if focused else 0.6) if can else 0.16)
@@ -6020,7 +6146,7 @@ class SettingRow(HoverFocus, QtWidgets.QWidget):
                 p.setOpacity(1.0 if focused else 0.6)
                 x = v.left() if is_rtl() else v.right() - 18
                 p.drawPixmap(QtCore.QPointF(x, v.center().y() - 9),
-                             icon_pixmap("left" if is_rtl() else "right", 18, "#111114" if focused else INK))
+                             icon_pixmap("left" if is_rtl() else "right", 18, DARK if focused else INK))
                 p.setOpacity(1.0)
 
 
@@ -6058,7 +6184,7 @@ class SectionTitle(QtWidgets.QLabel):
     def __init__(self, text: str):
         text = tr(text)
         super().__init__(text.capitalize() if text.isupper() else text)   # the keys are capitals
-        self.setStyleSheet(f"color: {INK}; font-size: 17px; font-weight: 600; padding: 28px 8px 10px 8px;")
+        self.setStyleSheet(f"color: {INK}; font-size: 20px; font-weight: 600; padding: 30px 10px 12px 10px;")
 
 
 class SettingsCard(QtWidgets.QWidget):
@@ -6075,8 +6201,8 @@ class SettingsCard(QtWidgets.QWidget):
         p = QtGui.QPainter(self)
         p.setRenderHint(QtGui.QPainter.Antialiasing)
         p.setPen(QtGui.QPen(QtGui.QColor(255, 255, 255, 20), 1))
-        p.setBrush(QtGui.QColor(18, 18, 22, 190))
-        p.drawRoundedRect(QtCore.QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5), 16, 16)
+        p.setBrush(QtGui.QColor(24, 29, 44, 175))
+        p.drawRoundedRect(QtCore.QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5), 22, 22)
         rows = [self.rows.itemAt(i).widget() for i in range(self.rows.count())]
         p.setPen(QtGui.QPen(QtGui.QColor(255, 255, 255, 16), 1))
         for above, below in zip(rows, rows[1:]):

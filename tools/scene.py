@@ -123,3 +123,31 @@ def draw_scene(w, h, pal="dusk", seed=1, hud=True, title="Reach the safehouse"):
         p.drawText(QRectF(w * 0.80, h * 0.84, w * 0.17, h * 0.03), Qt.AlignRight | Qt.AlignVCenter, "KM/H")
     p.end()
     return img
+
+
+def frosted(pm, tint=(7, 10, 20), alpha=0x70):
+    """What Windows' acrylic glass makes of the game behind a page (the app's GLASS_TINT over a blur).
+    The real thing is drawn by Windows and can't be grabbed, so the stills fake it here."""
+    from PySide6 import QtWidgets
+    small = pm.scaled(pm.width() // 4, pm.height() // 4, Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
+    scene = QtWidgets.QGraphicsScene()
+    item = scene.addPixmap(small)
+    blur = QtWidgets.QGraphicsBlurEffect()
+    blur.setBlurRadius(18)
+    blur.setBlurHints(QtWidgets.QGraphicsBlurEffect.QualityHint)
+    item.setGraphicsEffect(blur)
+    soft = QtGui.QPixmap(small.size())
+    soft.fill(QtGui.QColor(*tint))
+    p = QtGui.QPainter(soft)
+    scene.render(p, QRectF(soft.rect()), QRectF(small.rect()))
+    p.end()
+    out = soft.scaled(pm.size(), Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
+    p = QtGui.QPainter(out)
+    p.fillRect(out.rect(), QtGui.QColor(*tint, alpha))
+    p.end()
+    return out
+
+
+def is_page(pm, w, h):
+    """A page covers the whole screen (and sits on glass); the bar and notices don't."""
+    return pm.deviceIndependentSize().toSize() == QtCore.QSize(w, h)

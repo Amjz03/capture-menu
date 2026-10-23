@@ -2,10 +2,11 @@ import sys, os, time, tempfile, subprocess, shutil
 from pathlib import Path
 sys.path.insert(0, sys.argv[1]); out = Path(sys.argv[2]); out.mkdir(exist_ok=True)
 import capture_menu as cm
+cm.MOTION_MS = 0     # stills: the focus has already grown into place
 from PySide6 import QtWidgets, QtGui, QtCore
 from PySide6.QtCore import Qt
 app = QtWidgets.QApplication([])
-sys.path.insert(0, str(Path(__file__).resolve().parent)); from scene import draw_scene, game_name
+sys.path.insert(0, str(Path(__file__).resolve().parent)); from scene import draw_scene, game_name, frosted, is_page
 cm.STATE_PATH = Path(tempfile.mkdtemp()) / "state.json"
 W, H = 1920, 1080
 root = Path(tempfile.mkdtemp()); work = Path(tempfile.mkdtemp())
@@ -40,7 +41,8 @@ ctl.last_storage = {"used_gb": 214.3, "free_gb": 812, "limit_gb": 200, "over": T
 def pump(n=6):
     for _ in range(n): app.processEvents()
 def compose(name, *layers):
-    canvas = QtGui.QPixmap(game_bg); p = QtGui.QPainter(canvas)
+    canvas = frosted(game_bg) if any(is_page(pm, W, H) for pm, _, _ in layers) else QtGui.QPixmap(game_bg)
+    p = QtGui.QPainter(canvas)
     for pm, x, y in layers: p.drawPixmap(x, y, pm)
     p.end(); canvas.save(str(out / name))
 cm.INPUT.set("keyboard")
