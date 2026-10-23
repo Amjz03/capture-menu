@@ -46,7 +46,8 @@ viewer.enter_share(); pad(cm.LEFT); pad(cm.LEFT); pad(cm.LEFT); pad(cm.LEFT); pa
 assert viewer.format_card.value == "copy" and not viewer.size_card.isEnabled() and not viewer.voice_card.isEnabled()
 pad(cm.RIGHT); pad(cm.RIGHT); pad(cm.A)   # past the cards it turned off, to Copy file
 assert calls[-1] == ("copy", a.name) and not viewer.sharing, calls
-pad(cm.UP)                               # D-pad up -> favourite
+cm.INPUT.set("playstation"); app.processEvents()
+pad(cm.Y); pad(cm.A)                     # △ jumps to the small buttons, ✕ presses Favorite
 assert ctl.is_favorite(a) and "★" in viewer.title.text()
 viewer.step(1); viewer.enter_share()     # a screenshot: only Copy
 assert not any(c.isVisible() for c in (viewer.format_card, viewer.voice_card, viewer.size_card))
@@ -55,16 +56,25 @@ viewer.step(1); viewer.enter_share(); assert not viewer.voice_card.isEnabled(), 
 key(viewer, Qt.Key_Escape); assert not viewer.sharing and viewer.isVisible()
 print("viewer share/favorite PASS")
 
-# no More button: the rest are small buttons in the same row; △ moves onto them, Delete needs a second press
+# the controller moves a highlight over everything on screen, like a mouse, and ✕ presses it
 assert not hasattr(viewer, "more_btn") and viewer.del_btn.isVisible() and not viewer.del_btn.text()
-pad(cm.Y); assert viewer.more_open and viewer.actions_row.isVisible() and viewer.focusWidget() is viewer.fav_btn
-pad(cm.RIGHT); assert viewer.focusWidget() is viewer.folder_chip
-pad(cm.B); assert not viewer.more_open and viewer.actions_row.isVisible() and viewer.isVisible()
+viewer.show_item(); app.processEvents()
+assert viewer.focusWidget() is viewer.play_btn, "a clip starts on Play"
+pad(cm.RIGHT); assert viewer.focusWidget() is viewer.slider
+pad(cm.RIGHT); assert viewer.focusWidget() is viewer.slider, "on the seek bar → moves through the video"
+pad(cm.DOWN); assert viewer.focusWidget() in (viewer.trim_btn, viewer.sound_btn, viewer.share_btn)
+pad(cm.UP); pad(cm.UP)
+assert viewer.focusWidget() in (viewer.back_btn, viewer.rename_btn, viewer.prev_btn, viewer.next_btn, viewer.close_btn)
+pad(cm.Y); pad(cm.RIGHT); assert viewer.focusWidget() is viewer.folder_chip
+revealed = []; ctl.reveal = lambda p: revealed.append(p.name)
+pad(cm.A); assert revealed == [c.name] and viewer.isVisible()
 key(viewer, Qt.Key_Delete)               # Delete armed, nothing deleted yet
-assert viewer.more_open and viewer.del_btn.danger and viewer.focusWidget() is viewer.del_btn and c.exists()
-pad(cm.B); assert not viewer.more_open and not viewer.del_btn.danger and not viewer.del_btn.text() and c.exists()
+assert viewer.del_btn.danger and viewer.focusWidget() is viewer.del_btn and c.exists()
+pad(cm.B); assert not viewer.del_btn.danger and not viewer.del_btn.text() and c.exists() and viewer.isVisible()
+cm.INPUT.set("keyboard"); app.processEvents()
+assert viewer.focusWidget() is viewer, "with the keyboard the viewer keeps the keys for its shortcuts"
 viewer.close_viewer()
-print("viewer small buttons PASS")
+print("viewer highlight PASS")
 
 # gallery: categories, favourites, open, controller
 menu.show_menu("Frostfall"); menu.all_card.click(); app.processEvents()

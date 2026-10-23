@@ -2320,16 +2320,15 @@ def pad_key(button: int, menu: "Menu", viewer: "Viewer", gallery: "Gallery | Non
         if viewer.sounding:
             keys = {A: Qt.Key_Return, B: Qt.Key_Escape, UP: Qt.Key_Up, DOWN: Qt.Key_Down,
                     LEFT: Qt.Key_Left, RIGHT: Qt.Key_Right, X: Qt.Key_P, Y: Qt.Key_M}
-        elif viewer.sharing or viewer.more_open:
-            keys = {A: Qt.Key_Return, B: Qt.Key_Escape, LEFT: Qt.Key_Left, RIGHT: Qt.Key_Right,
-                    Y: Qt.Key_Escape if viewer.more_open else None}
+        elif viewer.sharing:
+            keys = {A: Qt.Key_Return, B: Qt.Key_Escape, LEFT: Qt.Key_Left, RIGHT: Qt.Key_Right}
         elif viewer.trimming:
             keys = {A: Qt.Key_Return, B: Qt.Key_Escape, LEFT: Qt.Key_Left, RIGHT: Qt.Key_Right,
                     X: Qt.Key_I, Y: Qt.Key_O, L1: Qt.Key_P, R1: Qt.Key_P}
         else:
-            keys = {A: Qt.Key_Space, B: Qt.Key_Escape, LEFT: Qt.Key_Left, RIGHT: Qt.Key_Right,
-                    L1: Qt.Key_A, R1: Qt.Key_D, X: Qt.Key_T, Y: Qt.Key_M,
-                    OPTIONS: Qt.Key_E, DOWN: Qt.Key_E, UP: Qt.Key_F, 7: Qt.Key_V}   # 7 = L3: Sound, Y: the small buttons
+            keys = {A: Qt.Key_Return, B: Qt.Key_Escape, LEFT: Qt.Key_Left, RIGHT: Qt.Key_Right,
+                    UP: Qt.Key_Up, DOWN: Qt.Key_Down, L1: Qt.Key_A, R1: Qt.Key_D, X: Qt.Key_T, Y: Qt.Key_M,
+                    OPTIONS: Qt.Key_E, 7: Qt.Key_V}   # 7 = L3: Sound, Y: the small buttons
         return keys.get(button)
     if gallery is not None and gallery.isVisible():
         keys = {A: Qt.Key_Return, B: Qt.Key_Escape, UP: Qt.Key_Up, DOWN: Qt.Key_Down,
@@ -2706,6 +2705,8 @@ def token_glyphs(token: str, mode: str) -> list[str]:
         return ["sony-left-stick"] if kind == "playstation" else ["t:LS"]
     if token == "DPAD_U":
         return ["dpad-up" if kind == "playstation" else "xbox-dpad-up"]
+    if token == "DPAD":
+        return ["dpad-fill" if kind == "playstation" else "xbox-dpad"]
     if token in ("DPAD_LR", "DPAD_UD"):
         suffix = "left-right" if token == "DPAD_LR" else "up-down"
         return [f"dpad-{suffix}" if kind == "playstation" else f"xbox-dpad-{suffix}"]
@@ -3880,13 +3881,14 @@ QPushButton#primary {{ background: {INK}; color: {DARK}; border: none; padding: 
 QPushButton#primary:hover {{ background: #ffffff; }}
 QPushButton:focus {{ border: 2px solid {INK}; padding: 0 21px; }}
 QPushButton#primary:focus {{ border: 3px solid {DARK}; padding: 0 23px; }}
-QPushButton#back {{ background: rgba(255,255,255,12); border: none; padding: 0 18px 0 12px; }}
+QPushButton#back {{ background: rgba(255,255,255,12); border: 3px solid transparent; padding: 0 18px 0 12px; }}
+QPushButton#back:focus, QPushButton#round:focus, QPushButton#ctl:focus {{ border: 3px solid {INK}; }}
 QPushButton#back:hover {{ background: rgba(255,255,255,32); }}
 QPushButton#round {{ padding: 0; min-width: 46px; max-width: 46px; min-height: 46px; max-height: 46px;
-                     border-radius: 23px; border: none; background: rgba(255,255,255,12); }}
+                     border-radius: 23px; border: 3px solid transparent; background: rgba(255,255,255,12); }}
 QPushButton#round:hover {{ background: rgba(255,255,255,32); }}
 QPushButton#pill {{ min-height: 34px; padding: 0 16px; font-size: 13px; border-radius: 17px; }}
-QPushButton#ctl {{ padding: 0; min-width: 40px; max-width: 40px; min-height: 40px; border: none;
+QPushButton#ctl {{ padding: 0; min-width: 40px; max-width: 40px; min-height: 40px; border: 3px solid transparent;
                    background: transparent; border-radius: 20px; }}
 QPushButton#ctl:hover {{ background: rgba(255,255,255,24); }}
 QPushButton#noteToggle {{ text-align: left; padding: 0 16px; font-weight: 400; color: {MUTED}; }}
@@ -3899,6 +3901,8 @@ QLineEdit:focus {{ border: 2px solid {INK}; padding: 0 15px; }}
 QSlider::groove:horizontal {{ height: 4px; background: rgba(255,255,255,46); border-radius: 2px; }}
 QSlider::sub-page:horizontal {{ background: {INK}; border-radius: 2px; }}
 QSlider::handle:horizontal {{ width: 16px; height: 16px; margin: -6px 0; border-radius: 8px; background: white; }}
+QSlider#seek {{ border: 3px solid transparent; border-radius: 15px; padding: 0 8px; min-height: 30px; }}
+QSlider#seek:focus {{ border-color: {INK}; }}
 """
 
 # ---- the viewer's parts. One calm vocabulary: a faint surface with a hairline, round corners,
@@ -3912,6 +3916,35 @@ def paint_card(p: QtGui.QPainter, r: QtCore.QRectF, focused: bool = False, hover
     p.setPen(QtGui.QPen(QtGui.QColor(INK) if focused else QtGui.QColor(255, 255, 255, 26), 3 if focused else 1))
     p.setBrush(QtGui.QColor(255, 255, 255, 24 if (hovered or focused) else 12))
     p.drawRoundedRect(r.adjusted(inset, inset, -inset, -inset), radius, radius)
+
+
+def toward(current: QtWidgets.QWidget, items: list[QtWidgets.QWidget], key: int) -> QtWidgets.QWidget | None:
+    """Where an arrow leads from current, by where things sit on screen, the way the PS5 moves its
+    highlight: the nearest item that way, in line with it before anything off to the side."""
+    def box(w):
+        return QtCore.QRectF(QtCore.QPointF(w.mapToGlobal(QtCore.QPoint(0, 0))), QtCore.QSizeF(w.size()))
+
+    def gap(a0, a1, b0, b1):     # how far apart two spans are (0 when they overlap)
+        return max(0.0, b0 - a1, a0 - b1)
+    here = box(current)
+    best, best_score = None, None
+    for w in items:
+        if w is current:
+            continue
+        r = box(w)
+        d = r.center() - here.center()
+        if key in (Qt.Key_Left, Qt.Key_Right):
+            way, along = (d.x() if key == Qt.Key_Right else -d.x()), gap(here.left(), here.right(), r.left(), r.right())
+            across = gap(here.top(), here.bottom(), r.top(), r.bottom())
+        else:
+            way, along = (d.y() if key == Qt.Key_Down else -d.y()), gap(here.top(), here.bottom(), r.top(), r.bottom())
+            across = gap(here.left(), here.right(), r.left(), r.right())
+        if way <= 2:
+            continue
+        score = along + 2 * across + 0.05 * abs(d.y() if key in (Qt.Key_Left, Qt.Key_Right) else d.x())
+        if best_score is None or score < best_score:
+            best, best_score = w, score
+    return best
 
 
 def mirror(w: QtWidgets.QWidget, r: QtCore.QRectF) -> QtCore.QRectF:
@@ -3972,6 +4005,10 @@ class ActionButton(QtWidgets.QAbstractButton):
             p.setBrush(QtGui.QColor("#ffffff" if hover else INK))
             p.drawRoundedRect(r, 20, 20)
             ink = QtGui.QColor(DARK)
+            if self.hasFocus():   # a dark ring inside the white
+                p.setPen(QtGui.QPen(ink, 3))
+                p.setBrush(Qt.NoBrush)
+                p.drawRoundedRect(r.adjusted(4.5, 4.5, -4.5, -4.5), 16, 16)
         elif self.danger:
             p.setPen(QtGui.QPen(QtGui.QColor(INK), 2) if self.hasFocus() else
                      QtGui.QPen(QtGui.QColor(255, 105, 97, 150), 1))
@@ -4349,7 +4386,6 @@ class Viewer(QtWidgets.QWidget):
         lay = QtWidgets.QVBoxLayout(self)
         lay.setContentsMargins(64, 36, 64, 24)
         lay.setSpacing(16)
-        self.more_open = False                   # the small buttons (favourite, folder, player, delete) have the focus
         self.full = False                        # only the video, nothing around it
 
         def button(row, text, fn, icon=None, name=""):
@@ -4368,7 +4404,8 @@ class Viewer(QtWidgets.QWidget):
         head = QtWidgets.QHBoxLayout(self.head)
         head.setContentsMargins(0, 0, 0, 0)
         head.setSpacing(0)
-        head.addWidget(back_button(self.go_back), 0, Qt.AlignTop)
+        self.back_btn = back_button(self.go_back)
+        head.addWidget(self.back_btn, 0, Qt.AlignTop)
         head.addSpacing(22)
         titles = QtWidgets.QVBoxLayout()
         titles.setSpacing(3)
@@ -4399,10 +4436,10 @@ class Viewer(QtWidgets.QWidget):
         rule.setFixedSize(1, 30)
         head.addWidget(rule, 0, Qt.AlignVCenter)
         head.addSpacing(18)
-        close = button(head, "", self.close_viewer, "close", "round")
-        for b in (self.prev_btn, self.next_btn, close):
+        self.close_btn = button(head, "", self.close_viewer, "close", "round")
+        for b in (self.prev_btn, self.next_btn, self.close_btn):
             head.setAlignment(b, Qt.AlignTop)
-        close.setToolTip(tr("Close (Esc)"))
+        self.close_btn.setToolTip(tr("Close (Esc)"))
         lay.addWidget(self.head)
 
         # ---- the video card: the picture, and its controls built into the bottom edge
@@ -4536,7 +4573,7 @@ class Viewer(QtWidgets.QWidget):
         act.addSpacing(18)
         self.tools_hint = HintBar()             # △ / M: the button that walks the small ones
         act.addWidget(self.tools_hint, 0, Qt.AlignVCenter)
-        self.fav_btn = ActionButton("", "star", "DPAD_U", "k:F")
+        self.fav_btn = ActionButton("", "star", None, "k:F")
         self.folder_chip = ActionButton("", "folder")
         self.external_chip = ActionButton("", "external")
         self.del_btn = ActionButton("", "trash", None, "k:Del")
@@ -4626,7 +4663,11 @@ class Viewer(QtWidgets.QWidget):
             b.setFocusPolicy(Qt.NoFocus)  # keys go to the viewer, not to a button
         for b in (self.share_cancel, self.share_go):
             b.setFocusPolicy(Qt.StrongFocus)   # Share is walked with ← → like its cards
-        INPUT.changed.connect(lambda _: self.update_hints() if self.items else None)
+        INPUT.changed.connect(lambda _: (self.update_hints(), self._pick_focus()) if self.items else None)
+        self.slider.setObjectName("seek")
+        self.slider.setFocusPolicy(Qt.NoFocus)   # a click doesn't take the keys; the controller still lands on it
+        for w in self._all_nav():
+            w.installEventFilter(self)           # their keys come to the viewer, which moves the highlight
         self.preview_ready.connect(self._on_preview_ready)
         self.preview_progress.connect(self._on_preview_progress)
         self.frame_ready.connect(self._on_frame)
@@ -4671,8 +4712,8 @@ class Viewer(QtWidgets.QWidget):
             self._set_sharing(False)
         elif self.trimming:
             self.exit_trim()
-        elif self.more_open:
-            self._set_more(False)
+        elif self.del_btn.danger:
+            self._reset_delete()
         else:
             back, self.back_to = getattr(self, "back_to", None), None
             self.close_viewer()
@@ -4699,6 +4740,8 @@ class Viewer(QtWidgets.QWidget):
         if not load_multimedia():
             return False
         self.video = QtMultimediaWidgets.QVideoWidget()
+        self.video.setFocusPolicy(Qt.NoFocus)
+        self.video.installEventFilter(self)      # if it takes the keys anyway, they still reach the viewer
         self.stage.addWidget(self.video)
         self.player = QtMultimedia.QMediaPlayer(self)
         self.audio = QtMultimedia.QAudioOutput(self)
@@ -4731,7 +4774,6 @@ class Viewer(QtWidgets.QWidget):
     def show_item(self):
         self._release()
         self._reset_delete()
-        self.more_open = False
         self._set_trimming(False)
         self._set_sharing(False)
         self._set_editing(False)
@@ -4745,7 +4787,9 @@ class Viewer(QtWidgets.QWidget):
         self.next_btn.setEnabled(self.index < len(self.items) - 1)
         self.trim_btn.setVisible(self.is_video())
         self.sound_btn.setVisible(self.is_video())
+        self.controls.setVisible(self.is_video())
         self.update_hints()
+        self._pick_focus(fresh=True)
         if not self.is_video():
             self.controls.hide()
             self.stage.setCurrentWidget(self.image)
@@ -4891,6 +4935,8 @@ class Viewer(QtWidgets.QWidget):
     def _set_trimming(self, on: bool):
         self.trimming = on
         self._sync()
+        if not on:
+            self._pick_focus()
 
     def _show_title(self):
         path = self.current
@@ -4926,7 +4972,7 @@ class Viewer(QtWidgets.QWidget):
             self.player.pause()
         self._set_trimming(False)
         self._set_sharing(False)
-        self._set_more(False)
+        self._reset_delete()
         self._set_editing(True)
         self.title_edit.setFocus()
         self.title_edit.selectAll()
@@ -4950,7 +4996,7 @@ class Viewer(QtWidgets.QWidget):
         self.editing = on
         self._sync()
         if not on:
-            self.setFocus()
+            self._pick_focus()
 
     def enter_sound(self):
         if not self.is_video():
@@ -4978,7 +5024,7 @@ class Viewer(QtWidgets.QWidget):
         self._previewing_sound = self._previewing_sound and on
         self._sync()
         if not on:
-            self.setFocus()
+            self._pick_focus()
 
     def preview_sound(self):
         """Plays 12 seconds from here with the levels picked, before anything is saved."""
@@ -5035,7 +5081,7 @@ class Viewer(QtWidgets.QWidget):
         if not self.items:
             return
         self._set_trimming(False)
-        self._set_more(False)
+        self._reset_delete()
         self._set_sharing(True)
 
     def _set_sharing(self, on: bool):
@@ -5056,7 +5102,7 @@ class Viewer(QtWidgets.QWidget):
             self.share_go.setFocus()
         self._sync()
         if not on:
-            self.setFocus()
+            self._pick_focus()
 
     def _share_cards_state(self):
         """The original file is copied as it is: your voice and the size don't apply to it."""
@@ -5094,22 +5140,36 @@ class Viewer(QtWidgets.QWidget):
         cards = [c for c in (self.format_card, self.voice_card, self.size_card) if c.isVisible() and c.isEnabled()]
         return cards + [self.share_cancel, self.share_go]
 
-    def _more_nav(self) -> list[QtWidgets.QWidget]:
-        return [c for c in (self.fav_btn, self.folder_chip, self.external_chip, self.del_btn) if c.isVisible()]
+    def _all_nav(self) -> list[QtWidgets.QWidget]:
+        return [self.back_btn, self.rename_btn, self.prev_btn, self.next_btn, self.close_btn,
+                self.play_btn, self.slider, self.vol_btn, self.full_btn,
+                self.trim_btn, self.sound_btn, self.share_btn,
+                self.fav_btn, self.folder_chip, self.external_chip, self.del_btn]
+
+    def _nav_items(self) -> list[QtWidgets.QWidget]:
+        """Everything on screen the controller's highlight can go to, like a mouse."""
+        return [w for w in self._all_nav() if w.isVisible() and w.isEnabled()]
+
+    def _pick_focus(self, fresh: bool = False):
+        """With a controller the highlight sits on something on screen (Play, or Share for a picture);
+        with the keyboard the viewer keeps the keys for its shortcuts. fresh: a new capture is shown."""
+        if not self.isVisible() or self.trimming or self.sounding or self.sharing or self.editing:
+            return
+        if INPUT.mode == "keyboard":
+            self.setFocus()
+        elif fresh or self.focusWidget() not in self._nav_items():
+            (self.play_btn if self.is_video() else self.share_btn).setFocus()
 
     # ---- the small buttons, only the video, sound on / off
     def toggle_more(self):
-        """△ / M: the highlight goes onto the small buttons at the end of the row, or back off them."""
-        self._set_more(not self.more_open)
+        """△ / M: the highlight jumps to the small buttons at the end of the row."""
+        self.fav_btn.setFocus()
 
-    def _set_more(self, on: bool):
-        self.more_open = on
-        self._sync()
-        if on:
-            self.fav_btn.setFocus()
-        else:
-            self._reset_delete()
-            self.setFocus()
+    def eventFilter(self, obj, event):
+        if event.type() == QtCore.QEvent.KeyPress and (obj in self._all_nav() or obj is self.video):
+            self.keyPressEvent(event)        # a focused button would eat the arrows and ✕ itself
+            return True
+        return super().eventFilter(obj, event)
 
     def toggle_full(self):
         self.full = not self.full
@@ -5162,20 +5222,20 @@ class Viewer(QtWidgets.QWidget):
                       ("B", "Cancel")] if pad else
                      [("k:↑ ↓", "Switch"), ("k:← →", "Change"), ("k:M", "Mute"), ("k:P", "Preview"),
                       ("k:Enter", "Save"), ("k:Esc", "Cancel")])
-        elif self.sharing or self.more_open:
+        elif self.sharing:
             items = ([("DPAD_LR", "Move"), ("A", "Select"), ("B", "Back")] if pad
                      else [("k:← →", "Move"), ("k:Enter", "Select"), ("k:Esc", "Back")])
         elif self.trimming:
             items = ([("X", "Start"), ("Y", "End"), ("L1", "Preview"), ("A", "Save"), ("B", "Cancel")] if pad
                      else [("k:I", "Start"), ("k:O", "End"), ("k:P", "Preview"), ("k:Enter", "Save"),
                            ("k:Esc", "Cancel")])
+        elif pad:
+            items = [("DPAD", "Move"), ("A", "Select"), ("L1R1", "Newer/older"), ("B", "Back")]
         elif self.is_video():
-            items = ([("A", "Play/pause"), ("L1R1", "Newer/older"), ("DPAD_U", "Favorite"), ("B", "Back")] if pad
-                     else [("k:Space", "Play/pause"), ("k:A D", "Newer/older"), ("k:F", "Favorite"),
-                           ("k:N", "Rename"), ("k:Esc", "Back")])
+            items = [("k:Space", "Play/pause"), ("k:A D", "Newer/older"), ("k:F", "Favorite"),
+                     ("k:N", "Rename"), ("k:Esc", "Back")]
         else:
-            items = ([("L1R1", "Newer/older"), ("DPAD_U", "Favorite"), ("B", "Back")] if pad
-                     else [("k:A D", "Newer/older"), ("k:F", "Favorite"), ("k:N", "Rename"), ("k:Esc", "Back")])
+            items = [("k:A D", "Newer/older"), ("k:F", "Favorite"), ("k:N", "Rename"), ("k:Esc", "Back")]
         self.keys_hint.set_items(items, mode)
         self.tools_hint.set_items([("Y" if pad else "k:M", "")], mode)
 
@@ -5226,9 +5286,7 @@ class Viewer(QtWidgets.QWidget):
         self.hide()
 
     def delete_current(self):
-        if not self.more_open:            # the highlight goes to Delete, ready to confirm
-            self._set_more(True)
-        if not self.del_btn.danger:
+        if not self.del_btn.danger:       # the highlight goes to Delete, ready to confirm
             self.del_btn.danger = True
             self.del_btn.setText(tr("Press again to delete"))
             self.del_btn.setFocus()
@@ -5283,20 +5341,35 @@ class Viewer(QtWidgets.QWidget):
             elif k == Qt.Key_Space:
                 self.toggle_play()
             return
-        if self.sharing or self.more_open:
-            nav = self._share_nav() if self.sharing else self._more_nav()
+        if self.sharing:
+            nav = self._share_nav()
             focused = self.focusWidget()
-            i = nav.index(focused) if focused in nav else len(nav) - 1 if self.sharing else 0
+            i = nav.index(focused) if focused in nav else len(nav) - 1
             if k in (Qt.Key_Left, Qt.Key_Right) and nav:
                 nav[max(0, min(len(nav) - 1, i + forward(k)))].setFocus()
             elif k in (Qt.Key_Return, Qt.Key_Enter, Qt.Key_Space) and nav:
                 item = nav[i]
                 item.next() if isinstance(item, OptionCard) else item.click()
-            elif k == Qt.Key_Delete and self.more_open:
-                self.delete_current()
-            elif k in (Qt.Key_Escape, Qt.Key_Backspace) or (k == Qt.Key_M and self.more_open):
+            elif k in (Qt.Key_Escape, Qt.Key_Backspace):
                 self.go_back()
             return
+        items = [] if self.trimming else self._nav_items()
+        focused = self.focusWidget()
+        if items and (focused in items or INPUT.mode != "keyboard"):   # the highlight, moved like a mouse
+            if focused not in items:
+                self._pick_focus(fresh=True)
+                focused = self.focusWidget()
+            if focused is self.slider and k in (Qt.Key_Left, Qt.Key_Right):
+                self.seek(5000 if k == Qt.Key_Right else -5000)   # on the seek bar ← → move through the video
+                return
+            if k in (Qt.Key_Left, Qt.Key_Right, Qt.Key_Up, Qt.Key_Down):
+                nxt = toward(focused, items, k)
+                if nxt is not None:
+                    nxt.setFocus()
+                return
+            if k in (Qt.Key_Return, Qt.Key_Enter):
+                self.toggle_play() if focused is self.slider else focused.click()
+                return
         if self.trimming:
             handlers = {
                 Qt.Key_Escape: self.exit_trim,
