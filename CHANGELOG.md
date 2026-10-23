@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.0.28 · 2026-10-24
+
+- **Show in folder opens the right folder.** For games with spaces in their name (Red Dead Redemption 2, Call of Duty), File Explorer opened Documents instead of the capture's folder. It now opens the game's folder with the capture selected.
+- **Rename says what to do.** The box now reads "Type a new name, then press Enter", the name field has a pencil in it, and the current name is selected in blue so it's clear typing replaces it. With a controller, the hints show ⏎ Save too.
+
 ## 0.0.27 · 2026-10-24
 
 - **Rename takes your typing after a controller press.** Pressing Rename with ✕ opened the box, but Windows kept the keyboard on the game, so nothing you typed showed up. The viewer now takes the keyboard when the box opens.
