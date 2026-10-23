@@ -906,7 +906,8 @@ def is_hdr(path: Path) -> bool:
         ffprobe = find_tool("ffprobe")
         r = run_quiet([ffprobe, "-v", "error", "-select_streams", "v:0", "-show_entries",
                        "stream=color_transfer", "-of", "csv=p=0", str(path)]) if ffprobe else None
-        _color_cache[key] = r.stdout.strip() if r else ""
+        # one field, though OBS's clips come back as "smpte2084," (with a comma)
+        _color_cache[key] = r.stdout.strip().split(",")[0] if r else ""
     return _color_cache[key] in ("smpte2084", "arib-std-b67")
 
 
@@ -1536,6 +1537,27 @@ class Controller(QtCore.QObject):
         self.lengths: dict[Path, float | None] = self._load_lengths()
         self._warned: set[str] = set()
         self.last_storage: dict = {}
+        threading.Thread(target=self._remake_hdr_thumbs, daemon=True).start()
+
+    def _remake_hdr_thumbs(self):
+        """Until 0.0.16 OBS's HDR clips weren't taken for HDR, so their thumbnails and previews came
+        out grey and washed out. Once per clips folder: make those again in normal colours."""
+        done = self.thumbs_dir / "hdr-thumbs-v2"
+        if done.exists():
+            return
+        try:
+            fixed = False
+            for p in self.all_captures():
+                if is_hdr(p):
+                    (self.thumbs_dir / (hashlib.md5(str(p).encode()).hexdigest() + ".jpg")).unlink(missing_ok=True)
+                    self.preview_path(p).unlink(missing_ok=True)
+                    make_thumb(p, self.thumbs_dir)
+                    fixed = True
+            done.touch()
+            if fixed:
+                safe_emit(self.library_changed)
+        except Exception:
+            log.exception("could not remake the HDR thumbnails")
 
     def preview_path(self, path: Path) -> Path:
         return self.previews_dir / (hashlib.md5(str(path).encode()).hexdigest() + ".mp4")

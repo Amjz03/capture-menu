@@ -47,6 +47,13 @@ subprocess.run([ffmpeg, "-v", "error", "-y", *src, "-vf",
 subprocess.run([ffmpeg, "-v", "error", "-y", *src, "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", str(sdr)],
                check=True)
 assert cm.is_hdr(hdr) and not cm.is_hdr(sdr)
+# ffprobe gives OBS's clips as "smpte2084," (with a comma): they're HDR all the same
+real_run = cm.run_quiet
+cm.run_quiet = lambda cmd: type("R", (), {"stdout": "smpte2084,\n"})()
+obs_clip = work / "Game" / "obs.mp4"; obs_clip.write_bytes(b"")
+assert cm.is_hdr(obs_clip), "OBS's HDR clips are HDR"
+cm.run_quiet = real_run
+obs_clip.unlink()
 assert cm.sdr_filter(sdr, "scale=480:-2") == "scale=480:-2" and cm.sdr_filter(hdr, "scale=480:-2").startswith("zscale")
 print("finds HDR clips PASS")
 
