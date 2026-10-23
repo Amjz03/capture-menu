@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.0.22 · 2026-10-23
+
+- **The Create bar and the gallery look like 0.0.20 again**, with these refinements:
+- **Clearer text.** Grey text is brighter and the small text is a size larger: button names and hints in the bar, capture titles and details in the gallery, notices, the viewer and Settings descriptions. Easier to read from the couch.
+- **A tidier gallery.** Same games list on the side, but the captures now share the width evenly in larger tiles (4 across on a 1080p screen), with bigger titles under them.
+- **Smoother motion.** Notices fade in as they slide in, and fade out instead of vanishing. In the gallery, the tile you leave shrinks back smoothly while the new one grows.
+
 ## 0.0.21 · 2026-10-23
 
 - **The Create bar is laid out like the PS5's.** A solid night-blue band along the bottom: your latest captures at the start, Save recent, Screenshot and Record as round buttons in the middle of the screen, and Mic, All captures and Settings as smaller round buttons at the end. The focused button grows into a white circle and only it shows its name, like on the PS5. Keys, controller and mouse work as before.
