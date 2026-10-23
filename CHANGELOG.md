@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.0.24 · 2026-10-23
+
+- **No More button in the viewer.** Favorite, Show in folder, Open in your video player and Delete are small icon buttons at the end of the main row, so they're one click away (their names show when you point at them). With a controller, △ moves the highlight onto them; on the keyboard, M. Delete still needs a second press, and Rename stays next to the title.
+
 ## 0.0.23 · 2026-10-23
 
 - **Back in the viewer goes back.** A capture opened by clicking its notice (or the notice's Trim button) had nowhere to go back to, so Back closed everything and dropped you into the game. Back now goes to the Create bar, the same as opening it with Create then △.
