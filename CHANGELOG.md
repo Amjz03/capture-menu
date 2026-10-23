@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.0.17 · 2026-10-23
+
+- **More colourful Vivid.** Colours → Vivid now boosts colour and contrast more (saturation ×1.6, contrast ×1.1, up from ×1.3 and ×1.06) when an HDR screen is recorded in normal colours. It's applied to OBS at every start, so the new look shows up right after updating.
+
 ## 0.0.16 · 2026-10-23
 
 - **HDR clips look right in your library.** HDR clips recorded by OBS weren't recognised as HDR, so their thumbnails, previews, shared copies and copies came out grey and washed out. They're recognised now, and the first start after updating remakes the thumbnails of the HDR clips you already have, in normal colours.
