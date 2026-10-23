@@ -24,6 +24,8 @@ assert on["summary"] != off["summary"], "turning HDR on or off sets OBS up again
 bright = cm.obs_plan(cfg, 2560, 1440, "nvenc_av1", "31.0.0", hdr=False, white=240)
 assert profile(bright)[("Video", "SdrWhiteLevel")] == "240", "OBS's white level matches Windows' (not grey)"
 assert ("Video", "SdrWhiteLevel") not in profile(off) and bright["summary"] != off["summary"]
+assert bright["vivid"] and not off["vivid"], "normal colours from an HDR screen get a light colour boost"
+assert not cm.obs_plan(cfg, 2560, 1440, "nvenc_av1", "31.0.0", hdr=True, white=240)["vivid"], "HDR clips stay as they are"
 assert cm.sdr_white() is None or 80 <= cm.sdr_white() <= 1000
 screens = cm.hdr_screens()
 assert isinstance(screens, dict) and all(isinstance(v, bool) for v in screens.values())

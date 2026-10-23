@@ -287,7 +287,27 @@ class Obs:
                                      "inputKind": "monitor_capture", "inputSettings": {},
                                      "sceneItemEnabled": True})
             self.fit_to_canvas("Display Capture")
+        self.set_vivid(bool(plan.get("vivid")))
         return changed
+
+    VIVID = "Capture Menu colour"
+    VIVID_SETTINGS = {"saturation": 0.3, "contrast": 0.06}   # like ffmpeg eq=saturation=1.3:contrast=1.06
+
+    def set_vivid(self, on: bool):
+        """An HDR screen recorded in normal colours looks flat next to the HDR game: a light colour
+        correction on the display capture gives back some of the colour. Filters apply live."""
+        source = self.display_source()
+        if not source:
+            return
+        filters = [f["filterName"] for f in self.raw("GetSourceFilterList", {"sourceName": source}).get("filters", [])]
+        if on and self.VIVID in filters:
+            self.raw("SetSourceFilterSettings", {"sourceName": source, "filterName": self.VIVID,
+                                                 "filterSettings": self.VIVID_SETTINGS})
+        elif on:
+            self.raw("CreateSourceFilter", {"sourceName": source, "filterName": self.VIVID,
+                                            "filterKind": "color_filter_v2", "filterSettings": self.VIVID_SETTINGS})
+        elif self.VIVID in filters:
+            self.raw("RemoveSourceFilter", {"sourceName": source, "filterName": self.VIVID})
 
     def audio_inputs(self) -> tuple[list[str], list[str]]:
         """(game/desktop sound inputs, microphone inputs)."""
@@ -1346,11 +1366,12 @@ def obs_plan(cfg: dict, width: int, height: int, encoder: str, obs_version: str,
             ("Video", "ColorRange", "Partial"),
         ] + ([("Video", "SdrWhiteLevel", str(white))] if white else []),
         "hdr": hdr,
+        "vivid": bool(white) and not hdr,     # an HDR screen recorded in normal colours
         "voice_track": voice,
         "summary": (f"{out_w}×{out_h} · {fps} FPS · {encoder.replace('_', ' ').upper()} · "
                     + (f"{quality} quality · voice on its own track" if voice else f"{bitrate} Kbps")
                     + f" · {buffer_s // 60} min" + (" · HDR" if hdr else "")
-                    + (f" · {white} nits" if white else "")),
+                    + (f" · {white} nits" if white else "") + (" · vivid" if white and not hdr else "")),
     }
 
 
@@ -5709,7 +5730,7 @@ def restart_app():
 
 # ---------------------------------------------------------------- updates (only when asked)
 
-APP_VERSION = "0.0.12"     # the release workflow stamps this from the version being released
+APP_VERSION = "0.0.13"     # the release workflow stamps this from the version being released
 REPO = "Amjz03/capture-menu"
 
 
