@@ -2956,28 +2956,20 @@ class Card(Grow, HoverFocus, QtWidgets.QAbstractButton):
 
 
 class ActionCard(Card):
-    """A round button with its name under it, like the PS5's Create menu: the focused one grows into a
-    white circle and only it shows its name. small: the quieter ones at the end of the bar."""
+    """An icon tile with its name underneath. The focused one grows and turns white, like the PS5's
+    Create menu."""
 
-    ROW = 72                                  # the row's height at rest: every circle is centred on it
-    PAD = 16
+    SIZE = 100
     BELOW = 44
-    W = 108                                   # room for the name under the circle
 
-    def __init__(self, icon: str, label: str, hint: str = "", small: bool = False):
-        super().__init__(88 if small else self.W, self.ROW)
-        self.SIZE = 54 if small else self.ROW   # the circle at rest
-        self.SCALE = 0.16 if small else 0.2
+    def __init__(self, icon: str, label: str, hint: str = ""):
+        super().__init__(self.SIZE + 12, self.SIZE)
         self.icon_name, self.label, self.hint = icon, label, hint
         self.icon_color = INK
         self.tint: QtGui.QColor | None = None
 
     def tile(self) -> QtCore.QRectF:
-        return QtCore.QRectF((self.width() - self.SIZE) / 2, self.PAD + (self.ROW - self.SIZE) / 2,
-                             self.SIZE, self.SIZE)
-
-    def radius(self) -> float:
-        return self.shown().width() / 2
+        return QtCore.QRectF((self.width() - self.SIZE) / 2, self.PAD, self.SIZE, self.SIZE)
 
     def set_state(self, icon: str, label: str, icon_color: str = INK, tint: QtGui.QColor | None = None):
         self.icon_name, self.label, self.icon_color, self.tint = icon, label, icon_color, tint
@@ -2986,83 +2978,61 @@ class ActionCard(Card):
     def paintEvent(self, _):
         p = QtGui.QPainter(self)
         p.setRenderHint(QtGui.QPainter.Antialiasing)
-        r, t = self.shown(), self.lit()
+        r, t, radius = self.shown(), self.lit(), self.radius()
         focused = self.hasFocus() or self.active
-        paint_focus(p, r, r.width() / 2, t, ring=False)
-        p.setPen(QtGui.QPen(QtGui.QColor(255, 255, 255, 30), 1))
-        p.setBrush(self.tint if self.tint is not None else QtGui.QColor(255, 255, 255, 30 if self.underMouse() else 14))
-        p.drawEllipse(r.adjusted(0.5, 0.5, -0.5, -0.5))
-        if t > 0.01:      # the white comes in as the circle grows
+        paint_focus(p, r, radius, t, ring=False)
+        p.setPen(Qt.NoPen)
+        p.setBrush(self.tint if self.tint is not None else QtGui.QColor(255, 255, 255, 34 if self.underMouse() else 20))
+        p.drawRoundedRect(r, radius, radius)
+        if t > 0.01:      # the white comes in as the tile grows
             white = QtGui.QColor(INK)
             white.setAlphaF(t)
-            p.setPen(Qt.NoPen)
             p.setBrush(white)
-            p.drawEllipse(r)
+            p.drawRoundedRect(r, radius, radius)
         color = (DARK if self.icon_color == INK else self.icon_color) if focused else self.icon_color
-        size = r.width() * 0.4
+        size = 32 * r.width() / self.SIZE
         p.drawPixmap(QtCore.QRectF(r.center().x() - size / 2, r.center().y() - size / 2, size, size).toRect(),
                      icon_pixmap(self.icon_name, 34, color))
-        if t <= 0.01:
-            return                    # only the focused button says what it is
-        text_r = QtCore.QRectF(0, self.PAD + self.ROW + 12, self.width(), 18)
-        ink = QtGui.QColor(INK)
-        ink.setAlphaF(t)
-        p.setPen(ink)
-        p.setFont(font(14, QtGui.QFont.DemiBold))
+        text_r = QtCore.QRectF(0, self.tile().bottom() + 14, self.width(), 18)
+        p.setPen(QtGui.QColor(INK) if focused else QtGui.QColor(236, 240, 250, 170))
+        p.setFont(font(13, QtGui.QFont.DemiBold if focused else QtGui.QFont.Normal))
         p.drawText(text_r, Qt.AlignHCenter | Qt.AlignVCenter,
                    p.fontMetrics().elidedText(tr(self.label), Qt.ElideRight, self.width()))
         if self.hint:
-            ink.setAlphaF(t * 0.5)
-            p.setPen(ink)
+            p.setPen(QtGui.QColor(236, 240, 250, 110))
             p.setFont(font(12))
-            p.drawText(text_r.translated(0, 18), Qt.AlignHCenter | Qt.AlignVCenter, tr(self.hint))
+            p.drawText(text_r.translated(0, 17), Qt.AlignHCenter | Qt.AlignVCenter, tr(self.hint))
 
 
 def draw_capture_tile(p: QtGui.QPainter, r: QtCore.QRectF, pixmap: QtGui.QPixmap, path: Path | None,
                       length: float | None, favorite: bool, dim: int = 0, radius: int = 10,
-                      marked: bool = False, selecting: bool = False, caption: tuple[str, str] | None = None):
-    """A capture thumbnail with its badges, placed like the PS5's: the length (or a picture mark) top left,
-    the favourite star top right. selecting: every tile shows the circle that a pick fills in.
-    caption: a title and a detail line written over the bottom of the picture."""
+                      marked: bool = False, selecting: bool = False):
+    """A capture thumbnail with its badges: length (or screenshot) and a favourite star.
+    selecting: every tile shows the circle that a pick fills in."""
     p.setRenderHint(QtGui.QPainter.Antialiasing)
     p.setRenderHint(QtGui.QPainter.SmoothPixmapTransform)
     p.drawPixmap(r, pixmap, QtCore.QRectF(pixmap.rect()))     # r may be grown past the picture's own size
-    if caption:      # a shade under the words, so they read over any picture
-        shade = QtGui.QLinearGradient(0, r.bottom() - 70, 0, r.bottom())
-        shade.setColorAt(0, QtGui.QColor(0, 0, 0, 0))
-        shade.setColorAt(1, QtGui.QColor(0, 0, 0, 200))
-        edge = QtGui.QPainterPath()
-        edge.addRoundedRect(r, radius, radius)
-        p.fillPath(edge, shade)
     if dim:
         p.setPen(Qt.NoPen)
         p.setBrush(QtGui.QColor(0, 0, 0, dim))
         p.drawRoundedRect(r, radius, radius)
-    if caption:
-        title, sub = caption
-        words = r.adjusted(12, 0, -12, -9)
-        p.setFont(font(12))
-        p.setPen(QtGui.QColor(236, 240, 250, 190))
-        p.drawText(words, lead() | Qt.AlignBottom, sub)
-        p.setFont(font(14, QtGui.QFont.DemiBold))
-        p.setPen(QtGui.QColor(INK))
-        p.drawText(words.adjusted(0, 0, 0, -19), lead() | Qt.AlignBottom,
-                   p.fontMetrics().elidedText(title, Qt.ElideRight, int(words.width())))
     p.setFont(font(11, QtGui.QFont.DemiBold))
     is_shot = path is not None and path.suffix.lower() == ".png"
     label = "" if is_shot or length is None else short_clock(length)
     if is_shot or label:
         text_w = p.fontMetrics().horizontalAdvance(label) if label else 0
-        bw = text_w + 16 if label else 24
-        badge = QtCore.QRectF(r.left() + 8, r.top() + 8, bw, 21)
+        bw = text_w + 14 + (18 if is_shot and label else 0) if label else 22
+        badge = QtCore.QRectF(r.right() - bw - 6, r.bottom() - 26, bw, 20)
         p.setPen(Qt.NoPen)
-        p.setBrush(QtGui.QColor(0, 0, 0, 160))
-        p.drawRoundedRect(badge, 10.5, 10.5)
+        p.setBrush(QtGui.QColor(0, 0, 0, 150))
+        p.drawRoundedRect(badge, 5, 5)
+        x = badge.left() + 4
+        if is_shot:
+            p.drawPixmap(QtCore.QPointF(x, badge.top() + 3), icon_pixmap("image", 14))
+            x += 18
         if label:
             p.setPen(QtGui.QColor(INK))
-            p.drawText(badge, Qt.AlignCenter, label)
-        else:
-            p.drawPixmap(QtCore.QPointF(badge.left() + 5, badge.top() + 3.5), icon_pixmap("image", 14))
+            p.drawText(QtCore.QRectF(x, badge.top(), badge.right() - x - 3, 20), Qt.AlignCenter, label)
     if marked:   # picked for "delete selected": white frame + check in the corner
         p.setPen(QtGui.QPen(QtGui.QColor(INK), 3))
         p.setBrush(QtGui.QColor(0, 0, 0, 90))
@@ -3079,17 +3049,17 @@ def draw_capture_tile(p: QtGui.QPainter, r: QtCore.QRectF, pixmap: QtGui.QPixmap
         p.setPen(QtGui.QPen(QtGui.QColor(INK), 2))
         p.setBrush(QtGui.QColor(0, 0, 0, 120))
         p.drawEllipse(c, 10, 10)
-    if favorite:      # top right, or just inside the pick circle while picking
-        star = QtCore.QRectF(r.right() - 30 - (30 if marked or selecting else 0), r.top() + 7, 23, 23)
+    if favorite:
+        star = QtCore.QRectF(r.left() + 6, r.top() + 6, 22, 22)
         p.setPen(Qt.NoPen)
         p.setBrush(QtGui.QColor(0, 0, 0, 165))
-        p.drawEllipse(star)
-        p.drawPixmap(QtCore.QPointF(star.left() + 4.5, star.top() + 4.5), icon_pixmap("star", 14, "#ffd34d"))
+        p.drawRoundedRect(star, 6, 6)
+        p.drawPixmap(QtCore.QPointF(star.left() + 4, star.top() + 4), icon_pixmap("star", 14, "#ffd34d"))
 
 
 class ThumbCard(Card):
     RADIUS = 14
-    W, H = 192, 108
+    W, H = 178, 100
     BELOW = 44
 
     def __init__(self):
@@ -3123,7 +3093,7 @@ class ThumbCard(Card):
 
 BAR_STYLE = f"""
 QLabel {{ color: {INK}; background: transparent; }}
-#game {{ font-family: {DISPLAY}; font-size: 22px; font-weight: 600; }}
+#game {{ font-family: {DISPLAY}; font-size: 30px; font-weight: 600; }}
 #status {{ color: {MUTED}; font-size: 14px; }}
 #caption {{ color: {INK}; font-size: 17px; font-weight: 600; }}
 #focusInfo {{ color: {FAINT}; font-size: 14px; }}
@@ -3224,9 +3194,9 @@ class Chip(Grow, HoverFocus, QtWidgets.QAbstractButton):
 class Menu(QtWidgets.QWidget):
     """The Create bar: docks along the bottom of the screen so the game stays in view."""
 
-    BAR_H = 282
-    PICK_H = 214            # the bar is slimmer while choosing a duration
-    HEADROOM = 28           # a soft shadow above the bar
+    BAR_H = 316
+    PICK_H = 246            # the bar is slimmer while choosing a duration
+    HEADROOM = 90           # fade above the bar
 
     def __init__(self, ctl: Controller, viewer: "Viewer"):
         super().__init__(None, Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool)
@@ -3246,8 +3216,8 @@ class Menu(QtWidgets.QWidget):
 
         self.bar = QtWidgets.QWidget(self)
         lay = QtWidgets.QVBoxLayout(self.bar)
-        lay.setContentsMargins(64, 18, 64, 14)
-        lay.setSpacing(6)
+        lay.setContentsMargins(64, 26, 64, 22)
+        lay.setSpacing(18)
 
         # header: which game and what the replay buffer holds
         head = QtWidgets.QHBoxLayout()
@@ -3263,45 +3233,37 @@ class Menu(QtWidgets.QWidget):
         head.addStretch()
         lay.addLayout(head)
 
-        # main row, laid out like the PS5's Create menu: the latest captures at the start, the three
-        # capture buttons in the middle of the screen, the rest small at the end
+        # main row: actions, then recent captures
         self.main_row = QtWidgets.QWidget()
         row = QtWidgets.QHBoxLayout(self.main_row)
         row.setContentsMargins(0, 0, 0, 0)
         row.setSpacing(0)
-        start, end = QtWidgets.QWidget(), QtWidgets.QWidget()
-        recent = QtWidgets.QHBoxLayout(start)
-        recent.setContentsMargins(0, 0, 0, 0)
-        recent.setSpacing(0)
-        self.thumbs = [ThumbCard() for _ in range(3)]
-        for i, t in enumerate(self.thumbs):
-            t.clicked.connect(lambda _=False, i=i: self._view(i))
-            recent.addWidget(t, 0, Qt.AlignVCenter)
-        self.empty_label = QtWidgets.QLabel(tr("Your captures will show up here"), objectName="focusInfo")
-        recent.addWidget(self.empty_label, 0, Qt.AlignVCenter)
-        recent.addStretch()
-        row.addWidget(start, 1)
         self.save_card = ActionCard("rewind", "Save recent", "last 30 min")
         self.shot_card = ActionCard("camera", "Screenshot")
         self.rec_card = ActionCard("record", "Record")
+        self.mic_card = ActionCard("mic", "Mic on")
+        self.mic_card.clicked.connect(self.ctl.toggle_mic)
         self.save_card.clicked.connect(self.open_picker)
         self.shot_card.clicked.connect(self._screenshot)
         self.rec_card.clicked.connect(lambda: self._act(self.ctl.toggle_record, self.game))
-        for c in (self.save_card, self.shot_card, self.rec_card):
-            row.addWidget(c, 0, Qt.AlignVCenter)
-        rest = QtWidgets.QHBoxLayout(end)
-        rest.setContentsMargins(0, 0, 0, 0)
-        rest.setSpacing(0)
-        rest.addStretch()
-        self.mic_card = ActionCard("mic", "Mic on", small=True)
-        self.mic_card.clicked.connect(self.ctl.toggle_mic)
-        self.all_card = ActionCard("gallery", "All captures", small=True)
+        for c in (self.save_card, self.shot_card, self.rec_card, self.mic_card):
+            row.addWidget(c, 0, Qt.AlignTop)
+        row.addSpacing(28)
+        self.thumbs = [ThumbCard() for _ in range(8)]
+        for i, t in enumerate(self.thumbs):
+            t.clicked.connect(lambda _=False, i=i: self._view(i))
+            row.addWidget(t, 0, Qt.AlignTop)
+        self.empty_label = QtWidgets.QLabel(tr("Your captures will show up here"), objectName="focusInfo")
+        self.empty_label.setFixedHeight(ActionCard.SIZE + 2 * Card.PAD)
+        row.addWidget(self.empty_label, 0, Qt.AlignTop)
+        row.addSpacing(4)
+        self.all_card = ActionCard("gallery", "All captures")
         self.all_card.clicked.connect(self.open_gallery)
-        self.settings_card = ActionCard("settings", "Settings", small=True)
+        row.addWidget(self.all_card, 0, Qt.AlignTop)
+        self.settings_card = ActionCard("settings", "Settings")
         self.settings_card.clicked.connect(self.open_settings)
-        for c in (self.mic_card, self.all_card, self.settings_card):
-            rest.addWidget(c, 0, Qt.AlignVCenter)
-        row.addWidget(end, 1)          # as wide as the start, so the capture buttons sit in the middle
+        row.addWidget(self.settings_card, 0, Qt.AlignTop)
+        row.addStretch()
         lay.addWidget(self.main_row)
 
         # Save recent gameplay: a row of pills, like the PS5
@@ -3461,7 +3423,8 @@ class Menu(QtWidgets.QWidget):
     # ---- content
     def refresh_recent(self):
         items = self.ctl.recent_items()
-        room = (self.width() - 128 - 3 * self.save_card.width()) // 2 if self.width() > 0 else 600   # either side of the buttons
+        tile = self.save_card.width()
+        room = self.width() - 128 - 4 * tile - 40 - 2 * tile if self.width() > 0 else 1200
         count = max(1, min(len(self.thumbs), room // self.thumbs[0].width()))
         for i, card in enumerate(self.thumbs):
             path = items[i] if i < len(items) and i < count else None
@@ -3544,25 +3507,26 @@ class Menu(QtWidgets.QWidget):
 
     # ---- painting and input
     def paintEvent(self, _):
-        p = QtGui.QPainter(self)      # a solid night-blue band with a hard top edge, like the PS5's
-        y = self.bar.y()
-        shadow = QtGui.QLinearGradient(0, y - self.HEADROOM, 0, y)
-        shadow.setColorAt(0.0, QtGui.QColor(0, 0, 0, 0))
-        shadow.setColorAt(1.0, QtGui.QColor(0, 0, 0, 90))
-        p.fillRect(QtCore.QRect(0, y - self.HEADROOM, self.width(), self.HEADROOM), shadow)
-        p.fillRect(QtCore.QRect(0, y, self.width(), self.height() - y), QtGui.QColor(12, 16, 30, 247))
-        p.fillRect(QtCore.QRect(0, y, self.width(), 1), QtGui.QColor(255, 255, 255, 20))
+        p = QtGui.QPainter(self)
+        top = max(0, self.bar.y() - self.HEADROOM)
+        grad = QtGui.QLinearGradient(0, top, 0, self.height())
+        span = max(1, self.height() - top)
+        grad.setColorAt(0.0, QtGui.QColor(*NIGHT, 0))
+        grad.setColorAt(min(0.9, self.HEADROOM * 0.55 / span), QtGui.QColor(*NIGHT, 120))
+        grad.setColorAt(min(0.95, (self.HEADROOM + 24) / span), QtGui.QColor(*NIGHT, 238))
+        grad.setColorAt(1.0, QtGui.QColor(*NIGHT, 250))
+        p.fillRect(QtCore.QRect(0, top, self.width(), self.height() - top), grad)
 
     def mousePressEvent(self, e):
         if e.position().y() < self.bar.y():
             self.hide_menu()
 
     def _nav_cards(self) -> list[QtWidgets.QAbstractButton]:
-        """The bar's buttons in the order they sit on screen."""
         if self.picking:
             return list(self.chips)
-        cards = [t for t in self.thumbs if t.isVisible()] + [self.save_card, self.shot_card, self.rec_card]
+        cards = [self.save_card, self.shot_card, self.rec_card]
         cards += [self.mic_card] if self.mic_card.isVisible() else []
+        cards += [t for t in self.thumbs if t.isVisible()]
         return cards + [self.all_card, self.settings_card]
 
     def keyPressEvent(self, e):
@@ -5352,14 +5316,14 @@ class TileDelegate(QtWidgets.QStyledItemDelegate):
 
     def limit(self) -> int:
         """Two screens of tiles (each 150-600 KB): scrolling back is instant, a long gallery costs no more."""
-        view, cell = self.g.grid.viewport().size(), QtCore.QSize(self.g.TW + self.g.GAP, self.g.TH + self.g.GAP)
+        view, cell = self.g.grid.viewport().size(), self.g.grid.gridSize()
         return 2 * max(1, view.width() // cell.width()) * (view.height() // cell.height() + 2)
 
     def pixmap(self, path: Path) -> QtGui.QPixmap:
         key = str(path)
         pm = self.cache.pop(key, None)
         if pm is None:
-            pm = rounded_pixmap(self.g.ctl.thumb(path), self.g.TW, self.g.TH, 12,
+            pm = rounded_pixmap(self.g.ctl.thumb(path), self.g.TW, self.g.TH, 14,
                                 max(1.0, self.g.devicePixelRatioF()))
         self.cache[key] = pm
         limit = self.limit()
@@ -5374,80 +5338,61 @@ class TileDelegate(QtWidgets.QStyledItemDelegate):
             self.cache.pop(path, None)
 
     def sizeHint(self, option, index):
-        return QtCore.QSize(self.g.TW, self.g.TH)
+        return QtCore.QSize(self.g.TW + 2 * self.g.PAD, self.g.TH + self.g.PAD + 62)
 
     def paint(self, p: QtGui.QPainter, option, index):
-        self.paint_tile(p, QtCore.QRectF(option.rect), index)
-
-    def paint_tile(self, p: QtGui.QPainter, r: QtCore.QRectF, index, current: bool = False):
-        """One tile, its title written over the bottom of the picture like the PS5's. current: the one
-        TileGrid draws again on top, grown into focus with its ring."""
         path = Path(index.data(Qt.UserRole))
-        t = self.g.grow if current else 0.0
+        r = QtCore.QRectF(option.rect)
+        selected = bool(option.state & QtWidgets.QStyle.State_Selected)
+        t = self.g.grow if selected else 0.0      # the current tile grows into focus, like the PS5
         p.save()
         p.setRenderHint(QtGui.QPainter.Antialiasing)
-        rest = QtCore.QRectF(r.x() + (r.width() - self.g.TW) / 2, r.y() + (r.height() - self.g.TH) / 2,
-                             self.g.TW, self.g.TH)
-        tile = grown(rest, 0.03 * t)
-        radius = 12 * tile.width() / rest.width()
+        rest = QtCore.QRectF(r.x() + (r.width() - self.g.TW) / 2, r.y() + self.g.PAD, self.g.TW, self.g.TH)
+        tile = grown(rest, 0.06 * t)
+        radius = 14 * tile.width() / rest.width()
         ctl = self.g.ctl
-        title, _, sub = index.data(Qt.DisplayRole).partition("\n")
         draw_capture_tile(p, tile, self.pixmap(path), path, ctl.length_of(path), ctl.is_favorite(path),
-                          dim=0 if current else 36, radius=radius, marked=path in self.g.marked,
-                          selecting=self.g.selecting, caption=(title, sub))
+                          dim=int(70 * (1 - t)), radius=radius, marked=path in self.g.marked,
+                          selecting=self.g.selecting)
         paint_focus(p, tile, radius, t)
+        title, _, sub = index.data(Qt.DisplayRole).partition("\n")
+        text = QtCore.QRectF(rest.left(), rest.bottom() + 14, rest.width(), 18)
+        p.setPen(QtGui.QColor(INK) if selected else QtGui.QColor(236, 240, 250, 200))
+        p.setFont(font(14, QtGui.QFont.DemiBold if selected else QtGui.QFont.Normal))
+        p.drawText(text, lead() | Qt.AlignVCenter,
+                   p.fontMetrics().elidedText(title, Qt.ElideRight, int(rest.width())))
+        p.setPen(QtGui.QColor(236, 240, 250, 115))
+        p.setFont(font(12))
+        p.drawText(text.translated(0, 19), lead() | Qt.AlignVCenter, sub)
         p.restore()
 
 
-class TileGrid(QtWidgets.QListWidget):
-    """The gallery's grid. The current tile is drawn once more after the others, so as it grows it sits
-    on top of its neighbours, like the PS5's."""
-
-    def paintEvent(self, e):
-        super().paintEvent(e)
-        item = self.currentItem()
-        if item is None or not item.isSelected():
-            return
-        p = QtGui.QPainter(self.viewport())
-        self.itemDelegate().paint_tile(p, QtCore.QRectF(self.visualItemRect(item)), self.indexFromItem(item), True)
-
-
 class CategoryDelegate(QtWidgets.QStyledItemDelegate):
-    """The gallery's tabs, like the PS5 Media Gallery's: All, Favorites, then each game with how many
-    captures it has. The current one is a white pill."""
-
-    H = 42
-
-    @staticmethod
-    def _widths(name: str, count: int) -> tuple[int, int]:
-        return (QtGui.QFontMetrics(font(15, QtGui.QFont.DemiBold)).horizontalAdvance(name),
-                QtGui.QFontMetrics(font(12)).horizontalAdvance(str(count)))
+    """Gallery sidebar rows: name on the left, count and size on the right; the current one is white."""
 
     def sizeHint(self, option, index):
-        name, count, _ = index.data(Qt.UserRole)
-        nw, cw = self._widths(name, count)
-        return QtCore.QSize(nw + cw + 48, self.H)
+        return QtCore.QSize(option.rect.width(), 44)
 
     def paint(self, p: QtGui.QPainter, option, index):
-        name, count, _ = index.data(Qt.UserRole)
-        r = QtCore.QRectF(option.rect).adjusted(2, 2, -2, -2)
+        name, count, size = index.data(Qt.UserRole)
+        r = QtCore.QRectF(option.rect).adjusted(12, 0, -12, 0)
         selected = bool(option.state & QtWidgets.QStyle.State_Selected)
         p.save()
         p.setRenderHint(QtGui.QPainter.Antialiasing)
-        if selected or option.state & QtWidgets.QStyle.State_MouseOver:
+        if selected:
             p.setPen(Qt.NoPen)
-            p.setBrush(QtGui.QColor(INK) if selected else QtGui.QColor(255, 255, 255, 22))
-            p.drawRoundedRect(r, r.height() / 2, r.height() / 2)
-        nw, cw = self._widths(name, count)
-        x = r.center().x() - (nw + 8 + cw) / 2
-        name_x, count_x = (x + cw + 8, x) if is_rtl() else (x, x + nw + 8)   # the count follows the name
-        edge = Qt.AlignLeft | Qt.AlignAbsolute | Qt.AlignVCenter
-        p.setFont(font(15, QtGui.QFont.DemiBold))
-        p.setPen(QtGui.QColor(DARK) if selected else QtGui.QColor(236, 240, 250, 190))
-        p.drawText(QtCore.QRectF(name_x, r.top(), nw + 2, r.height()), edge, name)
+            p.setBrush(QtGui.QColor(INK))
+            p.drawRoundedRect(QtCore.QRectF(option.rect).adjusted(0, 3, 0, -3), 19, 19)
+        right = f"{count}"
         p.setFont(font(12))
-        p.setPen(QtGui.QColor(13, 17, 32, 150) if selected else QtGui.QColor(236, 240, 250, 110))
-        p.drawText(QtCore.QRectF(count_x, r.top() + 1, cw + 2, r.height()), edge, str(count))
+        p.setPen(QtGui.QColor(13, 17, 32, 150) if selected else QtGui.QColor(236, 240, 250, 105))
+        rw = p.fontMetrics().horizontalAdvance(right)
+        rtl = is_rtl()    # the count sits at the far end of the line from the name
+        p.drawText(r, ((Qt.AlignLeft | Qt.AlignAbsolute) if rtl else Qt.AlignRight) | Qt.AlignVCenter, right)
+        p.setFont(font(14, QtGui.QFont.DemiBold if selected else QtGui.QFont.Normal))
+        p.setPen(QtGui.QColor(DARK) if selected else QtGui.QColor(236, 240, 250, 200))
+        p.drawText(r.adjusted(rw + 12, 0, 0, 0) if rtl else r.adjusted(0, 0, -rw - 12, 0), lead() | Qt.AlignVCenter,
+                   p.fontMetrics().elidedText(name, Qt.ElideRight, int(r.width() - rw - 12)))
         p.restore()
 
 
@@ -5467,8 +5412,8 @@ class Gallery(Grow, QtWidgets.QWidget):
     """All captures, like the PS5 Media Gallery: games on the left, their captures on the right."""
 
     thumb_ready = QtCore.Signal(str)
-    TW, TH = 336, 189        # set from the page's width by _fit_tiles()
-    GAP = 10                 # between tiles: tight, like the PS5's
+    TW, TH = 256, 144
+    PAD = 18                 # room around a tile to grow into when it's the current one
     FAVORITES = "★  Favorites"
 
     def _on_grow(self, value):
@@ -5497,7 +5442,7 @@ class Gallery(Grow, QtWidgets.QWidget):
 
         lay = QtWidgets.QVBoxLayout(self)
         lay.setContentsMargins(64, 40, 64, 32)
-        lay.setSpacing(18)
+        lay.setSpacing(24)
         head = QtWidgets.QHBoxLayout()
         head.setSpacing(6)
         head.addWidget(back_button(self.go_back), 0, Qt.AlignTop)
@@ -5509,34 +5454,19 @@ class Gallery(Grow, QtWidgets.QWidget):
         titles.addWidget(self.info)
         head.addLayout(titles)
         head.addStretch()
-        tabs = QtWidgets.QHBoxLayout()      # the tabs, then what can be done with what's shown
-        tabs.setSpacing(6)
-        self.games = QtWidgets.QListWidget(objectName="games")
-        self.games.setItemDelegate(CategoryDelegate(self.games))
-        self.games.setFlow(QtWidgets.QListView.LeftToRight)
-        self.games.setWrapping(False)
-        self.games.setFixedHeight(CategoryDelegate.H + 4)
-        self.games.setSpacing(2)
-        self.games.setHorizontalScrollMode(QtWidgets.QAbstractItemView.ScrollPerPixel)
-        self.games.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.games.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.games.setFocusPolicy(Qt.NoFocus)        # switch with [ ] / L1 R1 or the mouse
-        self.games.currentRowChanged.connect(self._fill)
-        self.games.currentRowChanged.connect(lambda _: self.games.scrollToItem(self.games.currentItem()))
-        tabs.addWidget(self.games, 1)
-        tabs.addSpacing(12)
         self.sort_btn = QtWidgets.QPushButton(tr("Sort: Newest"))
         self.sort_btn.setFocusPolicy(Qt.NoFocus)
         self.sort_btn.setCursor(Qt.PointingHandCursor)
         self.sort_btn.clicked.connect(self.toggle_sort)
-        tabs.addWidget(self.sort_btn)
+        head.addWidget(self.sort_btn)
+        head.addSpacing(4)
         self.select_btn = QtWidgets.QPushButton("  " + tr("Select"))
         self.select_btn.setIcon(qicon("select"))
         self.select_btn.setIconSize(QtCore.QSize(18, 18))
         self.select_btn.setFocusPolicy(Qt.NoFocus)
         self.select_btn.setCursor(Qt.PointingHandCursor)
         self.select_btn.clicked.connect(self.start_selecting)
-        tabs.addWidget(self.select_btn)
+        head.addWidget(self.select_btn)
         self.all_btn = QtWidgets.QPushButton(tr("Select all"))
         self.del_btn = QtWidgets.QPushButton(tr("Delete selected"))
         self.del_btn.setIcon(qicon("trash"))
@@ -5547,7 +5477,7 @@ class Gallery(Grow, QtWidgets.QWidget):
             b.setCursor(Qt.PointingHandCursor)
             b.clicked.connect(fn)
             b.hide()
-            tabs.addWidget(b)
+            head.addWidget(b)
         self._disarm = QtCore.QTimer(self, singleShot=True, timeout=self._reset_delete)
         for text, icon, fn in (("", "folder", self.ctl.open_folder), ("", "close", self.close_gallery)):
             b = QtWidgets.QPushButton(text, objectName="" if text else "round")
@@ -5559,21 +5489,31 @@ class Gallery(Grow, QtWidgets.QWidget):
             b.clicked.connect(fn)
             head.addWidget(b)
         lay.addLayout(head)
-        lay.addLayout(tabs)
 
-        self.grid = TileGrid(objectName="grid")
+        body = QtWidgets.QHBoxLayout()
+        body.setSpacing(40)
+        self.games = QtWidgets.QListWidget(objectName="games")
+        self.games.setItemDelegate(CategoryDelegate(self.games))
+        self.games.setFixedWidth(240)
+        self.games.setFocusPolicy(Qt.NoFocus)        # switch games with [ ] / L1 R1 or the mouse
+        self.games.currentRowChanged.connect(self._fill)
+        body.addWidget(self.games)
+        self.grid = QtWidgets.QListWidget(objectName="grid")
         self.grid.setViewMode(QtWidgets.QListView.IconMode)
         self.tiles = TileDelegate(self)
         self.grid.setItemDelegate(self.tiles)
+        self.grid.setGridSize(QtCore.QSize(self.TW + 2 * self.PAD, self.TH + self.PAD + 62))
         self.grid.setResizeMode(QtWidgets.QListView.Adjust)
         self.grid.setMovement(QtWidgets.QListView.Static)
         self.grid.setUniformItemSizes(True)
-        self.grid.setSpacing(self.GAP)     # also the room at the edges for the current tile's ring
+        self.grid.setWordWrap(True)
+        self.grid.setSpacing(4)
         self.grid.itemDoubleClicked.connect(lambda _: None if self.selecting else self.open_selected())
         self.grid.itemClicked.connect(self._clicked)
         self.grid.currentRowChanged.connect(lambda _: (self._update_info(), self._regrow()))
         self.grid.installEventFilter(self)
-        lay.addWidget(self.grid, 1)
+        body.addWidget(self.grid, 1)
+        lay.addLayout(body, 1)
         self.hints = HintBar()
         lay.addWidget(self.hints)
 
@@ -5670,7 +5610,6 @@ class Gallery(Grow, QtWidgets.QWidget):
         names = [c[0] for c in self.cats]
         self.games.setCurrentRow(names.index(select) if select in names else 0)
         self.games.blockSignals(False)
-        self.games.scrollToItem(self.games.currentItem())
         self._fill(self.games.currentRow(), row)
 
     def _fill(self, cat_row: int, select_row: int = 0):
@@ -5828,20 +5767,7 @@ class Gallery(Grow, QtWidgets.QWidget):
                 self.mark_all()
                 return True
             return self._key(event.key())
-        if obj is self.grid and event.type() == QtCore.QEvent.Resize:
-            self._fit_tiles()
         return super().eventFilter(obj, event)
-
-    def _fit_tiles(self):
-        """Tiles as wide as fills the page, about 340 px each (sharp from the 480 px thumbnails),
-        with the scroll bar's room kept either way so it showing up doesn't change the columns."""
-        room = self.grid.width() - 8 - self.GAP
-        cols = max(2, math.ceil(room / (360 + self.GAP)))
-        tw = (room - cols * self.GAP) // cols
-        if tw != self.TW:
-            self.TW, self.TH = tw, round(tw * 9 / 16)
-            self.tiles.forget()
-            self.grid.doItemsLayout()
 
     def keyPressEvent(self, e):
         if not self._key(e.key()):
