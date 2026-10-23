@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.0.14 · 2026-10-23
+
+- **Pick the colours.** Settings → Recording → Colours: **Vivid** (the default) adds a little colour and contrast when an HDR screen is recorded in normal colours; **Natural** keeps the colours exactly as OBS records them. HDR clips (HDR → Auto) are never changed.
+
 ## 0.0.13 · 2026-10-23
 
 - **Richer colours with Windows HDR on.** Recording an HDR screen in normal colours left the game looking flat next to what you see while playing. Capture Menu now adds a light colour correction (a bit more colour and contrast) to OBS's display capture in that case, so clips and screenshots look closer to the game. It's removed again when HDR clips are on or Windows HDR is off.
