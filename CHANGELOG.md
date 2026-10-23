@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.0.21 · 2026-10-23
+
+- **The Create bar is laid out like the PS5's.** A solid night-blue band along the bottom: your latest captures at the start, Save recent, Screenshot and Record as round buttons in the middle of the screen, and Mic, All captures and Settings as smaller round buttons at the end. The focused button grows into a white circle and only it shows its name, like on the PS5. Keys, controller and mouse work as before.
+- **The gallery is laid out like the PS5's Media Gallery.** All, Favorites and each game are tabs across the top (still switched with L1 / R1 or [ ]), with Sort and Select beside them. Captures fill the width in a tight grid of larger tiles, each with its title and details written on the picture, the length at the top left and the favourite star at the top right. The current tile grows on top of its neighbours.
+
 ## 0.0.20 · 2026-10-23
 
 - **Looks and feels more like the PS5.** The whole interface moves to the PS5's night blue: the glass behind pages, the Create bar, notices and Settings cards. The focused tile now grows into place with a white ring and a soft glow, smoothly, and settles back when you move on, in the Create bar, the Save recent row and the gallery. Tiles, cards and buttons are larger and rounder, titles are bigger, and switches that are on turn PlayStation blue.
