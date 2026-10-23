@@ -65,4 +65,10 @@ s.ctl.cfg.update(s.values()); restarts.clear(); key(Qt.Key_S); assert restarts =
 # 9) controller mapping
 menu = cm.Menu(ctl, cm.Viewer(ctl)); s.open((2560, 1440))
 assert cm.pad_key(cm.Y, menu, cm.Viewer(ctl), None, s) == Qt.Key_S and cm.pad_key(cm.A, menu, cm.Viewer(ctl), None, s) == Qt.Key_Return
+# 10) ↑ from the first row reaches the buttons along the top, ← → walk them, ↓ comes back
+s.rows[0].setFocus(); app.processEvents()
+key(Qt.Key_Up); assert s.focusWidget() is s.back_btn, s.focusWidget()
+key(Qt.Key_Right); assert s.focusWidget() is s.defaults_btn
+key(Qt.Key_Right); key(Qt.Key_Right); assert s.focusWidget() is s.save_btn
+key(Qt.Key_Down); assert s.focusWidget() is s.rows[0]
 print("settings PASS")

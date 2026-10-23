@@ -88,6 +88,10 @@ pad(cm.RIGHT); assert gallery.grid.currentRow() == 1
 pad(cm.Y); assert ctl.is_favorite(b)
 pad(cm.A); assert viewer.isVisible() and viewer.current == b
 pad(cm.B); assert not viewer.isVisible() and gallery.isVisible()
+gallery.grid.setCurrentRow(0); app.processEvents()   # ↑ from the top row reaches the buttons, and back down
+pad(cm.UP); assert gallery.focusWidget() in gallery._head_nav() and not gallery.grid_lit()
+pad(cm.DOWN); assert gallery.focusWidget() in (gallery.grid, gallery.games)
+gallery.grid.setFocus(); app.processEvents()
 pad(cm.B); assert not gallery.isVisible()
 end = time.time() + 5
 while time.time() < end and any(ctl.thumb(p) is None for p in ctl.all_captures()):

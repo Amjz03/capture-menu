@@ -3877,10 +3877,10 @@ QPushButton {{
 }}
 QPushButton:hover {{ background: rgba(255,255,255,24); }}
 QPushButton:disabled {{ color: rgba(236,240,250,0.28); border-color: rgba(255,255,255,14); }}
-QPushButton#primary {{ background: {INK}; color: {DARK}; border: none; padding: 0 26px; }}
-QPushButton#primary:hover {{ background: #ffffff; }}
+QPushButton#primary {{ background: {INK}; color: {DARK}; border: 4px solid {INK}; padding: 0 22px; }}
+QPushButton#primary:hover {{ background: #ffffff; border-color: #ffffff; }}
 QPushButton:focus {{ border: 2px solid {INK}; padding: 0 21px; }}
-QPushButton#primary:focus {{ border: 3px solid {DARK}; padding: 0 23px; }}
+QPushButton#primary:focus {{ border: 4px solid {INK}; background-clip: padding; padding: 0 22px; }}   /* a ring, the same size */
 QPushButton#back {{ background: rgba(255,255,255,12); border: 3px solid transparent; padding: 0 18px 0 12px; }}
 QPushButton#back:focus, QPushButton#round:focus, QPushButton#ctl:focus {{ border: 3px solid {INK}; }}
 QPushButton#back:hover {{ background: rgba(255,255,255,32); }}
@@ -3918,30 +3918,35 @@ def paint_card(p: QtGui.QPainter, r: QtCore.QRectF, focused: bool = False, hover
     p.drawRoundedRect(r.adjusted(inset, inset, -inset, -inset), radius, radius)
 
 
-def toward(current: QtWidgets.QWidget, items: list[QtWidgets.QWidget], key: int) -> QtWidgets.QWidget | None:
+ARROWS = (Qt.Key_Left, Qt.Key_Right, Qt.Key_Up, Qt.Key_Down)
+
+
+def toward(current: QtWidgets.QWidget, items: list[QtWidgets.QWidget], key: int,
+           here: QtCore.QRectF | None = None) -> QtWidgets.QWidget | None:
     """Where an arrow leads from current, by where things sit on screen, the way the PS5 moves its
-    highlight: the nearest item that way, in line with it before anything off to the side."""
+    highlight: the nearest item that way, and anything in line with it (same row or column) first.
+    here: where on screen the highlight is, when it's only part of current (a tile in a grid)."""
     def box(w):
         return QtCore.QRectF(QtCore.QPointF(w.mapToGlobal(QtCore.QPoint(0, 0))), QtCore.QSizeF(w.size()))
 
     def gap(a0, a1, b0, b1):     # how far apart two spans are (0 when they overlap)
         return max(0.0, b0 - a1, a0 - b1)
-    here = box(current)
+    here = here if here is not None else box(current)
     best, best_score = None, None
     for w in items:
         if w is current:
             continue
         r = box(w)
         d = r.center() - here.center()
-        if key in (Qt.Key_Left, Qt.Key_Right):
-            way, along = (d.x() if key == Qt.Key_Right else -d.x()), gap(here.left(), here.right(), r.left(), r.right())
-            across = gap(here.top(), here.bottom(), r.top(), r.bottom())
-        else:
-            way, along = (d.y() if key == Qt.Key_Down else -d.y()), gap(here.top(), here.bottom(), r.top(), r.bottom())
-            across = gap(here.left(), here.right(), r.left(), r.right())
-        if way <= 2:
+        way = {Qt.Key_Right: r.left() - here.right(), Qt.Key_Left: here.left() - r.right(),   # it starts past
+               Qt.Key_Down: r.top() - here.bottom(), Qt.Key_Up: here.top() - r.bottom()}[key]  # our edge
+        if way < -4:
             continue
-        score = along + 2 * across + 0.05 * abs(d.y() if key in (Qt.Key_Left, Qt.Key_Right) else d.x())
+        if key in (Qt.Key_Left, Qt.Key_Right):
+            along, across = max(0.0, way), gap(here.top(), here.bottom(), r.top(), r.bottom())
+        else:
+            along, across = max(0.0, way), gap(here.left(), here.right(), r.left(), r.right())
+        score = (across > 0, along + 2 * across + 0.05 * abs(d.y() if key in (Qt.Key_Left, Qt.Key_Right) else d.x()))
         if best_score is None or score < best_score:
             best, best_score = w, score
     return best
@@ -4664,6 +4669,7 @@ class Viewer(QtWidgets.QWidget):
         for b in (self.share_cancel, self.share_go):
             b.setFocusPolicy(Qt.StrongFocus)   # Share is walked with ← → like its cards
         INPUT.changed.connect(lambda _: (self.update_hints(), self._pick_focus()) if self.items else None)
+        QtWidgets.QApplication.instance().focusChanged.connect(self._keep_focus_off_video)
         self.slider.setObjectName("seek")
         self.slider.setFocusPolicy(Qt.NoFocus)   # a click doesn't take the keys; the controller still lands on it
         for w in self._all_nav():
@@ -5160,6 +5166,11 @@ class Viewer(QtWidgets.QWidget):
         elif fresh or self.focusWidget() not in self._nav_items():
             (self.play_btn if self.is_video() else self.share_btn).setFocus()
 
+    def _keep_focus_off_video(self, _old, new):
+        """The video picture takes the focus when it appears; the highlight goes back to the buttons."""
+        if new is not None and self.video is not None and (new is self.video or self.video.isAncestorOf(new)):
+            QtCore.QTimer.singleShot(0, self._pick_focus)
+
     # ---- the small buttons, only the video, sound on / off
     def toggle_more(self):
         """△ / M: the highlight jumps to the small buttons at the end of the row."""
@@ -5442,7 +5453,7 @@ class TileDelegate(QtWidgets.QStyledItemDelegate):
     def paint(self, p: QtGui.QPainter, option, index):
         path = Path(index.data(Qt.UserRole))
         r = QtCore.QRectF(option.rect)
-        selected = bool(option.state & QtWidgets.QStyle.State_Selected)
+        selected = bool(option.state & QtWidgets.QStyle.State_Selected) and self.g.grid_lit()
         # the current tile grows into focus, like the PS5, while the one before settles back
         t = self.g.grow if selected else (1 - self.g.grow) if index.row() == self.g.last_row else 0.0
         p.save()
@@ -5480,9 +5491,14 @@ class CategoryDelegate(QtWidgets.QStyledItemDelegate):
         p.save()
         p.setRenderHint(QtGui.QPainter.Antialiasing)
         if selected:
+            pill = QtCore.QRectF(option.rect).adjusted(0, 3, 0, -3)
             p.setPen(Qt.NoPen)
             p.setBrush(QtGui.QColor(INK))
-            p.drawRoundedRect(QtCore.QRectF(option.rect).adjusted(0, 3, 0, -3), 19, 19)
+            p.drawRoundedRect(pill, 19, 19)
+            if option.widget is not None and option.widget.hasFocus():   # the controller's highlight is here
+                p.setPen(QtGui.QPen(QtGui.QColor(DARK), 2.5))
+                p.setBrush(Qt.NoBrush)
+                p.drawRoundedRect(pill.adjusted(3.5, 3.5, -3.5, -3.5), 15.5, 15.5)
         right = f"{count}"
         p.setFont(font(13))
         p.setPen(QtGui.QColor(13, 17, 32, 150) if selected else QtGui.QColor(236, 240, 250, 150))
@@ -5559,7 +5575,8 @@ class Gallery(Grow, QtWidgets.QWidget):
         lay.setSpacing(24)
         head = QtWidgets.QHBoxLayout()
         head.setSpacing(6)
-        head.addWidget(back_button(self.go_back), 0, Qt.AlignTop)
+        self.back_btn = back_button(self.go_back)
+        head.addWidget(self.back_btn, 0, Qt.AlignTop)
         head.addSpacing(18)
         titles = QtWidgets.QVBoxLayout()
         titles.setSpacing(2)
@@ -5602,6 +5619,7 @@ class Gallery(Grow, QtWidgets.QWidget):
             b.setFocusPolicy(Qt.NoFocus)
             b.clicked.connect(fn)
             head.addWidget(b)
+            setattr(self, f"{icon}_btn", b)       # folder_btn, close_btn
         lay.addLayout(head)
 
         body = QtWidgets.QHBoxLayout()
@@ -5626,6 +5644,8 @@ class Gallery(Grow, QtWidgets.QWidget):
         self.grid.itemClicked.connect(self._clicked)
         self.grid.currentRowChanged.connect(lambda row: (self._update_info(), self._regrow(row)))
         self.grid.installEventFilter(self)
+        for w in (*self._head_nav(all=True), self.games):
+            w.installEventFilter(self)          # the D-pad moves between them too, like a mouse
         body.addWidget(self.grid, 1)
         lay.addLayout(body, 1)
         self.hints = HintBar()
@@ -5865,12 +5885,12 @@ class Gallery(Grow, QtWidgets.QWidget):
         pad = INPUT.mode != "keyboard"
         if self.selecting:
             self.hints.set_items(
-                [("DPAD_LR", "Move"), ("A", "Select"), ("OPT", "Delete selected"), ("B", "Done")] if pad
+                [("DPAD", "Move"), ("A", "Select"), ("OPT", "Delete selected"), ("B", "Done")] if pad
                 else [("k:← →", "Move"), ("k:Enter", "Select"), ("k:Ctrl A", "Select all"),
                       ("k:Del", "Delete selected"), ("k:Esc", "Done")], INPUT.mode)
             return
         self.hints.set_items(
-            [("DPAD_LR", "Move"), ("A", "Open"), ("X", "Select"), ("OPT", "Delete selected"),
+            [("DPAD", "Move"), ("A", "Open"), ("X", "Select"), ("OPT", "Delete selected"),
              ("L1R1", "Game"), ("Y", "Favorite"), ("B", "Back")] if pad
             else [("k:← →", "Move"), ("k:Enter", "Open"), ("k:Space", "Select"), ("k:Del", "Delete selected"),
                   ("k:[ ]", "Game"), ("k:S", "Sort"), ("k:F", "Favorite"), ("k:Esc", "Back")], INPUT.mode)
@@ -5880,7 +5900,40 @@ class Gallery(Grow, QtWidgets.QWidget):
             if event.key() == Qt.Key_A and event.modifiers() & Qt.ControlModifier:
                 self.mark_all()
                 return True
+            if event.key() in ARROWS:
+                before = self.grid.currentRow()
+                QtWidgets.QListWidget.keyPressEvent(self.grid, event)
+                if self.grid.currentRow() == before:   # at the grid's edge: on to the games or the buttons
+                    item = self.grid.currentItem()
+                    rect = self.grid.visualItemRect(item) if item is not None else self.grid.viewport().rect()
+                    here = QtCore.QRectF(QtCore.QPointF(self.grid.viewport().mapToGlobal(rect.topLeft())),
+                                         QtCore.QSizeF(rect.size()))
+                    self._move(self.grid, event.key(), here)
+                return True
             return self._key(event.key())
+        if event.type() == QtCore.QEvent.KeyPress and obj is self.games:
+            k = event.key()
+            if k in (Qt.Key_Up, Qt.Key_Down):
+                before = self.games.currentRow()
+                QtWidgets.QListWidget.keyPressEvent(self.games, event)
+                if self.games.currentRow() == before and k == Qt.Key_Up:   # the top of the list: the buttons
+                    self._move(self.games, k, self._row_box(self.games))
+            elif k in ARROWS:
+                self._move(self.games, k, self._row_box(self.games))
+            elif k in (Qt.Key_Return, Qt.Key_Enter):
+                self.grid.setFocus()
+            else:
+                self._key(k)
+            return True
+        if event.type() == QtCore.QEvent.KeyPress and obj in self._head_nav(all=True):
+            k = event.key()
+            if k in ARROWS:
+                self._move(obj, k)
+            elif k in (Qt.Key_Return, Qt.Key_Enter, Qt.Key_Space):
+                obj.click()
+            else:
+                self._key(k)
+            return True
         if obj is self.grid and event.type() == QtCore.QEvent.Resize:
             self._fit_tiles()
         return super().eventFilter(obj, event)
@@ -5888,6 +5941,31 @@ class Gallery(Grow, QtWidgets.QWidget):
     def keyPressEvent(self, e):
         if not self._key(e.key()):
             super().keyPressEvent(e)
+
+    def _head_nav(self, all: bool = False) -> list[QtWidgets.QWidget]:
+        """The buttons along the top; all: hidden ones too."""
+        head = [self.back_btn, self.sort_btn, self.select_btn, self.all_btn, self.del_btn, self.clear_btn,
+                self.folder_btn, self.close_btn]
+        return head if all else [b for b in head if b.isVisible() and b.isEnabled()]
+
+    def grid_lit(self) -> bool:
+        """The current tile shows the highlight, unless it's gone up to the buttons or the games."""
+        return self.focusWidget() not in (*self._head_nav(all=True), self.games)
+
+    @staticmethod
+    def _row_box(view: QtWidgets.QListWidget) -> QtCore.QRectF | None:
+        item = view.currentItem()
+        if item is None:
+            return None
+        r = view.visualItemRect(item)
+        return QtCore.QRectF(QtCore.QPointF(view.viewport().mapToGlobal(r.topLeft())), QtCore.QSizeF(r.size()))
+
+    def _move(self, current: QtWidgets.QWidget, key: int, here: QtCore.QRectF | None = None):
+        """The D-pad, like a mouse: on to whatever is that way on screen (a button, the games, the grid)."""
+        nxt = toward(current, [*self._head_nav(), self.games, self.grid], key, here)
+        if nxt is not None:
+            nxt.setFocus()
+            self.grid.viewport().update()
 
     def _key(self, k: int) -> bool:
         open_or_pick = self.toggle_mark if self.selecting else self.open_selected
@@ -6353,7 +6431,8 @@ class Settings(QtWidgets.QWidget):
         lay.setSpacing(18)
         head = QtWidgets.QHBoxLayout()
         head.setSpacing(6)
-        head.addWidget(back_button(self.go_back), 0, Qt.AlignTop)
+        self.back_btn = back_button(self.go_back)
+        head.addWidget(self.back_btn, 0, Qt.AlignTop)
         head.addSpacing(18)
         titles = QtWidgets.QVBoxLayout()
         titles.setSpacing(2)
@@ -6372,6 +6451,8 @@ class Settings(QtWidgets.QWidget):
             b.clicked.connect(fn)
             head.addWidget(b, 0, Qt.AlignTop)
         lay.addLayout(head)
+        for b in self._head():
+            b.installEventFilter(self)          # the D-pad reaches them from the first row
 
         self.scroll = QtWidgets.QScrollArea()
         self.scroll.setWidgetResizable(True)
@@ -6782,9 +6863,43 @@ class Settings(QtWidgets.QWidget):
             else [("k:↑ ↓", "Move"), ("k:← →", "Change"), ("k:Enter", "Select"), ("k:S", "Save"),
                   ("k:Esc", "Back")], INPUT.mode)
 
+    def eventFilter(self, obj, event):
+        if event.type() == QtCore.QEvent.KeyPress and obj in self._head():
+            self.keyPressEvent(event)        # a focused button would eat the arrows itself
+            return True
+        return super().eventFilter(obj, event)
+
+    def _head(self) -> list[QtWidgets.QWidget]:
+        return [self.back_btn, self.defaults_btn, self.cancel_btn, self.save_btn]
+
     def keyPressEvent(self, e):
         row = self.focusWidget() if isinstance(self.focusWidget(), SettingRow) else None
         k = e.key()
+        if self.focusWidget() in self._head():   # the highlight is on the buttons along the top
+            button = self.focusWidget()
+            if k in (Qt.Key_Left, Qt.Key_Right):
+                nxt = toward(button, [b for b in self._head() if b.isVisible()], k)
+                if nxt is not None:
+                    nxt.setFocus()
+            elif k == Qt.Key_Down:
+                back = getattr(self, "_row_before_head", None)
+                (back if back in self.rows else self.rows[0]).setFocus()
+            elif k in (Qt.Key_Return, Qt.Key_Enter, Qt.Key_Space):
+                button.click()
+            elif k == Qt.Key_S:
+                self.save()
+            elif k == Qt.Key_R:
+                self.restore_defaults()
+            elif k == Qt.Key_Escape:
+                self.go_back()
+            return
+        if k == Qt.Key_Up and row is not None and self.rows and row is self.rows[0]:   # up to the buttons
+            self._row_before_head = row
+            self.scroll.ensureWidgetVisible(row, 0, 40)   # so the buttons are above it on screen
+            nxt = toward(row, [b for b in self._head() if b.isVisible()], k)
+            if nxt is not None:
+                nxt.setFocus()
+            return
         if row is not None and row.listening:
             if k == Qt.Key_Escape:
                 row.listening = False
