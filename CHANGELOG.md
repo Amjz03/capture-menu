@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.0.18 · 2026-10-23
+
+- **Pick how colourful.** Settings → Recording → Colours now has four levels for an HDR screen recorded in normal colours: **Natural** (as OBS records it), **Soft** (×1.3 colour), **Vivid** (×1.6, the default) and **Max** (×2). The change shows up in OBS as soon as you save.
+
 ## 0.0.17 · 2026-10-23
 
 - **More colourful Vivid.** Colours → Vivid now boosts colour and contrast more (saturation ×1.6, contrast ×1.1, up from ×1.3 and ×1.06) when an HDR screen is recorded in normal colours. It's applied to OBS at every start, so the new look shows up right after updating.
