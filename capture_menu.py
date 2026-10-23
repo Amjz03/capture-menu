@@ -2475,9 +2475,11 @@ def trim_memory():
             pass
 
 
-def bring_to_front(w: QtWidgets.QWidget):
+def bring_to_front(w: QtWidgets.QWidget, keyboard: bool = False):
     """Windows only lets the app that got the last input steal focus. A controller
-    press isn't keyboard input, so briefly join the foreground thread's input queue."""
+    press isn't keyboard input, so briefly join the foreground thread's input queue.
+    keyboard: typing is next (Rename), so if Windows still keeps the game in front, a tap of Alt
+    makes it let go; otherwise the keys would go to the game."""
     w.raise_()
     w.activateWindow()
     if not IS_WINDOWS:
@@ -2493,6 +2495,10 @@ def bring_to_front(w: QtWidgets.QWidget):
     user32.BringWindowToTop(hwnd)
     if attached:
         user32.AttachThreadInput(fg_thread, me, False)
+    if keyboard and user32.GetForegroundWindow() != hwnd:
+        user32.keybd_event(0x12, 0, 0, 0)            # VK_MENU down
+        user32.SetForegroundWindow(hwnd)
+        user32.keybd_event(0x12, 0, 2, 0)            # and up (KEYEVENTF_KEYUP)
 
 
 def hide_from_capture(w: QtWidgets.QWidget):
@@ -4368,6 +4374,7 @@ class Viewer(QtWidgets.QWidget):
     frame_ready = QtCore.Signal(str, int, str)
     sound_ready = QtCore.Signal(str, str)    # clip, short remixed piece to listen to ("" = failed)
     closed = QtCore.Signal()
+    away = QtCore.Signal()      # handed the screen to another app (the folder, a video player)
 
     def __init__(self, ctl: Controller):
         super().__init__(None, Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool)
@@ -4583,8 +4590,9 @@ class Viewer(QtWidgets.QWidget):
         self.external_chip = ActionButton("", "external")
         self.del_btn = ActionButton("", "trash", None, "k:Del")
         for b, fn, tip in ((self.fav_btn, self.toggle_favorite, tr("Favorite")),
-                           (self.folder_chip, lambda: self.ctl.reveal(self.current), tr("Show in folder")),
-                           (self.external_chip, self._open_external, tr("Open in your video player")),
+                           (self.folder_chip, lambda: self._step_out(self.ctl.reveal), tr("Show in folder")),
+                           (self.external_chip, lambda: self._step_out(self.ctl.open_external),
+                            tr("Open in your video player")),
                            (self.del_btn, self.delete_current, tr("Delete"))):
             b.clicked.connect(fn)
             b.setToolTip(tip)
@@ -4980,6 +4988,7 @@ class Viewer(QtWidgets.QWidget):
         self._set_sharing(False)
         self._reset_delete()
         self._set_editing(True)
+        bring_to_front(self, keyboard=True)     # after a controller press the keyboard may still be on the game
         self.title_edit.setFocus()
         self.title_edit.selectAll()
 
@@ -5291,10 +5300,16 @@ class Viewer(QtWidgets.QWidget):
             self.index = i
             self.show_item()
 
-    def _open_external(self):
+    def _step_out(self, open_it):
+        """Shows the capture in another app (its folder, a video player): Capture Menu gets out of the
+        way first, the gallery behind too, so that app isn't covered."""
+        path = self.current
         self._release()
-        self.ctl.open_external(self.current)
+        self.back_to = None
         self.hide()
+        self._drop_timer.start()
+        self.away.emit()
+        open_it(path)
 
     def delete_current(self):
         if not self.del_btn.danger:       # the highlight goes to Delete, ready to confirm
@@ -5610,7 +5625,10 @@ class Gallery(Grow, QtWidgets.QWidget):
             b.hide()
             head.addWidget(b)
         self._disarm = QtCore.QTimer(self, singleShot=True, timeout=self._reset_delete)
-        for text, icon, fn in (("", "folder", self.ctl.open_folder), ("", "close", self.close_gallery)):
+        def open_folder():      # the folder opens with the gallery out of the way, not under it
+            self.close_gallery()
+            self.ctl.open_folder()
+        for text, icon, fn in (("", "folder", open_folder), ("", "close", self.close_gallery)):
             b = QtWidgets.QPushButton(text, objectName="" if text else "round")
             b.setToolTip(tr("Open the clips folder") if icon == "folder" else tr("Close (Esc)"))
             b.setIcon(qicon(icon))
@@ -5653,6 +5671,7 @@ class Gallery(Grow, QtWidgets.QWidget):
 
         self.thumb_ready.connect(self._on_thumb)
         viewer.closed.connect(self._after_viewer)
+        viewer.away.connect(self.close_gallery)
         ctl.captured.connect(lambda *_: self.refresh() if self.isVisible() else None)
         ctl.library_changed.connect(lambda: self.refresh() if self.isVisible() else None)
         INPUT.changed.connect(lambda _: self.update_hints())

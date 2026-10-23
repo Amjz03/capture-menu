@@ -67,7 +67,8 @@ pad(cm.UP); pad(cm.UP)
 assert viewer.focusWidget() in (viewer.back_btn, viewer.rename_btn, viewer.prev_btn, viewer.next_btn, viewer.close_btn)
 pad(cm.Y); pad(cm.RIGHT); assert viewer.focusWidget() is viewer.folder_chip
 revealed = []; ctl.reveal = lambda p: revealed.append(p.name)
-pad(cm.A); assert revealed == [c.name] and viewer.isVisible()
+pad(cm.A); assert revealed == [c.name] and not viewer.isVisible(), "Show in folder: Capture Menu steps aside"
+viewer.open(ctl.all_captures(), ctl.all_captures().index(c)); app.processEvents()
 key(viewer, Qt.Key_Delete)               # Delete armed, nothing deleted yet
 assert viewer.del_btn.danger and viewer.focusWidget() is viewer.del_btn and c.exists()
 pad(cm.B); assert not viewer.del_btn.danger and not viewer.del_btn.text() and c.exists() and viewer.isVisible()
@@ -87,6 +88,10 @@ pad(cm.L1); assert gallery.items == ctl.all_captures()           # All
 pad(cm.RIGHT); assert gallery.grid.currentRow() == 1
 pad(cm.Y); assert ctl.is_favorite(b)
 pad(cm.A); assert viewer.isVisible() and viewer.current == b
+viewer.folder_chip.click(); app.processEvents()
+assert not viewer.isVisible() and not gallery.isVisible(), "the gallery behind steps aside too"
+menu.show_menu("Frostfall"); menu.all_card.click(); app.processEvents(); pad(cm.L1); pad(cm.L1); pad(cm.L1)
+pad(cm.RIGHT); pad(cm.A); assert viewer.isVisible() and viewer.current == b
 pad(cm.B); assert not viewer.isVisible() and gallery.isVisible()
 gallery.grid.setCurrentRow(0); app.processEvents()   # ↑ from the top row reaches the buttons, and back down
 pad(cm.UP); assert gallery.focusWidget() in gallery._head_nav() and not gallery.grid_lit()
