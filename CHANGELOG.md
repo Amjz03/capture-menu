@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.0.26 · 2026-10-23
+
+- **The D-pad reaches the buttons along the top of the gallery and Settings too.** In the gallery, ↑ from the top row of captures goes to Back, Sort, Select, the folder and Close, and ← → walk them; the side of the grid leads to the games list, and ↓ comes back down. In Settings, ↑ from the first setting goes to Back, Restore defaults, Cancel and Save, and ↓ goes back to the setting you came from. ✕ presses what's highlighted.
+- **A clearer highlight on white buttons.** Save, Export & copy and the other main buttons get a ring when highlighted instead of looking slightly smaller.
+
 ## 0.0.25 · 2026-10-23
 
 - **Move around the viewer with the controller, like a mouse.** The D-pad moves a highlight over everything on screen (Back, Rename, newer / older, Close, Play, the seek bar, sound, full screen and every action button), and ✕ presses what's highlighted. On the seek bar, ← → move through the video. A clip starts on Play and a screenshot on Share. L1 / R1, □, △, Options, L3 and ◯ still work as shortcuts, and the keyboard keeps its own keys.

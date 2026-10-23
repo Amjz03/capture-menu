@@ -6093,7 +6093,7 @@ def restart_app():
 
 # ---------------------------------------------------------------- updates (only when asked)
 
-APP_VERSION = "0.0.25"     # the release workflow stamps this from the version being released
+APP_VERSION = "0.0.26"     # the release workflow stamps this from the version being released
 REPO = "Amjz03/capture-menu"
 
 
