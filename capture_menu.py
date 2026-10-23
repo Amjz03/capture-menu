@@ -82,6 +82,7 @@ DEFAULTS = {
     "storage_warn_gb": 200,
     "voice_track": True,
     "hdr": "auto",              # auto: HDR clips while Windows HDR is on for the game's screen / off
+    "colours": "vivid",         # vivid: a light colour boost when an HDR screen is recorded in normal colours / natural
     "resolution": "native",     # native / 1440p / 1080p / 720p
     "fps": 60,
     "quality": "balanced",      # light / balanced / high / max
@@ -1340,6 +1341,8 @@ def obs_plan(cfg: dict, width: int, height: int, encoder: str, obs_version: str,
     major_minor = tuple(int(x) for x in re.findall(r"\d+", obs_version)[:2] or [0, 0])
     fmt = "hybrid_mp4" if major_minor >= (30, 2) else "mp4"
     hdr = hdr and codec_of(encoder) in ("hevc", "av1")      # H.264 has no 10-bit HDR
+    # an HDR screen recorded in normal colours gets a light colour boost, unless Colours is Natural
+    vivid = bool(white) and not hdr and cfg.get("colours", "vivid") == "vivid"
     return {
         "video": {"baseWidth": width, "baseHeight": height, "outputWidth": out_w,
                   "outputHeight": out_h, "fpsNumerator": fps, "fpsDenominator": 1},
@@ -1366,12 +1369,12 @@ def obs_plan(cfg: dict, width: int, height: int, encoder: str, obs_version: str,
             ("Video", "ColorRange", "Partial"),
         ] + ([("Video", "SdrWhiteLevel", str(white))] if white else []),
         "hdr": hdr,
-        "vivid": bool(white) and not hdr,     # an HDR screen recorded in normal colours
+        "vivid": vivid,
         "voice_track": voice,
         "summary": (f"{out_w}×{out_h} · {fps} FPS · {encoder.replace('_', ' ').upper()} · "
                     + (f"{quality} quality · voice on its own track" if voice else f"{bitrate} Kbps")
                     + f" · {buffer_s // 60} min" + (" · HDR" if hdr else "")
-                    + (f" · {white} nits" if white else "") + (" · vivid" if white and not hdr else "")),
+                    + (f" · {white} nits" if white else "") + (" · vivid" if vivid else "")),
     }
 
 
@@ -6160,6 +6163,9 @@ class Settings(QtWidgets.QWidget):
         self._row("hdr", "HDR", "choice", [("auto", "Auto"), ("off", "Off")],
                   lambda v: "HDR clips while Windows HDR is on. Shared copies get normal colours"
                   if v == "auto" else "Always normal colours (SDR)")
+        self._row("colours", "Colours", "choice", [("vivid", "Vivid"), ("natural", "Natural")],
+                  lambda v: "A little more colour and contrast when an HDR screen is recorded in normal colours"
+                  if v == "vivid" else "Colours exactly as OBS records them")
         self._row("record_indicator", "Recording indicator", "choice",
                   [("top-left", "Top left"), ("top-right", "Top right"), ("off", "Off")],
                   lambda v: "A small REC timer while you record by hand. It never shows up in captures"

@@ -348,5 +348,10 @@
   "The microphone Windows uses. Your voice goes on its own track": "المايك اللي يستخدمه ويندوز. صوتك ينحفظ في مسار مستقل",
   "Not connected now": "مو موصول الحين",
   "Your voice is recorded from this microphone": "صوتك يتسجّل من هالمايك",
-  "Screen {n}": "شاشة {n}"
+  "Screen {n}": "شاشة {n}",
+  "Colours": "الألوان",
+  "Vivid": "زاهية",
+  "Natural": "طبيعية",
+  "A little more colour and contrast when an HDR screen is recorded in normal colours": "ألوان وتباين أقوى شوي لما تتسجّل شاشة HDR بألوان عادية",
+  "Colours exactly as OBS records them": "الألوان مثل ما يسجّلها OBS بالضبط"
 }
