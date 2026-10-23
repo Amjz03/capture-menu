@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.0.20 · 2026-10-23
+
+- **Looks and feels more like the PS5.** The whole interface moves to the PS5's night blue: the glass behind pages, the Create bar, notices and Settings cards. The focused tile now grows into place with a white ring and a soft glow, smoothly, and settles back when you move on, in the Create bar, the Save recent row and the gallery. Tiles, cards and buttons are larger and rounder, titles are bigger, and switches that are on turn PlayStation blue.
+- **Smooth motion.** The Create bar slides up when it opens and notices slide in from the edge of the screen, like the PS5's.
+- **A clearer REC indicator.** The recording timer is a little larger, with a soft red glow on the dot.
+
 ## 0.0.19 · 2026-10-23
 
 - **Clips and screenshots look like Windows' own screenshots.** With Windows HDR on, OBS turned the HDR screen into normal colours itself, which lifted the blacks (black came out dark grey) and dimmed the whites (white came out at 81 %): everything looked grey and flat. Capture Menu now has Windows do that conversion (OBS's Display Capture → Force SDR), the same one the Snipping Tool uses, so blacks are black and whites are white. Colours → Natural now matches Windows exactly; Soft, Vivid and Max add colour on top. HDR clips (HDR → Auto) are unchanged.
