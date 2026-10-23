@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.0.13 · 2026-10-23
+
+- **Richer colours with Windows HDR on.** Recording an HDR screen in normal colours left the game looking flat next to what you see while playing. Capture Menu now adds a light colour correction (a bit more colour and contrast) to OBS's display capture in that case, so clips and screenshots look closer to the game. It's removed again when HDR clips are on or Windows HDR is off.
+
 ## 0.0.12 · 2026-10-23
 
 - **No more washed-out captures with Windows HDR on.** With HDR set to Off (or H.264), OBS turns an HDR screen into normal colours assuming 300-nit white, but Windows usually shows normal content dimmer, so clips and screenshots came out grey and dull. Capture Menu now gives OBS the same white level as Windows' "SDR content brightness" slider, so captures look like your screen. Changing the slider sets OBS up again on the next start.
