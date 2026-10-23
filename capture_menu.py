@@ -3474,6 +3474,18 @@ class Menu(QtWidgets.QWidget):
             self.hide_menu()
             self.viewer.open(items, index, trim=trim, back_to=lambda: self.show_menu(game, fresh=False))
 
+    def view_capture(self, path: str, trim: bool = False):
+        """A notice was clicked: its capture in the viewer. Back then comes to the bar, the same as
+        opening it with Create then △ (it used to close everything)."""
+        items = self.ctl.recent_items()
+        p = Path(path)
+        if p not in items:
+            items = [p, *items]
+        self.hide_menu()
+        if self.gallery is not None:
+            self.gallery.close_gallery()
+        self.viewer.open(items, items.index(p), trim=trim, fresh=True, back_to=lambda: self.show_menu(fresh=False))
+
     def _on_status(self, st: dict):
         if not st.get("online"):
             off = tr("OBS isn't running")
@@ -6877,15 +6889,7 @@ def main():
     ctl.captured.connect(lambda *_: menu.refresh_recent())
     ctl.shared.connect(toast.show_shared)
 
-    def open_capture(path: str, trim: bool):
-        items = ctl.recent_items()
-        p = Path(path)
-        if p not in items:
-            items = [p, *items]
-        menu.hide_menu()
-        gallery.close_gallery()
-        viewer.open(items, items.index(p), trim=trim, fresh=True)
-    toast.open_capture.connect(open_capture)
+    toast.open_capture.connect(menu.view_capture)
     ctl.storage.connect(menu.show_storage)
     ctl.library_changed.connect(menu.refresh_recent)
 

@@ -64,6 +64,9 @@ QtWidgets.QApplication.sendEvent(t, QtGui.QMouseEvent(QtCore.QEvent.MouseButtonP
                                                       Qt.LeftButton, Qt.LeftButton, Qt.NoModifier))
 assert opened[-1] == (c.name, False)
 t.show_message("Saving…", "info"); assert t.path is None and not t.trim_btn.isVisible()
+menu.view_capture(str(c)); pump(); assert viewer.isVisible() and not menu.isVisible()
+viewer.go_back(); pump(); assert not viewer.isVisible() and menu.isVisible(), "Back from a notice goes to the bar"
+menu.hide_menu()
 print("trim from notification PASS")
 
 # 3: sizes + sort by size
