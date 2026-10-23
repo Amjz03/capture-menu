@@ -292,7 +292,7 @@ class Obs:
         return changed
 
     VIVID = "Capture Menu colour"
-    VIVID_SETTINGS = {"saturation": 0.3, "contrast": 0.06}   # like ffmpeg eq=saturation=1.3:contrast=1.06
+    VIVID_SETTINGS = {"saturation": 0.6, "contrast": 0.1}   # like ffmpeg eq=saturation=1.6:contrast=1.1
 
     def set_vivid(self, on: bool):
         """An HDR screen recorded in normal colours looks flat next to the HDR game: a light colour
@@ -1893,6 +1893,7 @@ class Controller(QtCore.QObject):
             plan["summary"] += f" · {incoming}"
         state = load_state()
         if state.get("obs_setup") == plan["summary"]:
+            self.obs.set_vivid(plan["vivid"])   # filters apply live: keeps the boost up to date
             return
         recording, _ = self.obs.record_status()
         if recording:
