@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.0.23 · 2026-10-23
+
+- **Back in the viewer goes back.** A capture opened by clicking its notice (or the notice's Trim button) had nowhere to go back to, so Back closed everything and dropped you into the game. Back now goes to the Create bar, the same as opening it with Create then △.
+
 ## 0.0.22 · 2026-10-23
 
 - **The Create bar and the gallery look like 0.0.20 again**, with these refinements:
