@@ -741,6 +741,51 @@ class _AdvancedColor(ctypes.Structure):       # ..._GET_ADVANCED_COLOR_INFO (and
                 ("bits", ctypes.c_uint32), ("mode", ctypes.c_uint32)]
 
 
+class _SdrWhite(ctypes.Structure):           # DISPLAYCONFIG_SDR_WHITE_LEVEL
+    _fields_ = [("header", _DeviceInfoHeader), ("level", ctypes.c_uint32)]
+
+
+def _screen_paths() -> list[tuple[str, _PathInfo]]:
+    """(device name, display path) for each active screen."""
+    user32 = ctypes.windll.user32
+    n_paths, n_modes = ctypes.c_uint32(), ctypes.c_uint32()
+    if user32.GetDisplayConfigBufferSizes(2, ctypes.byref(n_paths), ctypes.byref(n_modes)):  # active paths
+        return []
+    paths = (_PathInfo * n_paths.value)()
+    modes = (ctypes.c_byte * (64 * n_modes.value))()
+    if user32.QueryDisplayConfig(2, ctypes.byref(n_paths), paths, ctypes.byref(n_modes), modes, None):
+        return []
+    found = []
+    for path in paths[:n_paths.value]:
+        src = _SourceName()
+        src.header.type, src.header.size = 1, ctypes.sizeof(src)       # GET_SOURCE_NAME
+        src.header.adapter, src.header.id = path.src_adapter, path.src_id
+        if not user32.DisplayConfigGetDeviceInfo(ctypes.byref(src)):
+            found.append((src.name, path))
+    return found
+
+
+def sdr_white(device: str | None = None) -> int | None:
+    """Windows' "SDR content brightness" on an HDR screen (the main screen when not given), in nits.
+    OBS turns HDR screens into normal colours with its own white level (300 nits): when Windows'
+    is lower, whites come out grey and the whole picture looks washed out."""
+    if not IS_WINDOWS:
+        return None
+    try:
+        device = device or main_screen_device()
+        for name, path in _screen_paths():
+            if name != device:
+                continue
+            white = _SdrWhite()
+            white.header.type, white.header.size = 11, ctypes.sizeof(white)  # GET_SDR_WHITE_LEVEL
+            white.header.adapter, white.header.id = path.tgt_adapter, path.tgt_id
+            if not ctypes.windll.user32.DisplayConfigGetDeviceInfo(ctypes.byref(white)) and white.level:
+                return round(white.level * 80 / 1000)                       # 1000 = 80 nits
+    except Exception:
+        log.exception("could not read the SDR white level")
+    return None
+
+
 def hdr_screens() -> dict[str, bool]:
     """Windows HDR on or off for each screen, by its device name (DISPLAY1 and so on). Empty where it
     can't be told. Windows 11 24H2 says it directly; before that, "advanced colour" on means HDR."""
@@ -748,29 +793,17 @@ def hdr_screens() -> dict[str, bool]:
         return {}
     try:
         user32 = ctypes.windll.user32
-        n_paths, n_modes = ctypes.c_uint32(), ctypes.c_uint32()
-        if user32.GetDisplayConfigBufferSizes(2, ctypes.byref(n_paths), ctypes.byref(n_modes)):  # active paths
-            return {}
-        paths = (_PathInfo * n_paths.value)()
-        modes = (ctypes.c_byte * (64 * n_modes.value))()
-        if user32.QueryDisplayConfig(2, ctypes.byref(n_paths), paths, ctypes.byref(n_modes), modes, None):
-            return {}
         found = {}
-        for path in paths[:n_paths.value]:
-            src = _SourceName()
-            src.header.type, src.header.size = 1, ctypes.sizeof(src)       # GET_SOURCE_NAME
-            src.header.adapter, src.header.id = path.src_adapter, path.src_id
-            if user32.DisplayConfigGetDeviceInfo(ctypes.byref(src)):
-                continue
+        for name, path in _screen_paths():
             color = _AdvancedColor()
             color.header.type, color.header.size = 15, ctypes.sizeof(color)    # GET_ADVANCED_COLOR_INFO_2
             color.header.adapter, color.header.id = path.tgt_adapter, path.tgt_id
             if not user32.DisplayConfigGetDeviceInfo(ctypes.byref(color)):
-                found[src.name] = color.mode == 2                               # ADVANCED_COLOR_MODE_HDR
+                found[name] = color.mode == 2                                   # ADVANCED_COLOR_MODE_HDR
                 continue
             color.header.type, color.header.size = 9, ctypes.sizeof(color) - 4  # GET_ADVANCED_COLOR_INFO
             if not user32.DisplayConfigGetDeviceInfo(ctypes.byref(color)):
-                found[src.name] = bool(color.value & 0b10)                      # advancedColorEnabled
+                found[name] = bool(color.value & 0b10)                          # advancedColorEnabled
         return found
     except Exception:
         log.exception("could not read the HDR state")
@@ -1270,11 +1303,13 @@ def pick_bitrate(encoder: str, width: int, height: int, fps: int = 60, quality: 
     return int(round(BITRATE_1440P[codec_of(encoder)] * scale / 500) * 500)
 
 
-def obs_plan(cfg: dict, width: int, height: int, encoder: str, obs_version: str, hdr: bool = False) -> dict:
+def obs_plan(cfg: dict, width: int, height: int, encoder: str, obs_version: str, hdr: bool = False,
+             white: int | None = None) -> dict:
     """The OBS settings Capture Menu wants: video size/FPS and simple-output profile keys.
     With voice_track on, recordings get 3 audio tracks: 1 = everything, 2 = game, 3 = mic.
     OBS's Simple mode only writes extra tracks with a quality preset (not "same as stream"),
-    so the buffer is capped by size instead of bitrate."""
+    so the buffer is capped by size instead of bitrate. white is Windows' SDR white level (nits)
+    on an HDR screen, so OBS's normal colours are as bright as Windows shows them."""
     encoder = choose_encoder(encoder, cfg.get("video_codec", "auto"))
     fps = int(cfg.get("fps", 60))
     quality = cfg.get("quality", "balanced")
@@ -1309,12 +1344,13 @@ def obs_plan(cfg: dict, width: int, height: int, encoder: str, obs_version: str,
             ("Video", "ColorFormat", "P010" if hdr else "NV12"),
             ("Video", "ColorSpace", "2100PQ" if hdr else "709"),
             ("Video", "ColorRange", "Partial"),
-        ],
+        ] + ([("Video", "SdrWhiteLevel", str(white))] if white else []),
         "hdr": hdr,
         "voice_track": voice,
         "summary": (f"{out_w}×{out_h} · {fps} FPS · {encoder.replace('_', ' ').upper()} · "
                     + (f"{quality} quality · voice on its own track" if voice else f"{bitrate} Kbps")
-                    + f" · {buffer_s // 60} min" + (" · HDR" if hdr else "")),
+                    + f" · {buffer_s // 60} min" + (" · HDR" if hdr else "")
+                    + (f" · {white} nits" if white else "")),
     }
 
 
@@ -1796,7 +1832,8 @@ class Controller(QtCore.QObject):
         # OBS records at the main screen's size, so that screen's HDR decides (a game on another
         # screen is converted by OBS either way)
         hdr = self.cfg.get("hdr", "auto") == "auto" and windows_hdr()
-        plan = obs_plan(self.cfg, width, height, encoder, version, hdr)
+        plan = obs_plan(self.cfg, width, height, encoder, version, hdr,
+                        sdr_white() if windows_hdr() else None)
         log.info("OBS plan: %s (Windows HDR %s)", plan["summary"], "on" if hdr else "off")
         if self.blocked:
             # OBS writes its replays to Videos by default, which Controlled folder access blocks for

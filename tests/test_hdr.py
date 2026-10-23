@@ -21,6 +21,10 @@ assert not off["hdr"] and profile(off)[("Video", "ColorFormat")] == "NV12" and p
 h264 = cm.obs_plan(dict(cfg, video_codec="h264"), 2560, 1440, "nvenc_av1", "31.0.0", hdr=True)
 assert not h264["hdr"] and profile(h264)[("Video", "ColorFormat")] == "NV12", "H.264 can't carry HDR"
 assert on["summary"] != off["summary"], "turning HDR on or off sets OBS up again"
+bright = cm.obs_plan(cfg, 2560, 1440, "nvenc_av1", "31.0.0", hdr=False, white=240)
+assert profile(bright)[("Video", "SdrWhiteLevel")] == "240", "OBS's white level matches Windows' (not grey)"
+assert ("Video", "SdrWhiteLevel") not in profile(off) and bright["summary"] != off["summary"]
+assert cm.sdr_white() is None or 80 <= cm.sdr_white() <= 1000
 screens = cm.hdr_screens()
 assert isinstance(screens, dict) and all(isinstance(v, bool) for v in screens.values())
 print("OBS colour settings PASS", screens)
