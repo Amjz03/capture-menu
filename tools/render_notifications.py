@@ -53,9 +53,10 @@ shots = []
 for label, mode, fn in rows:
     cm.INPUT.set(mode); shots.append((label, toast(fn)))
 
+size = lambda pm: pm.deviceIndependentSize().toSize()   # grabs come at the screen's scale
 W, colw, pad, gap = 1920, 940, 28, 18
 col_items = [shots[:8], shots[8:]]
-heights = [sum(pm.height() + 30 + gap for _, pm in col) for col in col_items]
+heights = [sum(size(pm).height() + 30 + gap for _, pm in col) for col in col_items]
 H = max(heights) + pad * 2 + 70
 bg = QtGui.QPixmap.fromImage(draw_scene(W, H, "dusk", 7, hud=False))
 p = QtGui.QPainter(bg); p.setRenderHint(QtGui.QPainter.Antialiasing)
@@ -71,6 +72,6 @@ for ci, col in enumerate(col_items):
         p.setPen(QtGui.QColor(255, 255, 255, 200))
         p.drawText(QtCore.QRect(x0, y, colw, 26), Qt.AlignRight | Qt.AlignVCenter, label)
         y += 30
-        p.drawPixmap(x0 + colw - pm.width(), y, pm)
-        y += pm.height() + gap
+        p.drawPixmap(x0 + colw - size(pm).width(), y, pm)
+        y += size(pm).height() + gap
 p.end(); bg.save(str(out / "toasts_all.png")); print("ok", W, H)

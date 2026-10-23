@@ -2560,8 +2560,8 @@ def release_window(w: QtWidgets.QWidget):
 
 # ---- look: the PS5's night blue; white is the focus colour, red only means recording
 INK = "#f4f6fb"
-MUTED = "rgba(236,240,250,0.66)"
-FAINT = "rgba(236,240,250,0.46)"
+MUTED = "rgba(236,240,250,0.76)"
+FAINT = "rgba(236,240,250,0.58)"
 NIGHT = (7, 10, 20)         # every surface sits on this blue-black, like the PS5's menus
 PANEL = "rgba(24,29,44,0.92)"   # a raised card: notices, dialogs
 DARK = "#0d1120"            # ink on a white (focused) surface
@@ -2795,8 +2795,8 @@ class HintBar(QtWidgets.QWidget):
                 x += self.ITEM_GAP
             if glyph and not rtl:
                 x += draw_glyph(p, x, cy, glyph, self.mode) + self.GAP
-            p.setFont(font(13))
-            p.setPen(QtGui.QColor(236, 240, 250, 168))
+            p.setFont(font(14))
+            p.setPen(QtGui.QColor(236, 240, 250, 205))
             w = p.fontMetrics().horizontalAdvance(label)
             p.drawText(QtCore.QRectF(x, 0, w + 2, self.height()), Qt.AlignVCenter | Qt.AlignLeft, label)
             x += w
@@ -2994,13 +2994,13 @@ class ActionCard(Card):
         p.drawPixmap(QtCore.QRectF(r.center().x() - size / 2, r.center().y() - size / 2, size, size).toRect(),
                      icon_pixmap(self.icon_name, 34, color))
         text_r = QtCore.QRectF(0, self.tile().bottom() + 14, self.width(), 18)
-        p.setPen(QtGui.QColor(INK) if focused else QtGui.QColor(236, 240, 250, 170))
-        p.setFont(font(13, QtGui.QFont.DemiBold if focused else QtGui.QFont.Normal))
+        p.setPen(QtGui.QColor(INK) if focused else QtGui.QColor(236, 240, 250, 205))
+        p.setFont(font(14, QtGui.QFont.DemiBold if focused else QtGui.QFont.Normal))
         p.drawText(text_r, Qt.AlignHCenter | Qt.AlignVCenter,
                    p.fontMetrics().elidedText(tr(self.label), Qt.ElideRight, self.width()))
         if self.hint:
-            p.setPen(QtGui.QColor(236, 240, 250, 110))
-            p.setFont(font(12))
+            p.setPen(QtGui.QColor(236, 240, 250, 150))
+            p.setFont(font(13))
             p.drawText(text_r.translated(0, 17), Qt.AlignHCenter | Qt.AlignVCenter, tr(self.hint))
 
 
@@ -3087,17 +3087,17 @@ class ThumbCard(Card):
             p.setFont(font(14, QtGui.QFont.DemiBold))
             p.drawText(text, lead() | Qt.AlignVCenter,
                        p.fontMetrics().elidedText(self.caption, Qt.ElideRight, int(text.width())))
-            p.setPen(QtGui.QColor(236, 240, 250, 120))
-            p.setFont(font(12))
+            p.setPen(QtGui.QColor(236, 240, 250, 165))
+            p.setFont(font(13))
             p.drawText(text.translated(0, 19), lead() | Qt.AlignVCenter, self.when)
 
 BAR_STYLE = f"""
 QLabel {{ color: {INK}; background: transparent; }}
 #game {{ font-family: {DISPLAY}; font-size: 30px; font-weight: 600; }}
-#status {{ color: {MUTED}; font-size: 14px; }}
+#status {{ color: {MUTED}; font-size: 15px; }}
 #caption {{ color: {INK}; font-size: 17px; font-weight: 600; }}
-#focusInfo {{ color: {FAINT}; font-size: 14px; }}
-#storage {{ color: {AMBER}; font-size: 14px; }}
+#focusInfo {{ color: {FAINT}; font-size: 15px; }}
+#storage {{ color: {AMBER}; font-size: 15px; }}
 QPushButton#back {{
     color: {INK}; font-size: 14px; font-weight: 600; border: none; border-radius: 20px;
     background: rgba(255,255,255,16); padding: 0 18px 0 12px; min-height: 40px;
@@ -3691,11 +3691,11 @@ class Toast(QtWidgets.QWidget):
         self.title.setStyleSheet(f"color: {INK};")
         self.title.setTextFormat(Qt.RichText)
         self.sub = QtWidgets.QLabel()
-        self.sub.setFont(font(13))
+        self.sub.setFont(font(14))
         self.sub.setStyleSheet(f"color: {MUTED};")
         self.hint = QtWidgets.QLabel()
         self.hint.setTextFormat(Qt.RichText)
-        self.hint.setFont(font(12))
+        self.hint.setFont(font(13))
         self.hint.setStyleSheet(f"color: {MUTED};")
         col.addStretch()
         for w in (self.title, self.sub, self.hint):
@@ -3714,10 +3714,14 @@ class Toast(QtWidgets.QWidget):
         self.trim_btn.clicked.connect(lambda: self._open(trim=True))
         lay.addWidget(self.trim_btn, 0, Qt.AlignVCenter)
         self.trim_btn.hide()
-        self._hide = QtCore.QTimer(self, singleShot=True, timeout=self.hide)
+        self._hide = QtCore.QTimer(self, singleShot=True, timeout=self._fade_out)
         self._slide = QtCore.QPropertyAnimation(self, b"pos", self)
         self._slide.setDuration(260)
         self._slide.setEasingCurve(QtCore.QEasingCurve.OutCubic)
+        self._fade = QtCore.QPropertyAnimation(self, b"windowOpacity", self)
+        self._fade.setDuration(220)
+        self._fade.setEasingCurve(QtCore.QEasingCurve.OutCubic)
+        self._fade.finished.connect(lambda: self.hide() if self.windowOpacity() < 0.05 else None)
 
     def _open(self, trim: bool = False):
         if self.path:
@@ -3803,17 +3807,33 @@ class Toast(QtWidgets.QWidget):
                         if isinstance(w, (Menu, Viewer, Gallery, Settings)))
         g = (ui_screen() if page_open else game_screen()).geometry()   # beside the page in use
         x, y = g.right() - self.width() - 28, g.top() + 28
+        self._fade.stop()
         if self.isVisible() or not MOTION_MS:
             self._slide.stop()
             self.move(x, y)
-        else:   # slides in from the edge, like the PS5's
+            self.setWindowOpacity(1.0)
+        else:   # slides in from the edge and fades in, like the PS5's
             self.move(x + 48, y)
             self._slide.setStartValue(QtCore.QPoint(x + 48, y))
             self._slide.setEndValue(QtCore.QPoint(x, y))
             self._slide.start()
+            self.setWindowOpacity(0.0)
+            self._fade.setStartValue(0.0)
+            self._fade.setEndValue(1.0)
+            self._fade.start()
         self.show()
         self.raise_()
         self._hide.start(ms)
+
+    def _fade_out(self):
+        """Time's up: the notice fades away instead of vanishing."""
+        if not MOTION_MS or not self.isVisible():
+            self.hide()
+            return
+        self._fade.stop()
+        self._fade.setStartValue(self.windowOpacity())
+        self._fade.setEndValue(0.0)
+        self._fade.start()
 
 
 VIEWER_STYLE = f"""
@@ -3821,11 +3841,11 @@ QWidget {{ font-family: {FONT}; }}
 #viewer {{ background: transparent; border: none; }}
 QLabel {{ color: {INK}; background: transparent; }}
 #vTitle {{ font-family: {DISPLAY}; font-size: 32px; font-weight: 600; }}
-#vSub, #vNote {{ color: {MUTED}; font-size: 14px; }}
-#hint {{ color: {MUTED}; font-size: 14px; }}
+#vSub, #vNote {{ color: {MUTED}; font-size: 15px; }}
+#hint {{ color: {MUTED}; font-size: 15px; }}
 #panelTitle {{ font-family: {DISPLAY}; font-size: 24px; font-weight: 600; }}
-#panelSub {{ color: {MUTED}; font-size: 14px; }}
-#info {{ color: {MUTED}; font-size: 13px; }}
+#panelSub {{ color: {MUTED}; font-size: 15px; }}
+#info {{ color: {MUTED}; font-size: 14px; }}
 #vMsg {{ color: {MUTED}; font-size: 16px; }}
 #time {{ color: {MUTED}; font-size: 14px; font-family: "Cascadia Mono", Consolas, monospace; }}
 #stage {{ background: transparent; }}
@@ -4013,7 +4033,7 @@ class LevelRow(QtWidgets.QWidget):
         self.name = QtWidgets.QLabel(tr(label))
         self.name.setFont(font(16, QtGui.QFont.DemiBold))
         self.desc = QtWidgets.QLabel(tr(describe))
-        self.desc.setFont(font(13))
+        self.desc.setFont(font(14))
         self.desc.setStyleSheet(f"color: {MUTED};")
         names.addStretch()
         names.addWidget(self.name)
@@ -4146,8 +4166,8 @@ class OptionCard(QtWidgets.QAbstractButton):
         p.setFont(font(16, QtGui.QFont.DemiBold))
         flags = Qt.AlignLeft | Qt.AlignVCenter    # Qt turns this to the right in Arabic by itself
         p.drawText(mirror(self, QtCore.QRectF(74, 18, self.width() - 94, 24)), flags, self.title)
-        p.setPen(QtGui.QColor(236, 240, 250, 168))
-        p.setFont(font(13))
+        p.setPen(QtGui.QColor(236, 240, 250, 200))
+        p.setFont(font(14))
         sub = self.note or (self.describe(self.value) if callable(self.describe) else self.describe)
         p.drawText(mirror(self, QtCore.QRectF(74, 42, self.width() - 94, 22)), flags,
                    p.fontMetrics().elidedText(sub, Qt.ElideRight, self.width() - 94))
@@ -4163,7 +4183,7 @@ class OptionCard(QtWidgets.QAbstractButton):
                 p.setBrush(QtGui.QColor(INK) if self.hasFocus() else QtGui.QColor(255, 255, 255, 44))
                 p.drawRoundedRect(seg, 7, 7)
             p.setPen(QtGui.QColor(DARK) if chosen and self.hasFocus()
-                     else QtGui.QColor(INK) if chosen else QtGui.QColor(236, 240, 250, 150))
+                     else QtGui.QColor(INK) if chosen else QtGui.QColor(236, 240, 250, 185))
             p.drawText(seg, Qt.AlignCenter, p.fontMetrics().elidedText(self.choices[i][1], Qt.ElideRight,
                                                                          int(seg.width()) - 12))
 
@@ -5344,11 +5364,12 @@ class TileDelegate(QtWidgets.QStyledItemDelegate):
         path = Path(index.data(Qt.UserRole))
         r = QtCore.QRectF(option.rect)
         selected = bool(option.state & QtWidgets.QStyle.State_Selected)
-        t = self.g.grow if selected else 0.0      # the current tile grows into focus, like the PS5
+        # the current tile grows into focus, like the PS5, while the one before settles back
+        t = self.g.grow if selected else (1 - self.g.grow) if index.row() == self.g.last_row else 0.0
         p.save()
         p.setRenderHint(QtGui.QPainter.Antialiasing)
         rest = QtCore.QRectF(r.x() + (r.width() - self.g.TW) / 2, r.y() + self.g.PAD, self.g.TW, self.g.TH)
-        tile = grown(rest, 0.06 * t)
+        tile = grown(rest, 0.05 * t)
         radius = 14 * tile.width() / rest.width()
         ctl = self.g.ctl
         draw_capture_tile(p, tile, self.pixmap(path), path, ctl.length_of(path), ctl.is_favorite(path),
@@ -5356,14 +5377,14 @@ class TileDelegate(QtWidgets.QStyledItemDelegate):
                           selecting=self.g.selecting)
         paint_focus(p, tile, radius, t)
         title, _, sub = index.data(Qt.DisplayRole).partition("\n")
-        text = QtCore.QRectF(rest.left(), rest.bottom() + 14, rest.width(), 18)
-        p.setPen(QtGui.QColor(INK) if selected else QtGui.QColor(236, 240, 250, 200))
-        p.setFont(font(14, QtGui.QFont.DemiBold if selected else QtGui.QFont.Normal))
+        text = QtCore.QRectF(rest.left(), rest.bottom() + 14, rest.width(), 20)
+        p.setPen(QtGui.QColor(INK) if selected else QtGui.QColor(236, 240, 250, 225))
+        p.setFont(font(15, QtGui.QFont.DemiBold if selected else QtGui.QFont.Normal))
         p.drawText(text, lead() | Qt.AlignVCenter,
                    p.fontMetrics().elidedText(title, Qt.ElideRight, int(rest.width())))
-        p.setPen(QtGui.QColor(236, 240, 250, 115))
-        p.setFont(font(12))
-        p.drawText(text.translated(0, 19), lead() | Qt.AlignVCenter, sub)
+        p.setPen(QtGui.QColor(236, 240, 250, 165))
+        p.setFont(font(13))
+        p.drawText(text.translated(0, 21), lead() | Qt.AlignVCenter, sub)
         p.restore()
 
 
@@ -5384,13 +5405,13 @@ class CategoryDelegate(QtWidgets.QStyledItemDelegate):
             p.setBrush(QtGui.QColor(INK))
             p.drawRoundedRect(QtCore.QRectF(option.rect).adjusted(0, 3, 0, -3), 19, 19)
         right = f"{count}"
-        p.setFont(font(12))
-        p.setPen(QtGui.QColor(13, 17, 32, 150) if selected else QtGui.QColor(236, 240, 250, 105))
+        p.setFont(font(13))
+        p.setPen(QtGui.QColor(13, 17, 32, 150) if selected else QtGui.QColor(236, 240, 250, 150))
         rw = p.fontMetrics().horizontalAdvance(right)
         rtl = is_rtl()    # the count sits at the far end of the line from the name
         p.drawText(r, ((Qt.AlignLeft | Qt.AlignAbsolute) if rtl else Qt.AlignRight) | Qt.AlignVCenter, right)
-        p.setFont(font(14, QtGui.QFont.DemiBold if selected else QtGui.QFont.Normal))
-        p.setPen(QtGui.QColor(DARK) if selected else QtGui.QColor(236, 240, 250, 200))
+        p.setFont(font(15, QtGui.QFont.DemiBold if selected else QtGui.QFont.Normal))
+        p.setPen(QtGui.QColor(DARK) if selected else QtGui.QColor(236, 240, 250, 225))
         p.drawText(r.adjusted(rw + 12, 0, 0, 0) if rtl else r.adjusted(0, 0, -rw - 12, 0), lead() | Qt.AlignVCenter,
                    p.fontMetrics().elidedText(name, Qt.ElideRight, int(r.width() - rw - 12)))
         p.restore()
@@ -5412,18 +5433,32 @@ class Gallery(Grow, QtWidgets.QWidget):
     """All captures, like the PS5 Media Gallery: games on the left, their captures on the right."""
 
     thumb_ready = QtCore.Signal(str)
-    TW, TH = 256, 144
-    PAD = 18                 # room around a tile to grow into when it's the current one
+    TW, TH = 256, 144        # set from the grid's width by _fit_tiles()
+    PAD = 15                 # room around a tile to grow into when it's the current one
     FAVORITES = "★  Favorites"
+    last_row = -1            # the tile that had the focus before; it settles back as the new one grows
+    _row = -1
 
     def _on_grow(self, value):
         self.grow = float(value)
         self.grid.viewport().update()
 
-    def _regrow(self):
+    def _regrow(self, row: int):
         """The current tile changed: it grows into focus."""
+        self.last_row, self._row = self._row, row
         self.grow = 0.0
         self.grow_to(True)
+
+    def _fit_tiles(self):
+        """As many columns as fit tiles of about 350 px, sharing the width evenly, so the grid
+        fills the page edge to edge. The scroll bar's room is kept either way."""
+        room = self.grid.width() - 24     # the scroll bar, and the few px the list keeps at its edges
+        cell = room // max(2, round(room / 380))
+        if cell - 2 * self.PAD != self.TW:
+            self.TW = cell - 2 * self.PAD
+            self.TH = round(self.TW * 9 / 16)
+            self.tiles.forget()
+            self.grid.setGridSize(QtCore.QSize(cell, self.TH + self.PAD + 62))
 
     def __init__(self, ctl: Controller, viewer: "Viewer"):
         super().__init__(None, Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool)
@@ -5510,7 +5545,7 @@ class Gallery(Grow, QtWidgets.QWidget):
         self.grid.setSpacing(4)
         self.grid.itemDoubleClicked.connect(lambda _: None if self.selecting else self.open_selected())
         self.grid.itemClicked.connect(self._clicked)
-        self.grid.currentRowChanged.connect(lambda _: (self._update_info(), self._regrow()))
+        self.grid.currentRowChanged.connect(lambda row: (self._update_info(), self._regrow(row)))
         self.grid.installEventFilter(self)
         body.addWidget(self.grid, 1)
         lay.addLayout(body, 1)
@@ -5767,6 +5802,8 @@ class Gallery(Grow, QtWidgets.QWidget):
                 self.mark_all()
                 return True
             return self._key(event.key())
+        if obj is self.grid and event.type() == QtCore.QEvent.Resize:
+            self._fit_tiles()
         return super().eventFilter(obj, event)
 
     def keyPressEvent(self, e):
@@ -6093,7 +6130,7 @@ class SettingRow(HoverFocus, QtWidgets.QWidget):
             p.setBrush(QtGui.QColor(255, 255, 255, 14))
             p.drawRoundedRect(r, 16, 16)
         ink = QtGui.QColor(DARK) if focused else QtGui.QColor(INK)
-        soft = QtGui.QColor(13, 17, 32, 165) if focused else QtGui.QColor(236, 240, 250, 150)
+        soft = QtGui.QColor(13, 17, 32, 165) if focused else QtGui.QColor(236, 240, 250, 185)
         desc = self.describe(self.value)
         left = QtCore.QRectF(322 if is_rtl() else 18, 0, self.width() - 340, self.height())
         p.setPen(ink)
@@ -6101,7 +6138,7 @@ class SettingRow(HoverFocus, QtWidgets.QWidget):
         if desc:
             p.drawText(left.adjusted(0, 13, 0, 0), lead() | Qt.AlignTop, self.label)
             p.setPen(soft)
-            p.setFont(font(13))
+            p.setFont(font(14))
             p.drawText(left.adjusted(0, 39, 0, 0), lead() | Qt.AlignTop,
                        p.fontMetrics().elidedText(desc, Qt.ElideRight, int(left.width())))
         else:
