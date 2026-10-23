@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.0.16 · 2026-10-23
+
+- **HDR clips look right in your library.** HDR clips recorded by OBS weren't recognised as HDR, so their thumbnails, previews, shared copies and copies came out grey and washed out. They're recognised now, and the first start after updating remakes the thumbnails of the HDR clips you already have, in normal colours.
+
 ## 0.0.15 · 2026-10-23
 
 - **Copied HDR clips keep their colours.** Discord, WhatsApp and most video players show HDR clips grey and washed out. Copy now puts a normal-colour copy of an HDR clip on the clipboard (made like Share → Phone & WhatsApp, full quality, saved in the game's Shared folder), so it looks right wherever you paste it. Normal clips are copied as they are.
