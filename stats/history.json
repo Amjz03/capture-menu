@@ -75,6 +75,10 @@
   "2026-10-21": {
    "count": 3,
    "uniques": 3
+  },
+  "2026-10-22": {
+   "count": 16,
+   "uniques": 9
   }
  },
  "downloads": {
@@ -387,6 +391,116 @@
    },
    "setup_exe": 23,
    "total": 39
+  },
+  "2026-10-23": {
+   "by_release": {
+    "v0.0.1": {
+     "CaptureMenu-Setup.exe": 0,
+     "CaptureMenu.zip": 2
+    },
+    "v0.0.10": {
+     "CaptureMenu-Setup.exe": 1,
+     "CaptureMenu.zip": 0
+    },
+    "v0.0.11": {
+     "CaptureMenu-Setup.exe": 3,
+     "CaptureMenu.zip": 0
+    },
+    "v0.0.12": {
+     "CaptureMenu-Setup.exe": 1,
+     "CaptureMenu.zip": 0
+    },
+    "v0.0.13": {
+     "CaptureMenu-Setup.exe": 1,
+     "CaptureMenu.zip": 0
+    },
+    "v0.0.14": {
+     "CaptureMenu-Setup.exe": 1,
+     "CaptureMenu.zip": 0
+    },
+    "v0.0.15": {
+     "CaptureMenu-Setup.exe": 0,
+     "CaptureMenu.zip": 0
+    },
+    "v0.0.16": {
+     "CaptureMenu-Setup.exe": 1,
+     "CaptureMenu.zip": 0
+    },
+    "v0.0.17": {
+     "CaptureMenu-Setup.exe": 1,
+     "CaptureMenu.zip": 0
+    },
+    "v0.0.18": {
+     "CaptureMenu-Setup.exe": 1,
+     "CaptureMenu.zip": 0
+    },
+    "v0.0.19": {
+     "CaptureMenu-Setup.exe": 1,
+     "CaptureMenu.zip": 0
+    },
+    "v0.0.2": {
+     "CaptureMenu-Setup.exe": 5,
+     "CaptureMenu.zip": 2
+    },
+    "v0.0.20": {
+     "CaptureMenu-Setup.exe": 1,
+     "CaptureMenu.zip": 0
+    },
+    "v0.0.21": {
+     "CaptureMenu-Setup.exe": 0,
+     "CaptureMenu.zip": 0
+    },
+    "v0.0.22": {
+     "CaptureMenu-Setup.exe": 1,
+     "CaptureMenu.zip": 0
+    },
+    "v0.0.23": {
+     "CaptureMenu-Setup.exe": 0,
+     "CaptureMenu.zip": 0
+    },
+    "v0.0.24": {
+     "CaptureMenu-Setup.exe": 1,
+     "CaptureMenu.zip": 0
+    },
+    "v0.0.25": {
+     "CaptureMenu-Setup.exe": 0,
+     "CaptureMenu.zip": 0
+    },
+    "v0.0.26": {
+     "CaptureMenu-Setup.exe": 0,
+     "CaptureMenu.zip": 0
+    },
+    "v0.0.3": {
+     "CaptureMenu-Setup.exe": 2,
+     "CaptureMenu.zip": 2
+    },
+    "v0.0.4": {
+     "CaptureMenu-Setup.exe": 6,
+     "CaptureMenu.zip": 2
+    },
+    "v0.0.5": {
+     "CaptureMenu-Setup.exe": 0,
+     "CaptureMenu.zip": 2
+    },
+    "v0.0.6": {
+     "CaptureMenu-Setup.exe": 2,
+     "CaptureMenu.zip": 2
+    },
+    "v0.0.7": {
+     "CaptureMenu-Setup.exe": 1,
+     "CaptureMenu.zip": 2
+    },
+    "v0.0.8": {
+     "CaptureMenu-Setup.exe": 2,
+     "CaptureMenu.zip": 2
+    },
+    "v0.0.9": {
+     "CaptureMenu-Setup.exe": 1,
+     "CaptureMenu.zip": 0
+    }
+   },
+   "setup_exe": 33,
+   "total": 49
   }
  },
  "paths": {
@@ -762,6 +876,68 @@
     "title": "/releases/tag/v0.0.1",
     "uniques": 1
    }
+  ],
+  "2026-10-23": [
+   {
+    "count": 22,
+    "path": "/Amjz03/capture-menu/releases/tag/v0.0.2",
+    "title": "/releases/tag/v0.0.2",
+    "uniques": 17
+   },
+   {
+    "count": 10,
+    "path": "/Amjz03/capture-menu",
+    "title": "Overview",
+    "uniques": 5
+   },
+   {
+    "count": 2,
+    "path": "/Amjz03/capture-menu/releases",
+    "title": "/releases",
+    "uniques": 2
+   },
+   {
+    "count": 2,
+    "path": "/Amjz03/capture-menu/releases/tag/v0.0.4",
+    "title": "/releases/tag/v0.0.4",
+    "uniques": 2
+   },
+   {
+    "count": 1,
+    "path": "/Amjz03/capture-menu/blob/main/docs/icon.png",
+    "title": "/blob/main/docs/icon.png",
+    "uniques": 1
+   },
+   {
+    "count": 1,
+    "path": "/Amjz03/capture-menu/blob/main/docs/preview.jpg",
+    "title": "/blob/main/docs/preview.jpg",
+    "uniques": 1
+   },
+   {
+    "count": 1,
+    "path": "/Amjz03/capture-menu/blob/main/docs/screenshots/running-notice.jpg",
+    "title": "/blob/main/docs/screenshots/running-notice.jpg",
+    "uniques": 1
+   },
+   {
+    "count": 1,
+    "path": "/Amjz03/capture-menu/blob/main/docs/screenshots/save-recent.jpg",
+    "title": "/blob/main/docs/screenshots/save-recent.jpg",
+    "uniques": 1
+   },
+   {
+    "count": 1,
+    "path": "/Amjz03/capture-menu/blob/main/docs/screenshots/settings.jpg",
+    "title": "/blob/main/docs/screenshots/settings.jpg",
+    "uniques": 1
+   },
+   {
+    "count": 1,
+    "path": "/Amjz03/capture-menu/releases/tag/v0.0.1",
+    "title": "/releases/tag/v0.0.1",
+    "uniques": 1
+   }
   ]
  },
  "referrers": {
@@ -807,6 +983,13 @@
     "referrer": "t.co",
     "uniques": 13
    }
+  ],
+  "2026-10-23": [
+   {
+    "count": 14,
+    "referrer": "t.co",
+    "uniques": 13
+   }
   ]
  },
  "repo": {
@@ -814,7 +997,7 @@
   "stars": 1,
   "watchers": 0
  },
- "updated": "2026-10-22T08:42:09+00:00",
+ "updated": "2026-10-23T08:37:55+00:00",
  "views": {
   "2026-10-03": {
    "count": 0,
@@ -889,6 +1072,10 @@
    "uniques": 0
   },
   "2026-10-21": {
+   "count": 0,
+   "uniques": 0
+  },
+  "2026-10-22": {
    "count": 0,
    "uniques": 0
   }
