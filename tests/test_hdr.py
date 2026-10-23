@@ -87,6 +87,18 @@ shared = look(frame_of(out, work / "shared.png"))
 assert shared[1] > grey[1] * 1.3 and shared[0] > grey[0], ("share copy should have its colour back", shared, grey)
 print("share copy in normal colours PASS", [round(v) for v in shared], "vs washed", [round(v) for v in grey])
 
+# ---- Copy puts a normal-colour copy of an HDR clip on the clipboard, an SDR clip as it is
+ctl = cm.Controller(dict(cm.DEFAULTS, clips_dir=str(work)))
+ctl._bg = lambda fn, *a, **kw: fn(*a)
+copied = []
+ctl.copy_file.connect(copied.append)
+ctl.copy(sdr)
+assert copied == [str(sdr)], copied
+ctl.copy(hdr)
+assert len(copied) == 2 and Path(copied[1]).parent.name == "Shared" and not cm.is_hdr(Path(copied[1])), copied
+assert look(frame_of(Path(copied[1]), work / "copied.png"))[1] > grey[1] * 1.3
+print("copy gives normal colours PASS")
+
 # ---- thumbnail, filmstrip frame and preview copy
 thumb = cm.make_thumb(hdr, work)
 assert thumb and look(thumb)[1] > grey[1] * 1.3, look(thumb)

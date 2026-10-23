@@ -1673,6 +1673,9 @@ class Controller(QtCore.QObject):
         self.shared.emit(f"{tr(info['label'])} · {size:.1f} MB{voice}", str(out))
 
     def copy(self, path: Path):
+        if is_hdr(path):   # Discord, WhatsApp and most players show HDR grey and washed out
+            self.share(path, "phone", False)
+            return
         self.copy_file.emit(str(path))
         self.toast.emit(tr("Copied · paste it with Ctrl+V · {name}", name=path.name), "ok")
 
