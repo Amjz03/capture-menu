@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.0.12 · 2026-10-23
+
+- **No more washed-out captures with Windows HDR on.** With HDR set to Off (or H.264), OBS turns an HDR screen into normal colours assuming 300-nit white, but Windows usually shows normal content dimmer, so clips and screenshots came out grey and dull. Capture Menu now gives OBS the same white level as Windows' "SDR content brightness" slider, so captures look like your screen. Changing the slider sets OBS up again on the next start.
+
 ## 0.0.11 · 2026-10-17
 
 - **Pick the recording screen.** Settings → Devices → Recording screen: **Follow the game** (the default, as before) or any of your screens by name, like `LG TV · 3840×2160`. A picked screen is always recorded, wherever the game is; while it isn't connected, the game's screen is. If you had turned off "Follow the game's screen", it becomes your main screen.
