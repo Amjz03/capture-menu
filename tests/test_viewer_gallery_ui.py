@@ -66,6 +66,10 @@ pad(cm.DOWN); assert viewer.focusWidget() in (viewer.trim_btn, viewer.sound_btn,
 pad(cm.UP); pad(cm.UP)
 assert viewer.focusWidget() in (viewer.back_btn, viewer.rename_btn, viewer.prev_btn, viewer.next_btn, viewer.close_btn)
 pad(cm.Y); pad(cm.RIGHT); assert viewer.focusWidget() is viewer.folder_chip
+if cm.IS_WINDOWS:   # Explorer needs /select,"path": with quotes around it all, a folder with spaces opens Documents
+    sent = []; real_launch, cm.launch_outside = cm.launch_outside, lambda cmd, **k: sent.append(cmd)
+    cm.Controller.reveal(Path(r"C:\Clips\Red Dead Redemption 2\Clip_1.mp4")); cm.launch_outside = real_launch
+    assert sent == ['explorer /select,"C:\\Clips\\Red Dead Redemption 2\\Clip_1.mp4"'], sent
 revealed = []; ctl.reveal = lambda p: revealed.append(p.name)
 pad(cm.A); assert revealed == [c.name] and not viewer.isVisible(), "Show in folder: Capture Menu steps aside"
 viewer.open(ctl.all_captures(), ctl.all_captures().index(c)); app.processEvents()

@@ -1445,7 +1445,7 @@ def find_obs_exe() -> str | None:
     return str(exe) if exe.exists() else None
 
 
-def launch_outside(cmd: list[str], cwd: str | None = None, flags: int = 0) -> subprocess.Popen:
+def launch_outside(cmd: list[str] | str, cwd: str | None = None, flags: int = 0) -> subprocess.Popen:
     """Starts a program that isn't ours (OBS, Explorer, the update installer) without handing it Capture
     Menu's own DLL folder. The .exe build puts _internal on the DLL search path, ahead of System32, and a
     child process inherits that: OBS then loaded _internal\\VCRUNTIME140.dll and held it open, so the next
@@ -1823,8 +1823,8 @@ class Controller(QtCore.QObject):
 
     @staticmethod
     def reveal(path: Path):
-        if IS_WINDOWS:
-            launch_outside(["explorer", f"/select,{path}"])
+        if IS_WINDOWS:   # written out by hand: Explorer needs /select,"path"; "/select,path" opens Documents
+            launch_outside(f'explorer /select,"{path}"')
         else:
             QtGui.QDesktopServices.openUrl(QtCore.QUrl.fromLocalFile(str(path.parent)))
 
@@ -3901,7 +3901,7 @@ QPushButton#noteToggle {{ text-align: left; padding: 0 16px; font-weight: 400; c
 QLineEdit {{
     color: {INK}; background: rgba(255,255,255,10); border: 1px solid rgba(255,255,255,40);
     border-radius: 14px; padding: 0 16px; min-height: 50px; font-size: 16px;
-    selection-background-color: rgba(255,255,255,70);
+    selection-background-color: {BLUE}; selection-color: white;    /* typing replaces what's selected */
 }}
 QLineEdit:focus {{ border: 2px solid {INK}; padding: 0 15px; }}
 QSlider::groove:horizontal {{ height: 4px; background: rgba(255,255,255,46); border-radius: 2px; }}
@@ -4643,11 +4643,12 @@ class Viewer(QtWidgets.QWidget):
         el.setSpacing(6)
         self.edit_heading = QtWidgets.QLabel(tr("Rename"), objectName="panelTitle")
         el.addWidget(self.edit_heading)
-        el.addWidget(QtWidgets.QLabel(tr("A name you'll find easily later"), objectName="panelSub"))
+        el.addWidget(QtWidgets.QLabel(tr("Type a new name, then press Enter"), objectName="panelSub"))
         el.addSpacing(16)
         el.addWidget(QtWidgets.QLabel(tr("Title"), objectName="fieldLabel"))
         el.addSpacing(4)
         self.title_edit = QtWidgets.QLineEdit(placeholderText=tr("Title, e.g. Boss down on the first try"))
+        self.title_edit.addAction(qicon("pencil"), QtWidgets.QLineEdit.LeadingPosition)   # a field to type in
         self.note_edit = QtWidgets.QLineEdit(placeholderText=tr("Note (optional)"))
         self.title_edit.setMaxLength(80)
         self.note_edit.setMaxLength(200)
@@ -5236,7 +5237,7 @@ class Viewer(QtWidgets.QWidget):
     def update_hints(self):
         pad, mode = INPUT.mode != "keyboard", INPUT.mode
         if self.editing:
-            items = [("B", "Cancel")] if pad else [("k:Enter", "Save"), ("k:Esc", "Cancel")]
+            items = [("k:Enter", "Save"), ("B", "Cancel")] if pad else [("k:Enter", "Save"), ("k:Esc", "Cancel")]
         elif self.sounding:
             items = ([("DPAD_UD", "Switch"), ("DPAD_LR", "Change"), ("Y", "Mute"), ("X", "Preview"), ("A", "Save"),
                       ("B", "Cancel")] if pad else
