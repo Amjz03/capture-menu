@@ -55,15 +55,16 @@ viewer.step(1); viewer.enter_share(); assert not viewer.voice_card.isEnabled(), 
 key(viewer, Qt.Key_Escape); assert not viewer.sharing and viewer.isVisible()
 print("viewer share/favorite PASS")
 
-# More: △ opens it; Delete there needs a second press
-pad(cm.Y); assert viewer.more_open and viewer.more_row.isVisible() and not viewer.actions_row.isVisible()
-assert viewer.focusWidget() is viewer.fav_btn
+# no More button: the rest are small buttons in the same row; △ moves onto them, Delete needs a second press
+assert not hasattr(viewer, "more_btn") and viewer.del_btn.isVisible() and not viewer.del_btn.text()
+pad(cm.Y); assert viewer.more_open and viewer.actions_row.isVisible() and viewer.focusWidget() is viewer.fav_btn
+pad(cm.RIGHT); assert viewer.focusWidget() is viewer.folder_chip
 pad(cm.B); assert not viewer.more_open and viewer.actions_row.isVisible() and viewer.isVisible()
-key(viewer, Qt.Key_Delete)               # opens More with Delete armed, nothing deleted yet
+key(viewer, Qt.Key_Delete)               # Delete armed, nothing deleted yet
 assert viewer.more_open and viewer.del_btn.danger and viewer.focusWidget() is viewer.del_btn and c.exists()
-pad(cm.B); assert not viewer.more_open and not viewer.del_btn.danger and c.exists()
+pad(cm.B); assert not viewer.more_open and not viewer.del_btn.danger and not viewer.del_btn.text() and c.exists()
 viewer.close_viewer()
-print("viewer More PASS")
+print("viewer small buttons PASS")
 
 # gallery: categories, favourites, open, controller
 menu.show_menu("Frostfall"); menu.all_card.click(); app.processEvents()

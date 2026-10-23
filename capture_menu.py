@@ -2329,7 +2329,7 @@ def pad_key(button: int, menu: "Menu", viewer: "Viewer", gallery: "Gallery | Non
         else:
             keys = {A: Qt.Key_Space, B: Qt.Key_Escape, LEFT: Qt.Key_Left, RIGHT: Qt.Key_Right,
                     L1: Qt.Key_A, R1: Qt.Key_D, X: Qt.Key_T, Y: Qt.Key_M,
-                    OPTIONS: Qt.Key_E, DOWN: Qt.Key_E, UP: Qt.Key_F, 7: Qt.Key_V}   # 7 = L3: Sound, Y: More
+                    OPTIONS: Qt.Key_E, DOWN: Qt.Key_E, UP: Qt.Key_F, 7: Qt.Key_V}   # 7 = L3: Sound, Y: the small buttons
         return keys.get(button)
     if gallery is not None and gallery.isVisible():
         keys = {A: Qt.Key_Return, B: Qt.Key_Escape, UP: Qt.Key_Up, DOWN: Qt.Key_Down,
@@ -3923,7 +3923,7 @@ def mirror(w: QtWidgets.QWidget, r: QtCore.QRectF) -> QtCore.QRectF:
 
 class ActionButton(QtWidgets.QAbstractButton):
     """A big viewer action: its icon, its name, and the button that does it (□ Trim, like the PS5).
-    The main one on screen is white."""
+    The main one on screen is white. With no name it's a small icon button (its name is the tooltip)."""
 
     H = 64
 
@@ -3947,13 +3947,14 @@ class ActionButton(QtWidgets.QAbstractButton):
 
     def _parts(self) -> tuple[float, float, float]:
         """Widths of the label and the button prompt, and the whole content."""
-        text_w = QtGui.QFontMetrics(self.font()).horizontalAdvance(self.text())
+        text_w = QtGui.QFontMetrics(self.font()).horizontalAdvance(self.text()) if self.text() else 0
         glyph_w = glyph_width(self._token(), INPUT.mode) if self._token() else 0.0
-        total = 22 + 12 + text_w + (14 + glyph_w if glyph_w else 0)
+        total = 22 + (12 + text_w if text_w else 0) + (14 + glyph_w if glyph_w else 0)
         return text_w, glyph_w, total
 
     def _fit(self):
-        self.setMinimumWidth(int(self._parts()[2]) + 56)
+        total = int(self._parts()[2])
+        self.setMinimumWidth(total + 56 if self.text() else max(self.H, total + 40))
         self.update()
 
     def setText(self, text: str):
@@ -3985,10 +3986,11 @@ class ActionButton(QtWidgets.QAbstractButton):
         x, cy = (self.width() - total) / 2, self.height() / 2
         icon = QtCore.QRectF(x, cy - 11, 22, 22)
         label = QtCore.QRectF(x + 34, 0, text_w + 2, self.height())
-        prompt = QtCore.QRectF(x + 34 + text_w + 14, 0, glyph_w, self.height())
+        prompt = QtCore.QRectF(x + 22 + (12 + text_w if text_w else 0) + 14, 0, glyph_w, self.height())
         p.drawPixmap(mirror(self, icon).toRect(), icon_pixmap(self.icon_name, 22, self.icon_color or ink.name()))
         p.setPen(ink)
-        p.drawText(mirror(self, label), Qt.AlignVCenter | Qt.AlignLeft, self.text())
+        if text_w:
+            p.drawText(mirror(self, label), Qt.AlignVCenter | Qt.AlignLeft, self.text())
         if glyph_w:
             faint = QtGui.QColor(ink)
             faint.setAlpha(150)
@@ -4347,7 +4349,7 @@ class Viewer(QtWidgets.QWidget):
         lay = QtWidgets.QVBoxLayout(self)
         lay.setContentsMargins(64, 36, 64, 24)
         lay.setSpacing(16)
-        self.more_open = False                   # the More row: favourite, rename, folder, delete
+        self.more_open = False                   # the small buttons (favourite, folder, player, delete) have the focus
         self.full = False                        # only the video, nothing around it
 
         def button(row, text, fn, icon=None, name=""):
@@ -4518,7 +4520,7 @@ class Viewer(QtWidgets.QWidget):
         sl.addLayout(share_cards)
         lay.addWidget(self.share_panel)
 
-        # ---- the main actions, and More with the rest
+        # ---- the main actions, then the rest as small icon buttons (△ / M walks them)
         self.actions_row = QtWidgets.QWidget()
         act = QtWidgets.QHBoxLayout(self.actions_row)
         act.setContentsMargins(0, 4, 0, 0)
@@ -4527,36 +4529,27 @@ class Viewer(QtWidgets.QWidget):
         self.trim_btn = ActionButton(tr("Trim"), "scissors", "X", "k:T")
         self.sound_btn = ActionButton(tr("Adjust audio"), "audio", "L3", "k:V")
         self.share_btn = ActionButton(tr("Share / Export"), "export", "OPT", "k:E", primary=True)
-        self.more_btn = ActionButton(tr("More"), "more", "Y", "k:M")
         for b, fn in ((self.trim_btn, self.enter_trim), (self.sound_btn, self.enter_sound),
-                      (self.share_btn, self.enter_share), (self.more_btn, self.toggle_more)):
+                      (self.share_btn, self.enter_share)):
             b.clicked.connect(fn)
+            act.addWidget(b)
+        act.addSpacing(18)
+        self.tools_hint = HintBar()             # △ / M: the button that walks the small ones
+        act.addWidget(self.tools_hint, 0, Qt.AlignVCenter)
+        self.fav_btn = ActionButton("", "star", "DPAD_U", "k:F")
+        self.folder_chip = ActionButton("", "folder")
+        self.external_chip = ActionButton("", "external")
+        self.del_btn = ActionButton("", "trash", None, "k:Del")
+        for b, fn, tip in ((self.fav_btn, self.toggle_favorite, tr("Favorite")),
+                           (self.folder_chip, lambda: self.ctl.reveal(self.current), tr("Show in folder")),
+                           (self.external_chip, self._open_external, tr("Open in your video player")),
+                           (self.del_btn, self.delete_current, tr("Delete"))):
+            b.clicked.connect(fn)
+            b.setToolTip(tip)
+            b.setFocusPolicy(Qt.TabFocus)       # walked with ← →, chosen with ✕; a click leaves the keys alone
             act.addWidget(b)
         act.addStretch()
         lay.addWidget(self.actions_row)
-
-        # ---- More: the same big buttons, for everything else
-        self.more_row = QtWidgets.QWidget()
-        ml = QtWidgets.QVBoxLayout(self.more_row)
-        ml.setContentsMargins(0, 4, 0, 0)
-        ml.setSpacing(2)
-        panel_head(ml, "More", "Everything else you can do with this capture")
-        mr = QtWidgets.QHBoxLayout()
-        mr.setSpacing(14)
-        self.fav_btn = ActionButton(tr("Favorite"), "star", "DPAD_U", "k:F")
-        self.edit_chip = ActionButton(tr("Rename"), "pencil", None, "k:N")
-        self.folder_chip = ActionButton(tr("Show in folder"), "folder")
-        self.external_chip = ActionButton(tr("Open in your video player"), "external")
-        self.del_btn = ActionButton(tr("Delete"), "trash", None, "k:Del")
-        for b, fn in ((self.fav_btn, self.toggle_favorite), (self.edit_chip, self.start_edit),
-                      (self.folder_chip, lambda: self.ctl.reveal(self.current)),
-                      (self.external_chip, self._open_external), (self.del_btn, self.delete_current)):
-            b.clicked.connect(fn)
-            b.setFocusPolicy(Qt.StrongFocus)    # walked with ← →, chosen with ✕
-            mr.addWidget(b)
-        mr.addStretch()
-        ml.addLayout(mr)
-        lay.addWidget(self.more_row)
 
         # ---- footer: what the buttons do on the left, the open panel's buttons on the right
         self.footer = QtWidgets.QFrame(objectName="footer")
@@ -4911,8 +4904,9 @@ class Viewer(QtWidgets.QWidget):
         self.sub.setText(f"{game}{capture_kind(path)}  ·  {time_ago(path.stat().st_mtime)}")
         self.note.setText(meta.get("note", ""))
         self.note.setVisible(bool(meta.get("note")))
-        self.fav_btn.setText(tr("Favorited") if fav else tr("Favorite"))
+        self.fav_btn.setToolTip(tr("Favorited") if fav else tr("Favorite"))
         self.fav_btn.icon_color = "#ffd34d" if fav else None
+        self.fav_btn.update()
 
     def toggle_favorite(self):
         if self.items:
@@ -5101,11 +5095,11 @@ class Viewer(QtWidgets.QWidget):
         return cards + [self.share_cancel, self.share_go]
 
     def _more_nav(self) -> list[QtWidgets.QWidget]:
-        return [c for c in (self.fav_btn, self.edit_chip, self.folder_chip, self.external_chip, self.del_btn)
-                if c.isVisible()]
+        return [c for c in (self.fav_btn, self.folder_chip, self.external_chip, self.del_btn) if c.isVisible()]
 
-    # ---- More, only the video, sound on / off
+    # ---- the small buttons, only the video, sound on / off
     def toggle_more(self):
+        """△ / M: the highlight goes onto the small buttons at the end of the row, or back off them."""
         self._set_more(not self.more_open)
 
     def _set_more(self, on: bool):
@@ -5136,8 +5130,7 @@ class Viewer(QtWidgets.QWidget):
         self.trim_panel.setVisible(self.trimming and not full)
         self.sound_panel.setVisible(self.sounding and not full)
         self.share_panel.setVisible(self.sharing and not full)
-        self.actions_row.setVisible(not panel and not self.more_open and not full)
-        self.more_row.setVisible(self.more_open and not panel and not full)
+        self.actions_row.setVisible(not panel and not full)
         self.footer.setVisible(not full)
         self.trim_buttons.setVisible(self.trimming)
         self.sound_buttons.setVisible(self.sounding)
@@ -5184,6 +5177,7 @@ class Viewer(QtWidgets.QWidget):
             items = ([("L1R1", "Newer/older"), ("DPAD_U", "Favorite"), ("B", "Back")] if pad
                      else [("k:A D", "Newer/older"), ("k:F", "Favorite"), ("k:N", "Rename"), ("k:Esc", "Back")])
         self.keys_hint.set_items(items, mode)
+        self.tools_hint.set_items([("Y" if pad else "k:M", "")], mode)
 
     def _timeline_seek(self, ms: int):
         if self.player:
@@ -5232,7 +5226,7 @@ class Viewer(QtWidgets.QWidget):
         self.hide()
 
     def delete_current(self):
-        if not self.more_open:            # Delete lives in More: open it there, ready to confirm
+        if not self.more_open:            # the highlight goes to Delete, ready to confirm
             self._set_more(True)
         if not self.del_btn.danger:
             self.del_btn.danger = True
@@ -5257,7 +5251,7 @@ class Viewer(QtWidgets.QWidget):
 
     def _reset_delete(self):
         self.del_btn.danger = False
-        self.del_btn.setText(tr("Delete"))
+        self.del_btn.setText("")
 
     @staticmethod
     def _repolish(w):
