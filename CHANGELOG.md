@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.0.29 · 2026-10-24
+
+- **Rename right in the title, no window.** Rename turns the viewer's title into the text field where it is, with the note under it. Enter saves, Esc or ◯ cancels. If Windows keeps the keyboard on another window (it can, after a controller press), the line under the field says to click the name first; a click always brings the typing here.
+
 ## 0.0.28 · 2026-10-24
 
 - **Show in folder opens the right folder.** For games with spaces in their name (Red Dead Redemption 2, Call of Duty), File Explorer opened Documents instead of the capture's folder. It now opens the game's folder with the capture selected.
