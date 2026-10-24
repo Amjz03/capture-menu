@@ -16,7 +16,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Alexandria:wght@400;500;700;800&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=2">
+  <link rel="stylesheet" href="style.css?v=4">
 </head>
 <body>
   <div class="grain" aria-hidden="true"></div>
@@ -58,9 +58,11 @@
           </video>
           <div class="rec-pill"><span></span>REC</div>
         </div>
-        <div class="buffer" aria-hidden="true">
-          <div class="buffer-track"><div class="buffer-fill"></div><div class="buffer-slice"></div></div>
-          <div class="buffer-labels"><span data-i18n="ago">30 min ago</span><span class="now"><i></i><span data-i18n="now">now</span></span></div>
+        <div class="buffer" id="buffer">
+          <div class="buffer-head"><span data-i18n="buf_q">How much do you want to keep?</span><b id="buf-pick"></b></div>
+          <div class="buffer-track" id="buf-track" aria-hidden="true"><div class="buffer-fill"></div><div class="buffer-slice" id="buf-slice"></div></div>
+          <div class="buffer-labels" aria-hidden="true"><span data-i18n="ago">30 min ago</span><span class="now"><i></i><span data-i18n="now">now</span></span></div>
+          <div class="buffer-chips" id="buf-chips" role="group" aria-label="How much to keep"></div>
         </div>
       </div>
     </section>
@@ -79,16 +81,21 @@
     <!-- try it -->
     <section class="try" id="try">
       <div class="section-head reveal">
-        <p class="eyebrow" data-i18n="try_eyebrow">Try it right here</p>
+        <p class="eyebrow" data-i18n="try_eyebrow">Try the whole app, right here</p>
         <h2 data-i18n-html="try_h">Press <span class="key key-inline">Alt</span> + <span class="key key-inline">C</span></h2>
-        <p data-i18n="try_p">Once opens the menu. Twice saves the last 30 seconds. A controller plugged into this computer works too: press Create or View.</p>
+        <p data-i18n="try_p">Once opens the real menu: move with the arrows or the mouse, pick with Enter. Save 15 seconds up to 30 minutes, take a screenshot, record, open your captures. Twice saves the last 30 seconds. A controller plugged in works too.</p>
       </div>
       <div class="try-stage reveal" id="stage" tabindex="0" aria-label="Demo: press Alt + C">
-        <img class="try-game" src="assets/game.jpg" alt="">
-        <img class="try-bar" id="try-bar" src="assets/bar-en.png" alt="The Capture Menu bar">
-        <img class="try-toast" id="try-toast" src="assets/toast30-en.png" alt="Clip saved: last 30 seconds">
-        <div class="try-flash" id="try-flash"></div>
-        <div class="try-hint" id="try-hint"><span data-i18n="try_hint">Press Alt + C, or use the buttons below</span></div>
+        <div class="pc" id="pc">
+          <img class="pc-game" src="assets/game.jpg" alt="">
+          <div class="cm-menu" id="cm-menu"></div>
+          <div class="cm-rec" id="cm-rec"><i></i><span>REC  00:00</span></div>
+          <div class="cm-toast" id="cm-toast"></div>
+          <img class="cm-page" id="cm-page" alt="">
+          <div class="try-flash" id="try-flash"></div>
+        </div>
+        <div class="try-hint"><span data-i18n="try_hint">Press Alt + C, click here, or use the buttons below</span></div>
+        <div class="page-hint" data-i18n="page_hint">Click or press Esc to go back</div>
       </div>
       <div class="try-buttons reveal">
         <button class="btn btn-ghost" id="press-once" type="button"><span class="times">×1</span><span data-i18n="press_once">Press once</span></button>
@@ -146,6 +153,7 @@
     <span data-i18n="tm">PlayStation and Xbox are trademarks of their owners. Capture Menu is not affiliated with Sony or Microsoft.</span>
   </footer>
 
-  <script src="app.js?v=2"></script>
+  <script src="demo.js?v=4"></script>
+  <script src="app.js?v=4"></script>
 </body>
 </html>

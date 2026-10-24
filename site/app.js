@@ -10,10 +10,12 @@ const T = {
     download: "Download for Windows", github: "View on GitHub",
     fine: "About 50 MB · No account · No ads · Sets up OBS and FFmpeg for you",
     ago: "30 min ago", now: "now", more_pads: "and most other controllers",
-    try_eyebrow: "Try it right here",
+    try_eyebrow: "Try the whole app, right here",
     try_h: 'Press <span class="key key-inline">Alt</span> + <span class="key key-inline">C</span>',
-    try_p: "Once opens the menu. Twice saves the last 30 seconds. A controller plugged into this computer works too: press Create or View.",
-    try_hint: "Press Alt + C, or use the buttons below",
+    try_p: "Once opens the real menu: move with the arrows or the mouse, pick with Enter. Save 15 seconds up to 30 minutes, take a screenshot, record, open your captures. Twice saves the last 30 seconds. A controller plugged in works too.",
+    page_hint: "Click or press Esc to go back",
+    buf_q: "How much do you want to keep?",
+    try_hint: "Press Alt + C, click here, or use the buttons below",
     press_once: "Press once", press_twice: "Press twice",
     pad_none: "No controller found. Plug one in and press any button.",
     pad_on: "Controller found: {name}. Press Create / View.",
@@ -47,10 +49,12 @@ const T = {
     download: "حمّله للويندوز", github: "شوفه على GitHub",
     fine: "تقريبًا 50 ميجا · بدون حساب · بدون إعلانات · يجهّز لك OBS وFFmpeg",
     ago: "قبل 30 دقيقة", now: "الحين", more_pads: "وأغلب الكنترولرات الثانية",
-    try_eyebrow: "جرّبه هنا",
+    try_eyebrow: "جرّب البرنامج كامل هنا",
     try_h: 'اضغط <span dir="ltr"><span class="key key-inline">Alt</span> + <span class="key key-inline">C</span></span>',
-    try_p: "مرة تفتح القائمة. مرتين تحفظ آخر 30 ثانية. وإذا عندك كنترولر موصّل بالكمبيوتر يشتغل بعد: اضغط Create أو View.",
-    try_hint: "اضغط Alt + C، أو استخدم الأزرار تحت",
+    try_p: "مرة تفتح القائمة الحقيقية: تنقّل بالأسهم أو الماوس، واختر بـ Enter. احفظ من 15 ثانية لين 30 دقيقة، أو صوّر الشاشة، أو سجّل، أو افتح مقاطعك. ومرتين تحفظ آخر 30 ثانية. والكنترولر الموصّل يشتغل بعد.",
+    page_hint: "اضغط هنا أو Esc عشان ترجع",
+    buf_q: "كم تبي تحفظ؟",
+    try_hint: "اضغط Alt + C، أو اضغط هنا، أو استخدم الأزرار تحت",
     press_once: "اضغط مرة", press_twice: "اضغط مرتين",
     pad_none: "ما فيه كنترولر. وصّل واحد واضغط أي زر.",
     pad_on: "لقينا الكنترولر: {name}. اضغط Create / View.",
@@ -103,8 +107,8 @@ function applyLang() {
   document.querySelectorAll("[data-i18n-html]").forEach((el) => { el.innerHTML = t[el.dataset.i18nHtml]; });
   // the app's own screens, in the same language
   document.querySelectorAll("img[data-src-lang]").forEach((img) => { img.src = img.src.replace(/-(en|ar)\.jpg$/, `-${lang}.jpg`); });
-  document.getElementById("try-bar").src = `assets/bar-${lang}.png`;
-  document.getElementById("try-toast").src = `assets/toast30-${lang}.png`;
+  DEMO.setLang(lang);
+  renderBuffer();
   const video = document.getElementById("hero-video");
   video.poster = `assets/picker-${lang}.jpg`;
   if (!video.currentSrc.endsWith(`hero-${lang}.mp4`)) { video.querySelector("source").src = `assets/hero-${lang}.mp4`; video.load(); video.play().catch(() => {}); }
@@ -113,32 +117,58 @@ function applyLang() {
 }
 document.getElementById("lang").addEventListener("click", () => { lang = lang === "ar" ? "en" : "ar"; store.set("lang", lang); applyLang(); });
 
-// ---------------------------------------------------------------- try it: once opens, twice saves
+// ---------------------------------------------------------------- hero: pick how much of the 30 minutes to keep
+// The red slice is what gets saved, measured against the whole 30 minutes. It walks through the
+// choices on its own until the visitor picks one (a chip, or a click / drag on the bar).
+const BUF = [15, 30, 60, 180, 300, 900, 1800];
+let bufPick = 180, bufAuto = null;
+const bufChip = (s) => lang === "ar" ? (s < 60 ? `${s} ث` : `${s / 60} د`) : (s < 60 ? `${s}s` : `${s / 60}m`);
+function bufWords(s) {
+  if (lang === "ar") return s < 60 ? `آخر ${s} ثانية` : s === 60 ? "آخر دقيقة" : s <= 300 ? `آخر ${s / 60} دقايق` : `آخر ${s / 60} دقيقة`;
+  return s < 60 ? `Last ${s} seconds` : s === 60 ? "Last minute" : `Last ${s / 60} minutes`;
+}
+function renderBuffer() {
+  document.getElementById("buf-slice").style.width = `${Math.max(1.6, (bufPick / 1800) * 100)}%`;
+  document.getElementById("buf-pick").textContent = bufWords(bufPick);
+  document.getElementById("buf-chips").innerHTML = BUF.map((s) =>
+    `<button type="button" data-s="${s}" class="${s === bufPick ? "on" : ""}" aria-pressed="${s === bufPick}">${bufChip(s)}</button>`).join("");
+}
+function pickBuffer(s) { clearInterval(bufAuto); bufAuto = null; bufPick = s; renderBuffer(); }
+document.getElementById("buf-chips").addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) pickBuffer(+b.dataset.s); });
+const track = document.getElementById("buf-track");
+function fromTrack(e) {   // the track runs left to right, now on the right, in both languages
+  const r = track.getBoundingClientRect();
+  const secs = Math.max(0, Math.min(1, (r.right - e.clientX) / r.width)) * 1800;
+  pickBuffer(BUF.reduce((a, b) => (Math.abs(b - secs) < Math.abs(a - secs) ? b : a)));
+}
+track.addEventListener("pointerdown", (e) => { track.setPointerCapture(e.pointerId); fromTrack(e); });
+track.addEventListener("pointermove", (e) => { if (track.hasPointerCapture(e.pointerId)) fromTrack(e); });
+bufAuto = setInterval(() => { bufPick = BUF[(BUF.indexOf(bufPick) + 1) % BUF.length]; renderBuffer(); }, 1800);
+
+// ---------------------------------------------------------------- try it (demo.js): once opens, twice saves
 // The same rule as the app's PressSequencer: a second press within 350 ms is a double press.
 const stage = document.getElementById("stage");
-let pending = null, toastTimer = null;
+let pending = null;
 function press() {
-  if (pending) { clearTimeout(pending); pending = null; saveLast30(); return; }
-  pending = setTimeout(() => { pending = null; toggleMenu(); }, 350);
+  stage.classList.add("used");
+  if (pending) { clearTimeout(pending); pending = null; DEMO.saveLast30(); return; }
+  pending = setTimeout(() => { pending = null; DEMO.toggle(); }, 350);
 }
-function toggleMenu() { stage.classList.remove("saved"); stage.classList.toggle("open"); }
-function saveLast30() {
-  stage.classList.remove("open");
-  const flash = document.getElementById("try-flash");
-  flash.classList.remove("go"); void flash.offsetWidth; flash.classList.add("go");
-  stage.classList.add("saved");
-  clearTimeout(toastTimer); toastTimer = setTimeout(() => stage.classList.remove("saved"), 3200);
-}
+function now(fn) { clearTimeout(pending); pending = null; stage.classList.add("used"); fn(); }
 document.addEventListener("keydown", (e) => {
-  if (e.altKey && (e.code === "KeyC" || e.key.toLowerCase() === "c")) { e.preventDefault(); press(); }
-  else if (e.key === "Escape") stage.classList.remove("open");
+  DEMO.setMode("keyboard");
+  if (e.altKey && (e.code === "KeyC" || e.key.toLowerCase() === "c")) { e.preventDefault(); press(); return; }
+  if (e.altKey || e.ctrlKey || e.metaKey) return;
+  if (DEMO.key(e.key.length === 1 ? e.key.toLowerCase() : e.key)) e.preventDefault();
 });
-document.getElementById("press-once").addEventListener("click", () => { clearTimeout(pending); pending = null; toggleMenu(); });
-document.getElementById("press-twice").addEventListener("click", () => { clearTimeout(pending); pending = null; saveLast30(); });
-stage.addEventListener("click", () => { clearTimeout(pending); pending = null; toggleMenu(); });
+document.getElementById("press-once").addEventListener("click", () => now(DEMO.toggle));
+document.getElementById("press-twice").addEventListener("click", () => now(DEMO.saveLast30));
+stage.addEventListener("click", () => { if (!DEMO.isOpen()) now(DEMO.toggle); });
 
-// controllers: the browser's Gamepad API; in the standard layout button 8 is Create (PlayStation) / View (Xbox)
-let lastDown = false;
+// controllers: the browser's Gamepad API, standard layout. 8 is Create (PlayStation) / View (Xbox);
+// the rest drive the bar the way they do in the app.
+const PAD_KEYS = { 0: "A", 1: "B", 2: "X", 3: "Y", 5: "R1", 12: "ArrowUp", 13: "ArrowDown", 14: "ArrowLeft", 15: "ArrowRight" };
+let lastDown = [];
 function updatePadStatus() {
   const el = document.getElementById("pad-status");
   el.textContent = padName ? T[lang].pad_on.replace("{name}", padName) : T[lang].pad_none;
@@ -149,8 +179,13 @@ window.addEventListener("gamepaddisconnected", () => { padName = ""; updatePadSt
 function poll() {
   const pad = [...(navigator.getGamepads ? navigator.getGamepads() : [])].find(Boolean);
   if (!pad) return;
-  const down = !!(pad.buttons[8] && pad.buttons[8].pressed);
-  if (down && !lastDown) press();
+  const down = pad.buttons.map((b) => b.pressed);
+  down.forEach((d, i) => {
+    if (!d || lastDown[i]) return;
+    DEMO.setMode(/054c|playstation|dualsense|dualshock|wireless controller/i.test(pad.id) ? "playstation" : "xbox");
+    if (i === 8) press();
+    else if (PAD_KEYS[i]) DEMO.key(PAD_KEYS[i]);
+  });
   lastDown = down;
   requestAnimationFrame(poll);
 }
