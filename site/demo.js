@@ -75,9 +75,9 @@ const DEMO = (() => {
   // the library the bar starts with, newest first: the bar shows every game's latest captures
   const RD = "Red Dead Redemption 2";
   let caps = [
-    { kind: "clip", secs: 30, img: "assets/app/thumb1.jpg", at: now - 6 * 60e3 },
+    { kind: "shot", img: "assets/app/thumb3.jpg", at: now - 6 * 60e3 },
+    { kind: "clip", secs: 30, img: "assets/app/thumb1.jpg", at: now - 38 * 60e3, game: RD },
     { kind: "clip", secs: 60, img: "assets/app/thumb2.jpg", at: now - 40 * 60e3, game: RD },
-    { kind: "shot", img: "assets/app/thumb3.jpg", at: now - 52 * 60e3, game: RD },
   ];
   let open = false, picking = false, focus = 0, lent = null, lastChoice = 3, page = null;
   let recStart = null, micOn = true, recTimer = null, toastTimer = null;
