@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.0.30 · 2026-10-24
+
+- **Show in folder opens File Explorer on top, and Capture Menu stays.** The viewer (and the gallery behind it) no longer close: the video pauses, Explorer opens over them with the capture selected, and they're back on top as soon as you use them again. The gallery's folder button works the same way. Open in your video player still steps aside, so the player isn't covered.
+
 ## 0.0.29 · 2026-10-24
 
 - **Rename right in the title, no window.** Rename turns the viewer's title into the text field where it is, with the note under it. Enter saves, Esc or ◯ cancels. If Windows keeps the keyboard on another window (it can, after a controller press), the line under the field says to click the name first; a click always brings the typing here.
