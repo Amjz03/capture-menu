@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.0.31 · 2026-10-24
+
+- **Deleting never loses a capture by accident.** If Windows can't move a capture to the Recycle Bin, it stays where it is, with its favorite, title and note, instead of being deleted for good. A capture that's locked for a moment (antivirus checking a new file) is simply tried again. The gallery says exactly how many moved, and which ones didn't.
+- **Trimming keeps the original safe.** The original only goes to the Recycle Bin once the trimmed clip is saved; if it can't, a notice says so and nothing is lost.
+- **Safer updates.** An update is only installed after its file matches the SHA-256 that GitHub lists for it, checked once after downloading and again right before it runs. A failed or damaged download installs nothing and can be tried again.
+- **Start with Windows stays on the installed app.** Running another copy of CaptureMenu.exe (from Downloads, a zip or a test build) no longer points Windows' sign-in start at that copy.
+- Fixed: closing the gallery while thumbnails were still being made could log an error.
+- Under the hood: the app is split into modules, and every release now waits for an isolated set of tests to pass first.
+
 ## 0.0.30 · 2026-10-24
 
 - **Show in folder opens File Explorer on top, and Capture Menu stays.** The viewer (and the gallery behind it) no longer close: the video pauses, Explorer opens over them with the capture selected, and they're back on top as soon as you use them again. The gallery's folder button works the same way. Open in your video player still steps aside, so the player isn't covered.
