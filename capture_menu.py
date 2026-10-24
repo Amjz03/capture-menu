@@ -2507,6 +2507,24 @@ def hide_from_capture(w: QtWidgets.QWidget):
         ctypes.windll.user32.SetWindowDisplayAffinity(int(w.winId()), 0x11)  # WDA_EXCLUDEFROMCAPTURE
 
 
+def set_on_top(w: QtWidgets.QWidget, on: bool):
+    """Always on top or not, without Qt making the window again (which would hide it)."""
+    if not IS_WINDOWS or not w.testAttribute(Qt.WA_WState_Created):
+        return
+    move = ctypes.windll.user32.SetWindowPos
+    move.argtypes = [ctypes.c_void_p, ctypes.c_void_p] + [ctypes.c_int] * 4 + [ctypes.c_uint]
+    move(int(w.winId()), ctypes.c_void_p(-1 if on else -2), 0, 0, 0, 0,   # HWND_TOPMOST / HWND_NOTOPMOST
+         0x0001 | 0x0002 | 0x0010)                                        # no size, no move, no activate
+
+
+def make_room_above():
+    """Another app opens over Capture Menu (File Explorer on a capture): the open pages stay where they
+    are but stop being always on top until they're used again, so that window isn't stuck behind them."""
+    for w in QtWidgets.QApplication.topLevelWidgets():
+        if isinstance(w, (Viewer, Gallery, Settings)) and w.isVisible():
+            set_on_top(w, False)
+
+
 class _AccentPolicy(ctypes.Structure):
     _fields_ = [("AccentState", ctypes.c_int), ("AccentFlags", ctypes.c_int),
                 ("GradientColor", ctypes.c_uint), ("AnimationId", ctypes.c_int)]
@@ -4603,7 +4621,7 @@ class Viewer(QtWidgets.QWidget):
         self.external_chip = ActionButton("", "external")
         self.del_btn = ActionButton("", "trash", None, "k:Del")
         for b, fn, tip in ((self.fav_btn, self.toggle_favorite, tr("Favorite")),
-                           (self.folder_chip, lambda: self._step_out(self.ctl.reveal), tr("Show in folder")),
+                           (self.folder_chip, self._show_in_folder, tr("Show in folder")),
                            (self.external_chip, lambda: self._step_out(self.ctl.open_external),
                             tr("Open in your video player")),
                            (self.del_btn, self.delete_current, tr("Delete"))):
@@ -4688,6 +4706,7 @@ class Viewer(QtWidgets.QWidget):
         dress(self)
         self.setGeometry(ui_screen(fresh).geometry())   # covers the game's screen, like the PS5 viewer
         self.show()
+        set_on_top(self, True)
         bring_to_front(self)
         self.show_item()
 
@@ -4976,8 +4995,11 @@ class Viewer(QtWidgets.QWidget):
                                else tr("Click the name, then type"))
 
     def changeEvent(self, e):
-        if e.type() == QtCore.QEvent.ActivationChange and self.editing:
-            self._edit_hint()
+        if e.type() == QtCore.QEvent.ActivationChange:
+            if self.isActiveWindow():
+                set_on_top(self, True)        # back in use after the folder opened over it
+            if self.editing:
+                self._edit_hint()
         super().changeEvent(e)
 
     def save_edit(self):
@@ -5272,6 +5294,13 @@ class Viewer(QtWidgets.QWidget):
         if 0 <= i < len(self.items):
             self.index = i
             self.show_item()
+
+    def _show_in_folder(self):
+        """File Explorer opens on top with the capture selected; Capture Menu stays where it is underneath."""
+        if self.player is not None:
+            self.player.pause()
+        make_room_above()
+        self.ctl.reveal(self.current)
 
     def _step_out(self, open_it):
         """Shows the capture in another app (its folder, a video player): Capture Menu gets out of the
@@ -5598,8 +5627,8 @@ class Gallery(Grow, QtWidgets.QWidget):
             b.hide()
             head.addWidget(b)
         self._disarm = QtCore.QTimer(self, singleShot=True, timeout=self._reset_delete)
-        def open_folder():      # the folder opens with the gallery out of the way, not under it
-            self.close_gallery()
+        def open_folder():      # the folder opens over the gallery, which stays underneath
+            make_room_above()
             self.ctl.open_folder()
         for text, icon, fn in (("", "folder", open_folder), ("", "close", self.close_gallery)):
             b = QtWidgets.QPushButton(text, objectName="" if text else "round")
@@ -5654,6 +5683,11 @@ class Gallery(Grow, QtWidgets.QWidget):
         p = QtGui.QPainter(self)      # the sheet: the game stays faintly visible behind it
         p.fillRect(self.rect(), sheet_color(self))
 
+    def changeEvent(self, e):
+        if e.type() == QtCore.QEvent.ActivationChange and self.isActiveWindow():
+            set_on_top(self, True)            # back in use after the folder opened over it
+        super().changeEvent(e)
+
     # ---- open / close
     def open(self, game: str | None = None, back_to=None, fresh: bool = False):
         """fresh: opened from outside (the tray), not from another page."""
@@ -5662,6 +5696,7 @@ class Gallery(Grow, QtWidgets.QWidget):
         self.setGeometry(ui_screen(fresh).geometry())
         self._load(select=game)
         self.show()
+        set_on_top(self, True)
         bring_to_front(self)
         self.grid.setFocus()
 

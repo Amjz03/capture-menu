@@ -71,8 +71,7 @@ if cm.IS_WINDOWS:   # Explorer needs /select,"path": with quotes around it all, 
     cm.Controller.reveal(Path(r"C:\Clips\Red Dead Redemption 2\Clip_1.mp4")); cm.launch_outside = real_launch
     assert sent == ['explorer /select,"C:\\Clips\\Red Dead Redemption 2\\Clip_1.mp4"'], sent
 revealed = []; ctl.reveal = lambda p: revealed.append(p.name)
-pad(cm.A); assert revealed == [c.name] and not viewer.isVisible(), "Show in folder: Capture Menu steps aside"
-viewer.open(ctl.all_captures(), ctl.all_captures().index(c)); app.processEvents()
+pad(cm.A); assert revealed == [c.name] and viewer.isVisible(), "Show in folder: the folder opens over the viewer, which stays"
 key(viewer, Qt.Key_Delete)               # Delete armed, nothing deleted yet
 assert viewer.del_btn.danger and viewer.focusWidget() is viewer.del_btn and c.exists()
 pad(cm.B); assert not viewer.del_btn.danger and not viewer.del_btn.text() and c.exists() and viewer.isVisible()
@@ -93,9 +92,7 @@ pad(cm.RIGHT); assert gallery.grid.currentRow() == 1
 pad(cm.Y); assert ctl.is_favorite(b)
 pad(cm.A); assert viewer.isVisible() and viewer.current == b
 viewer.folder_chip.click(); app.processEvents()
-assert not viewer.isVisible() and not gallery.isVisible(), "the gallery behind steps aside too"
-menu.show_menu("Frostfall"); menu.all_card.click(); app.processEvents(); pad(cm.L1); pad(cm.L1); pad(cm.L1)
-pad(cm.RIGHT); pad(cm.A); assert viewer.isVisible() and viewer.current == b
+assert viewer.isVisible() and gallery.isVisible(), "Show in folder keeps the viewer and the gallery behind it"
 pad(cm.B); assert not viewer.isVisible() and gallery.isVisible()
 gallery.grid.setCurrentRow(0); app.processEvents()   # ↑ from the top row reaches the buttons, and back down
 pad(cm.UP); assert gallery.focusWidget() in gallery._head_nav() and not gallery.grid_lit()
