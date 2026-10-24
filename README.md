@@ -6,7 +6,15 @@
 
 <p align="center">
   A PS5-style Create button for Windows.<br>
-  Press <b>Alt + C</b> (or <b>Create</b> on your controller) to save the last minutes of gameplay, take a screenshot or record, without leaving the game.
+  Press <b>Alt + C</b> (or <b>Create</b> on your controller) to save the last minutes of gameplay, take a screenshot or record, without leaving the game.<br>
+  Press it twice to save the last 30 seconds right away. Free, no account, no ads.
+</p>
+
+<p align="center">
+  <a href="https://github.com/Amjz03/capture-menu/releases/latest"><img src="https://img.shields.io/github/v/release/Amjz03/capture-menu?label=download&color=ff3b3b" alt="Latest release"></a>
+  <a href="https://github.com/Amjz03/capture-menu/releases"><img src="https://img.shields.io/github/downloads/Amjz03/capture-menu/total?color=2ea043" alt="Downloads"></a>
+  <img src="https://img.shields.io/badge/Windows-10%20%7C%2011-0078d4" alt="Windows 10 and 11">
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/Amjz03/capture-menu?color=6e7681" alt="MIT license"></a>
 </p>
 
 <p align="center">
@@ -18,7 +26,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/poster.jpg" alt="Capture Menu over Call of Duty, Red Dead Redemption 2 and Overwatch">
+  <img src="docs/demo.webp" width="960" alt="In Overwatch: Alt + C opens the bar, the mouse picks Last 1 min and the clip is saved; then Alt + C twice saves the last 30 seconds without the bar">
 </p>
 
 ## Features
@@ -34,6 +42,10 @@
 - **Follows your game** across monitors and TVs, or always records the screen you pick, and never shows up in your recordings.
 - **English and Arabic:** the whole interface, mirrored right to left in Arabic, like the PS5.
 - **One-click install:** OBS Studio and FFmpeg are installed and set up for your PC automatically.
+
+<p align="center">
+  <img src="docs/poster.jpg" alt="Capture Menu over Call of Duty, Red Dead Redemption 2 and Overwatch">
+</p>
 
 | | | |
 |---|---|---|
@@ -57,6 +69,12 @@
 2. Double-click it and press **Install**. The first time takes a few minutes.
 
 That's it: press **Alt + C** in a game. No admin rights and no Python needed.
+
+**Or with winget**, in a terminal (OBS Studio and FFmpeg come with it):
+
+```
+winget install Amjz03.CaptureMenu
+```
 
 > **"Windows protected your PC"?** Click **More info → Run anyway**. Windows shows this for any app that isn't from the Store.
 
@@ -317,6 +335,8 @@ docs/                images for this README
 **Build:** `installer\build_exe.bat` makes `dist\CaptureMenu\CaptureMenu.exe`, and `Output\CaptureMenu-Setup.exe` when [Inno Setup 6](https://jrsoftware.org/isinfo.php) is installed.
 
 **Release:** change `VERSION` on `main` (e.g. to `v0.0.2`) and push. GitHub Actions builds `CaptureMenu-Setup.exe` and the Python `CaptureMenu.zip` on Windows and publishes them. Changes are listed in [CHANGELOG.md](CHANGELOG.md).
+
+**winget:** `installer\winget` holds the manifests for `Amjz03.CaptureMenu`. For a new release, set the version, the installer URL and its SHA-256 (shown on the release's asset), run `winget validate --manifest installer\winget`, and submit them to [microsoft/winget-pkgs](https://github.com/microsoft/winget-pkgs) (for example with `wingetcreate update Amjz03.CaptureMenu`).
 
 **Promo video:** `tools\render_promo.py` renders a 16:9 and a 9:16 video from the app's real screens.
 
