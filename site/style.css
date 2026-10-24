@@ -133,23 +133,6 @@ html[dir="rtl"] h1 { line-height: 1.25; font-size: clamp(36px, 4vw, 54px); }
 .input:nth-of-type(3) .logo { fill: #5dc21e; }
 .slash { color: var(--faint); font-size: 18px; }
 
-/* ------------------------------------------------------------- the reel */
-main > section.reel { width: 100%; overflow: hidden; padding: 56px 0 0; mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent); }
-.reel-track { display: flex; gap: 14px; width: max-content; animation: drift 70s linear infinite; }
-html[dir="rtl"] .reel-track { animation-name: drift-rtl; }
-.reel:hover .reel-track { animation-play-state: paused; }
-@keyframes drift { to { transform: translateX(-50%); } }
-@keyframes drift-rtl { to { transform: translateX(50%); } }
-.reel-item { position: relative; margin: 0; flex: none; }
-.reel-item img { width: 240px; height: 135px; object-fit: cover; border-radius: 10px; border: 1px solid var(--line); transition: transform .4s var(--ease); }
-.reel-item:hover img { transform: translateY(-4px); }
-.reel-item b {
-  position: absolute; right: 8px; bottom: 8px; padding: 1px 6px; border-radius: 5px; background: rgba(0, 0, 0, 0.62);
-  font: 500 11px/18px var(--mono); color: #fff; direction: ltr;
-}
-.reel-item b.shot { padding: 3px 4px; line-height: 0; }
-.reel-item b svg { width: 12px; height: 12px; fill: none; stroke: #fff; stroke-width: 2; }
-
 /* ------------------------------------------------------------- section heads */
 .section-head { margin: 0 0 40px; }
 .section-head h2, .faq-head h2, .final h2 { font-size: clamp(30px, 3.2vw, 42px); line-height: 1.1; }
