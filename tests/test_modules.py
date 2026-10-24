@@ -59,7 +59,7 @@ with tempfile.TemporaryDirectory() as folder:
     probe = r'''
 import sys
 from pathlib import Path
-root = Path(sys.argv[1])
+root = Path(sys.argv[1]).resolve()   # the app resolves its folder: a short 8.3 TEMP (RUNNER~1) becomes the long name
 sys.path.insert(0, str(root))
 if sys.argv[2] == "frozen":
     sys.frozen = True
