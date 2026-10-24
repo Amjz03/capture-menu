@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.0.32 · 2026-10-24
+
+- **Recordings are saved whole.** Stopping a recording could move it while OBS was still finishing the file, so the clip in your library came out a few seconds short (or broken) and the full one stayed behind in OBS's folder with an error. Capture Menu now waits until OBS has completely let go of the file before moving it, for recordings, saved clips and screenshots. If OBS takes unusually long, the recording stays safely where OBS wrote it and a notice says where.
+
 ## 0.0.31 · 2026-10-24
 
 - **Deleting never loses a capture by accident.** If Windows can't move a capture to the Recycle Bin, it stays where it is, with its favorite, title and note, instead of being deleted for good. A capture that's locked for a moment (antivirus checking a new file) is simply tried again. The gallery says exactly how many moved, and which ones didn't.
