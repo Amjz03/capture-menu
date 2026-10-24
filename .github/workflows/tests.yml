@@ -5,9 +5,9 @@ name: Tests
 on:
   push:
     branches: [main]
-    paths-ignore: ["**.md", "docs/**", "installer/winget/**", ".github/ISSUE_TEMPLATE/**"]
+    paths-ignore: ["**.md", "docs/**", "site/**", "installer/winget/**", ".github/ISSUE_TEMPLATE/**", ".github/workflows/pages.yml"]
   pull_request:
-    paths-ignore: ["**.md", "docs/**", "installer/winget/**", ".github/ISSUE_TEMPLATE/**"]
+    paths-ignore: ["**.md", "docs/**", "site/**", "installer/winget/**", ".github/ISSUE_TEMPLATE/**", ".github/workflows/pages.yml"]
   workflow_dispatch:
 
 permissions:
