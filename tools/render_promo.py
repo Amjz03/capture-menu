@@ -8,15 +8,24 @@
 import sys, os, time, tempfile, subprocess, shutil
 from pathlib import Path
 sys.path.insert(0, sys.argv[1]); out = Path(sys.argv[2]); out.mkdir(exist_ok=True)
-import capture_menu as cm
-cm.MOTION_MS = 0     # stills: the focus has already grown into place
+from capturemenu import (
+    capture_controller,
+    input_devices,
+    media,
+    preferences,
+    ui_menu,
+    ui_notices,
+    ui_theme,
+    ui_viewer,
+)
+ui_theme.MOTION_MS = 0     # stills: the focus has already grown into place
 from PySide6 import QtWidgets, QtGui, QtCore
 from PySide6.QtCore import Qt, QRectF
 app = QtWidgets.QApplication([])
 for f in ("SegUIVar.ttf", "segoeui.ttf", "seguisb.ttf", "segoeuib.ttf"):   # offscreen Qt doesn't see system fonts
     QtGui.QFontDatabase.addApplicationFont(str(Path(os.environ.get("WINDIR", "C:/Windows")) / "Fonts" / f))
 sys.path.insert(0, str(Path(__file__).resolve().parent)); from scene import draw_scene, game_name
-cm.STATE_PATH = Path(tempfile.mkdtemp()) / "state.json"
+preferences.STATE_PATH = Path(tempfile.mkdtemp()) / "state.json"
 W, H, FPS = 1920, 1080, 30
 VW, VH = 1080, 1920
 GAME = game_name("Neon Highway")
@@ -41,9 +50,9 @@ for game, name, pal, seed, secs, ago in specs:
                         "-map", "0", "-map", "1", "-map", "2", "-map", "3", "-t", "6",
                         "-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p", "-c:a", "aac", str(dst)], check=True)
     os.utime(dst, (now - ago,) * 2)
-ctl = cm.Controller(dict(cm.DEFAULTS, clips_dir=str(root))); ctl.refresh_status = lambda: None
+ctl = capture_controller.Controller(dict(preferences.DEFAULTS, clips_dir=str(root))); ctl.refresh_status = lambda: None
 for p in ctl.recent:
-    cm.make_thumb(p, ctl.thumbs_dir)
+    media.make_thumb(p, ctl.thumbs_dir)
 lengths = {s[1]: s[4] for s in specs}
 for p in ctl.recent:
     if p.suffix != ".png": ctl.lengths[p] = lengths[p.name]
@@ -59,8 +68,8 @@ def wait(seconds, until=lambda: False):
 
 
 # ---- the screens, grabbed once
-cm.INPUT.set("playstation")
-viewer = cm.Viewer(ctl); m = cm.Menu(ctl, viewer)
+input_devices.input_mode().set("playstation")
+viewer = ui_viewer.Viewer(ctl); m = ui_menu.Menu(ctl, viewer)
 m.show_menu(GAME); BH = m.BAR_H + m.HEADROOM
 m.setGeometry(0, 0, W, BH); m._place(); m.refresh_recent()
 status = {"online": True, "buffer": True, "buffer_seconds": 1800, "buffered_ms": 1_160_000, "recording": False,
@@ -68,7 +77,7 @@ status = {"online": True, "buffer": True, "buffer_seconds": 1800, "buffered_ms":
 m._on_status(status)
 m.save_card.setFocus(); pump(); bar_save = m.grab()
 m.open_picker(); m._on_status(status); pump(); bar_picker = m.grab(); m.close_picker()
-t = cm.Toast(); t.thumbs_dir = ctl.thumbs_dir; t.pad_button = "create"
+t = ui_notices.Toast(); t.thumbs_dir = ctl.thumbs_dir; t.pad_button = "create"
 t.show_capture("Last 1 minute", str(ctl.recent[0])); pump(); toast = t.grab(); t.hide()
 m.activateWindow(); m.thumbs[0].setFocus(); m._on_focus(m.thumbs[0]); m.save_card.clearFocus()
 m.thumbs[0].active = True; pump(); bar_recent = m.grab()
@@ -93,7 +102,7 @@ print("screens", bar_save.size(), toast.size(), view_trim.size(), view_sound.siz
 # ---- drawing
 bg = draw_scene(W, H, "dusk", 7, hud=False)
 icon = QtGui.QImage(str(Path(sys.argv[1]) / "docs" / "icon.png"))
-PROMPT = cm.prompt_family()
+PROMPT = ui_theme.prompt_family()
 
 
 def ease(x):
@@ -107,7 +116,7 @@ def fade(t, a, b, d=0.25):
 
 
 def font(px, weight=QtGui.QFont.DemiBold):
-    return cm.font(px, weight, display=True)
+    return ui_theme.font(px, weight, display=True)
 
 
 def glyph_font(px):
@@ -115,7 +124,7 @@ def glyph_font(px):
     return f
 
 
-CREATE = cm.glyph("sony-dualsense-share")
+CREATE = ui_theme.glyph("sony-dualsense-share")
 CAPTIONS = [  # (from, to, pieces); a piece in [] is a button glyph
     (0.0, 2.6, ["The PS5 Create button,", "\n", "on your PC"]),
     (2.6, 4.0, ["Press ", f"[{CREATE}]", " or Alt + C"]),

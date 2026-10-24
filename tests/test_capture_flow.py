@@ -1,13 +1,13 @@
 import sys, time, shutil, subprocess, tempfile
 from pathlib import Path
 sys.path.insert(0, sys.argv[1])
-import capture_menu as cm
+from capturemenu import capture_controller, catalog, preferences, windows
 
 # folder names
 for raw, want in [("Cyberpunk 2077™", "Cyberpunk 2077"), ('Half-Life: Alyx', "Half-Life Alyx"),
                   ("  Game. ", "Game"), ("CON", "CON_"), ("", "Desktop"), ("a/b\\c?", "a b c")]:
-    got = cm.safe_folder_name(raw); assert got == want, (raw, got)
-assert cm.foreground_app({}) == "Desktop"   # non-Windows fallback
+    got = windows.safe_folder_name(raw); assert got == want, (raw, got)
+assert windows.foreground_app({}) == "Desktop"   # non-Windows fallback
 
 tmp = Path(tempfile.mkdtemp()); src = tmp / "obs_out"; src.mkdir()
 master = tmp / "master.mp4"
@@ -23,7 +23,7 @@ class FakeObs:
     def stop_record(self):
         self.rec = False; p = src/"rec.mp4"; shutil.copy(master, p); return p
     def screenshot(self, path): path.write_bytes(b"png")
-ctl = cm.Controller(dict(cm.DEFAULTS, clips_dir=str(tmp/"Clips"))); ctl.obs = FakeObs()
+ctl = capture_controller.Controller(dict(preferences.DEFAULTS, clips_dir=str(tmp/"Clips"))); ctl.obs = FakeObs()
 msgs = []; ctl.toast.connect(lambda t,k: msgs.append(t))
 
 ctl._save_clip(30, "Cyberpunk 2077"); time.sleep(1.1)
@@ -44,8 +44,8 @@ ctl._save_clip(30, "Elden Ring")
 assert caps and Path(caps[0]) == ctl.recent_items()[0]
 assert ctl.thumb(Path(caps[0])) is not None, "clip thumbnail missing"
 shot = next((ctl.clips_dir / "Elden Ring").glob("Screenshot_*"))
-assert cm.capture_kind(Path(caps[0])) == "Clip · 30 sec" and cm.capture_kind(shot) == "Screenshot"
-fresh = cm.Controller(dict(cm.DEFAULTS, clips_dir=str(tmp/"Clips")))
+assert catalog.capture_kind(Path(caps[0])) == "Clip · 30 sec" and catalog.capture_kind(shot) == "Screenshot"
+fresh = capture_controller.Controller(dict(preferences.DEFAULTS, clips_dir=str(tmp/"Clips")))
 assert len(fresh.recent_items()) == 7, fresh.recent_items()   # rescan finds everything
 assert fresh.delete(Path(caps[0])) and not Path(caps[0]).exists()
 print("recent/thumb/delete PASS")

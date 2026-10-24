@@ -316,10 +316,27 @@ Clips are AV1 on recent cards. VLC, Chrome and Discord play them; the Windows Ph
 
 ## Development
 
-Capture Menu is a single Python file built on [PySide6](https://doc.qt.io/qtforpython-6/), [OBS Studio](https://obsproject.com/) through its WebSocket, [SDL2](https://www.libsdl.org/) for controllers and [FFmpeg](https://ffmpeg.org/) for thumbnails, trims and share copies.
+Capture Menu is a Python package built on [PySide6](https://doc.qt.io/qtforpython-6/), [OBS Studio](https://obsproject.com/) through its WebSocket, [SDL2](https://www.libsdl.org/) for controllers and [FFmpeg](https://ffmpeg.org/) for thumbnails, trims and share copies.
 
 ```
-capture_menu.py      the app
+capture_menu.py      thin launcher (source and PyInstaller entry point)
+capturemenu/          application package
+  app.py              startup and component wiring
+  runtime.py          source/frozen paths, explicit logging setup, lazy multimedia
+  preferences.py      defaults, config.json and state.json
+  language.py         translations, RTL and time labels
+  windows.py          display/window integration, process launch and startup registration
+  obs_client.py       OBS WebSocket, encoder plans and OBS process helpers
+  media.py            FFmpeg, trimming, previews, export and audio processing
+  catalog.py          capture names, sizes, folders and storage helpers
+  capture_controller.py  capture/library operations and background work
+  input_devices.py    keyboard, controller navigation, input mode and sounds
+  updates.py          release lookup, verified download and installer handoff
+  version.py          release version (stamped by the workflow)
+  ui_theme.py         styles, drawing helpers and window appearance
+  ui_widgets.py       reusable controls and timeline
+  ui_*.py             menu, viewer, gallery, settings and notifications
+  diagnostics.py      crash logging and freeze detection
 config.json          default settings
 assets/              icon, sounds, button-prompt font, interface icons
 installer/           Setup.exe (Inno Setup), the Python-version setup and uninstall scripts, build_exe.bat
@@ -332,6 +349,8 @@ docs/                images for this README
 
 **Tests** are plain scripts that print `PASS` lines: `py -3 tests\test_trim.py <repo folder> <scratch folder>`. Several were written for Linux with `QT_QPA_PLATFORM=offscreen` and check non-Windows fallbacks.
 
+Tests and render tools import the module that owns a behavior; patch that module when replacing an external dependency. Importing `capture_menu` or `capturemenu.app` does not launch the UI, create a log file, or start workers. `app.main()` initializes logging and starts the application. The source folder and source archive must include both `capture_menu.py` and `capturemenu/`; user configuration remains beside the launcher/executable, and frozen assets remain in PyInstaller's bundle directory.
+
 **Build:** `installer\build_exe.bat` makes `dist\CaptureMenu\CaptureMenu.exe`, and `Output\CaptureMenu-Setup.exe` when [Inno Setup 6](https://jrsoftware.org/isinfo.php) is installed.
 
 **Release:** change `VERSION` on `main` (e.g. to `v0.0.2`) and push. GitHub Actions builds `CaptureMenu-Setup.exe` and the Python `CaptureMenu.zip` on Windows and publishes them. Changes are listed in [CHANGELOG.md](CHANGELOG.md).
@@ -342,7 +361,11 @@ docs/                images for this README
 
 ## Code signing policy
 
-Free code signing provided by [SignPath.io](https://about.signpath.io), certificate by [SignPath Foundation](https://signpath.org).
+Before building or publishing, the release workflow must pass `python tests/run_release_tests.py` on Windows/Python 3.12. This gate runs 14 isolated scripts, including module imports/package paths, recycling and updater safety regressions, against disposable copies with OBS connections, external launches and startup-setting writes disabled. The runner lists the 16 remaining hardware, multimedia, desktop and OS-integration scripts as not run; it does not claim full integration coverage. Run the same command locally with the dependencies in `requirements.txt` installed.
+
+Code signing is optional and is **not currently guaranteed**. The reviewed v0.0.30 release skipped the signing steps. The workflow has support for [SignPath.io](https://about.signpath.io), but signing requires an approved signing project/policy, a certificate and configured credentials. Those cannot be provisioned by changing this code. Check each downloaded executable's Windows signature properties rather than assuming it is signed.
+
+The updater requires a valid SHA-256 digest from GitHub's HTTPS release metadata and checks the downloaded bytes again before launching. Missing digests, mismatches and launch failures leave the app running. This verifies consistency with GitHub's release asset; it is not a publisher signature and cannot protect against a compromised repository or release account.
 
 Release files are built only by the [release workflow](.github/workflows/release.yml) on GitHub Actions, from the code in this repository. Nothing built on a personal computer is published.
 

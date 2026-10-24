@@ -4,28 +4,28 @@
 import json, sys, tempfile
 from pathlib import Path
 sys.path.insert(0, sys.argv[1])
-import capture_menu as cm
+from capturemenu import capture_controller, catalog, preferences, ui_settings
 from PySide6 import QtWidgets
 app = QtWidgets.QApplication([])
 
 work = Path(tempfile.mkdtemp())
-cm.STATE_PATH = work / "state.json"
-cm.CONFIG_PATH = work / "config.json"
-cm.FALLBACK_CLIPS_DIR = work / "Capture Menu"
+preferences.STATE_PATH = work / "state.json"
+preferences.CONFIG_PATH = work / "config.json"
+catalog.FALLBACK_CLIPS_DIR = work / "Capture Menu"
 (work / "Videos").write_text("")            # a file where the folder should be: making it fails,
 blocked = work / "Videos" / "Clips"           # like Controlled folder access refusing it
-assert not cm.usable_folder(blocked)
-assert cm.usable_folder(work / "ok")
+assert not catalog.usable_folder(blocked)
+assert catalog.usable_folder(work / "ok")
 
-cm.CONFIG_PATH.write_text(json.dumps({"clips_dir": str(blocked)}))
-ctl = cm.Controller(cm.load_config())
+preferences.CONFIG_PATH.write_text(json.dumps({"clips_dir": str(blocked)}))
+ctl = capture_controller.Controller(preferences.load_config())
 assert ctl.blocked == blocked, ctl.blocked
-assert ctl.clips_dir == cm.FALLBACK_CLIPS_DIR == ctl.shots_dir and ctl.clips_dir.is_dir()
+assert ctl.clips_dir == catalog.FALLBACK_CLIPS_DIR == ctl.shots_dir and ctl.clips_dir.is_dir()
 assert ctl.thumbs_dir.is_dir() and ctl.folder_for("Overwatch").is_dir()
-assert json.loads(cm.CONFIG_PATH.read_text())["clips_dir"] == str(blocked)   # used again once allowed
+assert json.loads(preferences.CONFIG_PATH.read_text())["clips_dir"] == str(blocked)   # used again once allowed
 print("blocked clips folder: no crash, captures go to the fallback PASS")
 
-settings = cm.Settings(ctl)
+settings = ui_settings.Settings(ctl)
 row = next(r for r in settings.rows if r.key == "clips_dir")
 row.set_value(str(blocked))
 assert row.display(row.value) == str(ctl.clips_dir), row.display(row.value)   # where captures really go
@@ -35,7 +35,7 @@ row.set_value(str(work / "Elsewhere"))
 assert row.display(row.value) == str(work / "Elsewhere") and "Windows" not in row.describe(row.value)
 print("Settings shows the folder in use PASS")
 
-ctl2 = cm.Controller(dict(cm.DEFAULTS, clips_dir=str(work / "Clips"), screenshots_dir=str(blocked)))
+ctl2 = capture_controller.Controller(dict(preferences.DEFAULTS, clips_dir=str(work / "Clips"), screenshots_dir=str(blocked)))
 assert ctl2.blocked == blocked and ctl2.clips_dir == work / "Clips" and ctl2.shots_dir == ctl2.clips_dir
 print("blocked screenshots folder: screenshots go with the clips PASS")
 
@@ -49,7 +49,7 @@ class FakeObs:
     def ensure_buffer(self): pass
 
 
-fine = cm.Controller(dict(cm.DEFAULTS, clips_dir=str(work / "Fine")))
+fine = capture_controller.Controller(dict(preferences.DEFAULTS, clips_dir=str(work / "Fine")))
 assert fine.blocked is None
 for c, expect in ((ctl, True), (fine, False)):
     c.obs = FakeObs(); c.toast = type("T", (), {"emit": lambda *a: None})()

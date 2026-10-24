@@ -53,7 +53,7 @@ function Find-Python {
                    Sort-Object FullName -Descending | ForEach-Object { $_.FullName }
     foreach ($c in $candidates) {
         if ($c -and (Test-Path $c)) {
-            & $c -c "import sys; sys.exit(0 if sys.version_info >= (3, 10) else 1)" 2>$null
+            & $c -c "import sys; sys.exit(0 if sys.version_info >= (3, 11) else 1)" 2>$null
             if ($LASTEXITCODE -eq 0) { return $c }
         }
     }
@@ -275,7 +275,7 @@ Step "Checking everything"
 $problems = 0
 if ($frozen) { Ok "Capture Menu (standalone .exe)" }
 else {
-    & $python -c "import PySide6, obsws_python, sdl2" 2>$null
+    & $python -c "import sys; sys.path.insert(0, sys.argv[1]); import PySide6, obsws_python, sdl2, capturemenu.app" $InstallDir 2>$null
     if ($LASTEXITCODE -eq 0) { Ok "Python libraries" } else { Warn "Python libraries didn't load. Run Setup again."; $problems++ }
 }
 if (Find-OBS) { Ok "OBS Studio" } else { Warn "OBS Studio isn't installed. Install it from obsproject.com, then run Setup again."; $problems++ }

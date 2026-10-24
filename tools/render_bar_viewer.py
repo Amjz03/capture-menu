@@ -1,8 +1,17 @@
 import sys, os, time, tempfile, subprocess, shutil
 from pathlib import Path
 sys.path.insert(0, sys.argv[1]); out = Path(sys.argv[2]); out.mkdir(exist_ok=True)
-import capture_menu as cm
-cm.MOTION_MS = 0     # stills: the focus has already grown into place
+from capturemenu import (
+    capture_controller,
+    input_devices,
+    media,
+    preferences,
+    ui_menu,
+    ui_notices,
+    ui_theme,
+    ui_viewer,
+)
+ui_theme.MOTION_MS = 0     # stills: the focus has already grown into place
 from PySide6 import QtWidgets, QtGui, QtCore
 from PySide6.QtCore import Qt
 app = QtWidgets.QApplication([])
@@ -28,14 +37,14 @@ for game, name, pal, seed, secs, ago in shots:
                         "zoompan=z='1+0.0015*on':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=1:s=1280x720:fps=30",
                         "-t", "6", "-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p", str(dst)], check=True)
     os.utime(dst, (now - ago,) * 2)
-ctl = cm.Controller(dict(cm.DEFAULTS, clips_dir=str(root))); ctl.refresh_status = lambda: None
+ctl = capture_controller.Controller(dict(preferences.DEFAULTS, clips_dir=str(root))); ctl.refresh_status = lambda: None
 for p in ctl.recent:
-    cm.make_thumb(p, ctl.thumbs_dir)
+    media.make_thumb(p, ctl.thumbs_dir)
 # show the lengths the clips would really have
 lengths = {s[1]: s[4] for s in shots}
 for p in ctl.recent:
     if p.suffix != ".png": ctl.lengths[p] = lengths[p.name]
-viewer = cm.Viewer(ctl); m = cm.Menu(ctl, viewer)
+viewer = ui_viewer.Viewer(ctl); m = ui_menu.Menu(ctl, viewer)
 m.show_menu(GAME); BH = m.BAR_H + m.HEADROOM
 m.setGeometry(0, 0, W, BH); m._place(); m.refresh_recent()
 status = {"online": True, "buffer": True, "buffer_seconds": 1800, "buffered_ms": 1_160_000, "recording": False, "record_ms": 0, "mic_muted": False}
@@ -47,11 +56,11 @@ def compose(name, *layers):
     p = QtGui.QPainter(canvas)
     for pm, x, y in layers: p.drawPixmap(x, y, pm)
     p.end(); canvas.save(str(out / name))
-cm.INPUT.set("playstation")
+input_devices.input_mode().set("playstation")
 m.save_card.setFocus(); pump(); compose("1_bar.png", (m.grab(), 0, H - BH))
 m.open_picker(); m._on_status(status); pump(); compose("2_save_recent.png", (m.grab(), 0, H - BH))
 m.close_picker()
-t = cm.Toast(); t.pad_button = "create"; t.show_capture("Last 1m", str(ctl.recent[0])); pump()
+t = ui_notices.Toast(); t.pad_button = "create"; t.show_capture("Last 1m", str(ctl.recent[0])); pump()
 compose("3_notification.png", (t.grab(), W - t.width() - 28, 28))
 t.hide(); m.activateWindow(); m.thumbs[0].setFocus(); m._on_focus(m.thumbs[0]); m.save_card.clearFocus(); m.thumbs[0].active = True; pump(); compose("4_recent.png", (m.grab(), 0, H - BH))
 # viewer on the screenshot

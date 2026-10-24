@@ -356,5 +356,11 @@
   "Soft": "خفيفة",
   "Colours exactly as Windows shows them": "الألوان مثل ما يعرضها ويندوز بالضبط",
   "Type a new name, then press Enter": "اكتب الاسم الجديد واضغط Enter",
-  "Click the name, then type": "اضغط على الاسم بالماوس وبعدين اكتب"
+  "Click the name, then type": "اضغط على الاسم بالماوس وبعدين اكتب",
+  "Trim saved, but the original could not be moved to the Recycle Bin": "تم حفظ المقطع، لكن تعذر نقل الملف الأصلي إلى سلة المحذوفات",
+  "Moved 1 capture to the Recycle Bin": "تم نقل ملف واحد إلى سلة المحذوفات",
+  "Moved {n} captures to the Recycle Bin": "تم نقل {n} ملفات إلى سلة المحذوفات",
+  "Moved {n} of {total} captures to the Recycle Bin; {failed} could not be moved": "تم نقل {n} من أصل {total} ملفات إلى سلة المحذوفات؛ تعذر نقل {failed} ملفات",
+  "No captures were moved to the Recycle Bin": "لم يتم نقل أي ملفات إلى سلة المحذوفات",
+  "Update failed · nothing was installed. Press Enter to try again": "فشل التحديث · لم يتم تثبيت شيء. اضغط Enter للمحاولة مجددًا"
 }

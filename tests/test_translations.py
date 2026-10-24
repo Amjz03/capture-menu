@@ -4,7 +4,8 @@ import ast, json, re, sys
 from pathlib import Path
 
 repo = Path(sys.argv[1])
-tree = ast.parse((repo / "capture_menu.py").read_text(encoding="utf-8"))
+tree = ast.Module(body=[node for path in [repo / "capture_menu.py", *sorted((repo / "capturemenu").glob("*.py"))]
+                       for node in ast.parse(path.read_text(encoding="utf-8")).body], type_ignores=[])
 
 
 def const(n):

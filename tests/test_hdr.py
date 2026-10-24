@@ -4,36 +4,36 @@
 import statistics, subprocess, sys, tempfile
 from pathlib import Path
 sys.path.insert(0, sys.argv[1])
-import capture_menu as cm
+from capturemenu import capture_controller, media, obs_client, preferences, windows
 from PySide6 import QtGui, QtWidgets
 app = QtWidgets.QApplication([])
-ffmpeg, ffprobe = cm.find_tool("ffmpeg"), cm.find_tool("ffprobe")
+ffmpeg, ffprobe = media.find_tool("ffmpeg"), media.find_tool("ffprobe")
 assert ffmpeg and ffprobe, "needs ffmpeg"
 
 # ---- OBS settings
-cfg = dict(cm.DEFAULTS)
+cfg = dict(preferences.DEFAULTS)
 profile = lambda plan: {(c, n): v for c, n, v in plan["profile"]}
-on = cm.obs_plan(cfg, 2560, 1440, "nvenc_av1", "31.0.0", hdr=True)
+on = obs_client.obs_plan(cfg, 2560, 1440, "nvenc_av1", "31.0.0", hdr=True)
 assert on["hdr"] and profile(on)[("Video", "ColorFormat")] == "P010" and profile(on)[("Video", "ColorSpace")] == "2100PQ"
 assert on["summary"].endswith("HDR")
-off = cm.obs_plan(cfg, 2560, 1440, "nvenc_av1", "31.0.0", hdr=False)
+off = obs_client.obs_plan(cfg, 2560, 1440, "nvenc_av1", "31.0.0", hdr=False)
 assert not off["hdr"] and profile(off)[("Video", "ColorFormat")] == "NV12" and profile(off)[("Video", "ColorSpace")] == "709"
-h264 = cm.obs_plan(dict(cfg, video_codec="h264"), 2560, 1440, "nvenc_av1", "31.0.0", hdr=True)
+h264 = obs_client.obs_plan(dict(cfg, video_codec="h264"), 2560, 1440, "nvenc_av1", "31.0.0", hdr=True)
 assert not h264["hdr"] and profile(h264)[("Video", "ColorFormat")] == "NV12", "H.264 can't carry HDR"
 assert on["summary"] != off["summary"], "turning HDR on or off sets OBS up again"
-bright = cm.obs_plan(cfg, 2560, 1440, "nvenc_av1", "31.0.0", hdr=False, white=240)
+bright = obs_client.obs_plan(cfg, 2560, 1440, "nvenc_av1", "31.0.0", hdr=False, white=240)
 assert profile(bright)[("Video", "SdrWhiteLevel")] == "240", "OBS's white level matches Windows' (not grey)"
 assert ("Video", "SdrWhiteLevel") not in profile(off) and bright["summary"] != off["summary"]
 assert bright["vivid"] and not off["vivid"], "normal colours from an HDR screen get a light colour boost"
-natural = cm.obs_plan(dict(cfg, colours="natural"), 2560, 1440, "nvenc_av1", "31.0.0", hdr=False, white=240)
+natural = obs_client.obs_plan(dict(cfg, colours="natural"), 2560, 1440, "nvenc_av1", "31.0.0", hdr=False, white=240)
 assert not natural["vivid"] and natural["summary"] != bright["summary"], "Colours: Natural turns the boost off"
-levels = [cm.obs_plan(dict(cfg, colours=c), 2560, 1440, "nvenc_av1", "31.0.0", white=240)["vivid"]["saturation"]
+levels = [obs_client.obs_plan(dict(cfg, colours=c), 2560, 1440, "nvenc_av1", "31.0.0", white=240)["vivid"]["saturation"]
           for c in ("soft", "vivid", "max")]
 assert levels == sorted(levels) and len(set(levels)) == 3, "Soft < Vivid < Max"
 assert off["force_sdr"] and not on["force_sdr"], "normal colours come from Windows' conversion; HDR clips stay HDR"
-assert not cm.obs_plan(cfg, 2560, 1440, "nvenc_av1", "31.0.0", hdr=True, white=240)["vivid"], "HDR clips stay as they are"
-assert cm.sdr_white() is None or 80 <= cm.sdr_white() <= 1000
-screens = cm.hdr_screens()
+assert not obs_client.obs_plan(cfg, 2560, 1440, "nvenc_av1", "31.0.0", hdr=True, white=240)["vivid"], "HDR clips stay as they are"
+assert windows.sdr_white() is None or 80 <= windows.sdr_white() <= 1000
+screens = windows.hdr_screens()
 assert isinstance(screens, dict) and all(isinstance(v, bool) for v in screens.values())
 print("OBS colour settings PASS", screens)
 
@@ -50,15 +50,15 @@ subprocess.run([ffmpeg, "-v", "error", "-y", *src, "-vf",
                 "-c:a", "aac", str(hdr)], check=True)
 subprocess.run([ffmpeg, "-v", "error", "-y", *src, "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", str(sdr)],
                check=True)
-assert cm.is_hdr(hdr) and not cm.is_hdr(sdr)
+assert media.is_hdr(hdr) and not media.is_hdr(sdr)
 # ffprobe gives OBS's clips as "smpte2084," (with a comma): they're HDR all the same
-real_run = cm.run_quiet
-cm.run_quiet = lambda cmd: type("R", (), {"stdout": "smpte2084,\n"})()
+real_run = media.run_quiet
+media.run_quiet = lambda cmd: type("R", (), {"stdout": "smpte2084,\n"})()
 obs_clip = work / "Game" / "obs.mp4"; obs_clip.write_bytes(b"")
-assert cm.is_hdr(obs_clip), "OBS's HDR clips are HDR"
-cm.run_quiet = real_run
+assert media.is_hdr(obs_clip), "OBS's HDR clips are HDR"
+media.run_quiet = real_run
 obs_clip.unlink()
-assert cm.sdr_filter(sdr, "scale=480:-2") == "scale=480:-2" and cm.sdr_filter(hdr, "scale=480:-2").startswith("zscale")
+assert media.sdr_filter(sdr, "scale=480:-2") == "scale=480:-2" and media.sdr_filter(hdr, "scale=480:-2").startswith("zscale")
 print("finds HDR clips PASS")
 
 
@@ -92,38 +92,38 @@ assert grey[1] < ref[1] * 0.75, ("the raw HDR frame should look washed out", gre
 
 # ---- share copy: normal colours, tagged BT.709
 out = work / "share.mp4"
-cm.export_for_share(hdr, out, None, False)
+media.export_for_share(hdr, out, None, False)
 assert color(out).startswith("yuv420p,bt709"), color(out)
 shared = look(frame_of(out, work / "shared.png"))
 assert shared[1] > grey[1] * 1.3 and shared[0] > grey[0], ("share copy should have its colour back", shared, grey)
 print("share copy in normal colours PASS", [round(v) for v in shared], "vs washed", [round(v) for v in grey])
 
 # ---- Copy puts a normal-colour copy of an HDR clip on the clipboard, an SDR clip as it is
-ctl = cm.Controller(dict(cm.DEFAULTS, clips_dir=str(work)))
+ctl = capture_controller.Controller(dict(preferences.DEFAULTS, clips_dir=str(work)))
 ctl._bg = lambda fn, *a, **kw: fn(*a)
 copied = []
 ctl.copy_file.connect(copied.append)
 ctl.copy(sdr)
 assert copied == [str(sdr)], copied
 ctl.copy(hdr)
-assert len(copied) == 2 and Path(copied[1]).parent.name == "Shared" and not cm.is_hdr(Path(copied[1])), copied
+assert len(copied) == 2 and Path(copied[1]).parent.name == "Shared" and not media.is_hdr(Path(copied[1])), copied
 assert look(frame_of(Path(copied[1]), work / "copied.png"))[1] > grey[1] * 1.3
 print("copy gives normal colours PASS")
 
 # ---- thumbnail, filmstrip frame and preview copy
-thumb = cm.make_thumb(hdr, work)
+thumb = media.make_thumb(hdr, work)
 assert thumb and look(thumb)[1] > grey[1] * 1.3, look(thumb)
 strip = work / "strip.jpg"
-assert cm.filmstrip_frame(hdr, 1000, strip) and look(strip)[1] > grey[1] * 1.2, look(strip)
+assert media.filmstrip_frame(hdr, 1000, strip) and look(strip)[1] > grey[1] * 1.2, look(strip)
 preview = work / "preview.mp4"
-assert cm.make_preview(hdr, preview) and color(preview).startswith("yuv420p")
+assert media.make_preview(hdr, preview) and color(preview).startswith("yuv420p")
 assert look(frame_of(preview, work / "prev.png"))[1] > grey[1] * 1.3
 print("thumbnails, filmstrip and preview in normal colours PASS")
 
 # ---- a GPU trim keeps HDR
-if cm.has_encoder("hevc_nvenc"):
+if media.has_encoder("hevc_nvenc"):
     cut = work / "Game" / "Clip_2026-10-17_10-00-00_trim.mp4"
-    how = cm.trim_clip(hdr, 500, 2500, cut)
+    how = media.trim_clip(hdr, 500, 2500, cut)
     assert how == "precise" and color(cut) == "yuv420p10le,smpte2084", (how, color(cut))
     print("trim keeps HDR PASS")
 else:

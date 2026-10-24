@@ -1,15 +1,15 @@
 import sys, json, tempfile
 from pathlib import Path
 sys.path.insert(0, sys.argv[1])
-import capture_menu as cm
+from capturemenu import capture_controller, preferences, ui_settings, ui_widgets
 from PySide6 import QtWidgets, QtGui, QtCore
 from PySide6.QtCore import Qt
 app = QtWidgets.QApplication([])
 tmp = Path(tempfile.mkdtemp())
-cm.CONFIG_PATH = tmp / "config.json"
-cfg = cm.load_config(); cfg["clips_dir"] = str(tmp / "clips")
-ctl = cm.Controller(cfg); ctl.refresh_status = lambda: None
-s = cm.Settings(ctl); s.encoder = "nvenc_av1"
+preferences.CONFIG_PATH = tmp / "config.json"
+cfg = preferences.load_config(); cfg["clips_dir"] = str(tmp / "clips")
+ctl = capture_controller.Controller(cfg); ctl.refresh_status = lambda: None
+s = ui_settings.Settings(ctl); s.encoder = "nvenc_av1"
 s.open((2560, 1440)); s.activateWindow(); app.processEvents()
 rows = s.rows
 def send(w, kind):
@@ -50,7 +50,7 @@ send(rows[2], "leave"); assert focus() is rows[2]
 print("click and key keep it PASS")
 
 # the bar's tiles and chips do the same
-a, b = cm.Chip("15 sec"), cm.Chip("30 sec")
+a, b = ui_widgets.Chip("15 sec"), ui_widgets.Chip("30 sec")
 holder = QtWidgets.QWidget(); lay = QtWidgets.QHBoxLayout(holder); lay.addWidget(a); lay.addWidget(b)
 holder.show(); holder.activateWindow(); a.setFocus(); app.processEvents()
 send(b, "enter"); assert focus() is b

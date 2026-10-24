@@ -3,7 +3,7 @@ rem Builds dist\CaptureMenu\CaptureMenu.exe (no Python needed to run it), then
 rem Output\CaptureMenu-Setup.exe if Inno Setup 6 is installed. Releases do this on GitHub.
 cd /d "%~dp0.."
 py -3 -m pip install --disable-pip-version-check -q -r requirements.txt pyinstaller
-py -3 -m PyInstaller --noconfirm --windowed --name CaptureMenu --icon assets\icon.ico --add-data "assets;assets" --collect-all sdl2dll --collect-all obsws_python capture_menu.py
+py -3 -m PyInstaller --noconfirm --windowed --name CaptureMenu --icon assets\icon.ico --add-data "assets;assets" --collect-submodules capturemenu --collect-all sdl2dll --collect-all obsws_python capture_menu.py
 if errorlevel 1 goto :end
 echo.
 echo Built: dist\CaptureMenu\CaptureMenu.exe

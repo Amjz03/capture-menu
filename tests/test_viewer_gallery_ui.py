@@ -1,11 +1,20 @@
 import sys, time, tempfile, subprocess, os
 from pathlib import Path
 sys.path.insert(0, sys.argv[1])
-import capture_menu as cm
+from capturemenu import (
+    capture_controller,
+    input_devices,
+    preferences,
+    runtime,
+    ui_gallery,
+    ui_menu,
+    ui_viewer,
+    windows,
+)
 from PySide6 import QtWidgets, QtCore
 from PySide6.QtCore import Qt
 app = QtWidgets.QApplication([])
-cm.STATE_PATH = Path(tempfile.mkdtemp()) / "state.json"
+preferences.STATE_PATH = Path(tempfile.mkdtemp()) / "state.json"
 root = Path(tempfile.mkdtemp()); now = time.time()
 def mk(game, name, tracks=1, ago=0):
     d = root / game; d.mkdir(exist_ok=True); p = d / name
@@ -20,34 +29,34 @@ def mk(game, name, tracks=1, ago=0):
 a = mk("Neon Highway", "Clip_2026-10-16_21-00-00_60s.mp4", 3, 10)
 b = mk("Neon Highway", "Screenshot_2026-10-16_20-00-00.png", ago=100)
 c = mk("Frostfall", "Clip_2026-10-16_19-00-00_30s.mp4", 1, 1000)
-ctl = cm.Controller(dict(cm.DEFAULTS, clips_dir=str(root))); ctl.refresh_status = lambda: None
+ctl = capture_controller.Controller(dict(preferences.DEFAULTS, clips_dir=str(root))); ctl.refresh_status = lambda: None
 calls = []
 ctl.share = lambda p, k, nv: calls.append(("share", p.name, k, nv))
 ctl.copy = lambda p: calls.append(("copy", p.name))
-viewer = cm.Viewer(ctl); menu = cm.Menu(ctl, viewer); gallery = cm.Gallery(ctl, viewer); menu.gallery = gallery
-def key(w, k): cm.send_key(w, k); app.processEvents()
+viewer = ui_viewer.Viewer(ctl); menu = ui_menu.Menu(ctl, viewer); gallery = ui_gallery.Gallery(ctl, viewer); menu.gallery = gallery
+def key(w, k): input_devices.send_key(w, k); app.processEvents()
 def pad(btn): 
-    k = cm.pad_key(btn, menu, viewer, gallery)
-    cm.send_key(viewer if viewer.isVisible() else gallery if gallery.isVisible() else menu, k); app.processEvents()
+    k = input_devices.pad_key(btn, menu, viewer, gallery)
+    input_devices.send_key(viewer if viewer.isVisible() else gallery if gallery.isVisible() else menu, k); app.processEvents()
 
 # viewer: share a 3-track clip at 10 MB without the voice, via the controller
 viewer.open(ctl.all_captures(), 0); app.processEvents()
 pad(6)                                   # Options -> Share / Export
 assert viewer.sharing and viewer.voice_card.isEnabled() and viewer.share_panel.isVisible()
 assert viewer.focusWidget() is viewer.share_go, "starts on Export, so ✕ shares right away"
-pad(cm.LEFT); pad(cm.LEFT); pad(cm.A)    # Cancel -> Size limit, next choice
+pad(input_devices.LEFT); pad(input_devices.LEFT); pad(input_devices.A)    # Cancel -> Size limit, next choice
 assert viewer.size_card.value == 10
-pad(cm.LEFT); pad(cm.A)                  # Your voice: leave it out
+pad(input_devices.LEFT); pad(input_devices.A)                  # Your voice: leave it out
 assert viewer.without_voice
-for _ in range(3): pad(cm.RIGHT)         # Size limit, Cancel, Export
-pad(cm.A)
+for _ in range(3): pad(input_devices.RIGHT)         # Size limit, Cancel, Export
+pad(input_devices.A)
 assert calls[-1] == ("share", a.name, "discord10", True) and not viewer.sharing, calls
-viewer.enter_share(); pad(cm.LEFT); pad(cm.LEFT); pad(cm.LEFT); pad(cm.LEFT); pad(cm.A)   # Format: original
+viewer.enter_share(); pad(input_devices.LEFT); pad(input_devices.LEFT); pad(input_devices.LEFT); pad(input_devices.LEFT); pad(input_devices.A)   # Format: original
 assert viewer.format_card.value == "copy" and not viewer.size_card.isEnabled() and not viewer.voice_card.isEnabled()
-pad(cm.RIGHT); pad(cm.RIGHT); pad(cm.A)   # past the cards it turned off, to Copy file
+pad(input_devices.RIGHT); pad(input_devices.RIGHT); pad(input_devices.A)   # past the cards it turned off, to Copy file
 assert calls[-1] == ("copy", a.name) and not viewer.sharing, calls
-cm.INPUT.set("playstation"); app.processEvents()
-pad(cm.Y); pad(cm.A)                     # △ jumps to the small buttons, ✕ presses Favorite
+input_devices.input_mode().set("playstation"); app.processEvents()
+pad(input_devices.Y); pad(input_devices.A)                     # △ jumps to the small buttons, ✕ presses Favorite
 assert ctl.is_favorite(a) and "★" in viewer.title.text()
 viewer.step(1); viewer.enter_share()     # a screenshot: only Copy
 assert not any(c.isVisible() for c in (viewer.format_card, viewer.voice_card, viewer.size_card))
@@ -60,22 +69,22 @@ print("viewer share/favorite PASS")
 assert not hasattr(viewer, "more_btn") and viewer.del_btn.isVisible() and not viewer.del_btn.text()
 viewer.show_item(); app.processEvents()
 assert viewer.focusWidget() is viewer.play_btn, "a clip starts on Play"
-pad(cm.RIGHT); assert viewer.focusWidget() is viewer.slider
-pad(cm.RIGHT); assert viewer.focusWidget() is viewer.slider, "on the seek bar → moves through the video"
-pad(cm.DOWN); assert viewer.focusWidget() in (viewer.trim_btn, viewer.sound_btn, viewer.share_btn)
-pad(cm.UP); pad(cm.UP)
+pad(input_devices.RIGHT); assert viewer.focusWidget() is viewer.slider
+pad(input_devices.RIGHT); assert viewer.focusWidget() is viewer.slider, "on the seek bar → moves through the video"
+pad(input_devices.DOWN); assert viewer.focusWidget() in (viewer.trim_btn, viewer.sound_btn, viewer.share_btn)
+pad(input_devices.UP); pad(input_devices.UP)
 assert viewer.focusWidget() in (viewer.back_btn, viewer.rename_btn, viewer.prev_btn, viewer.next_btn, viewer.close_btn)
-pad(cm.Y); pad(cm.RIGHT); assert viewer.focusWidget() is viewer.folder_chip
-if cm.IS_WINDOWS:   # Explorer needs /select,"path": with quotes around it all, a folder with spaces opens Documents
-    sent = []; real_launch, cm.launch_outside = cm.launch_outside, lambda cmd, **k: sent.append(cmd)
-    cm.Controller.reveal(Path(r"C:\Clips\Red Dead Redemption 2\Clip_1.mp4")); cm.launch_outside = real_launch
+pad(input_devices.Y); pad(input_devices.RIGHT); assert viewer.focusWidget() is viewer.folder_chip
+if runtime.IS_WINDOWS:   # Explorer needs /select,"path": with quotes around it all, a folder with spaces opens Documents
+    sent = []; real_launch, windows.launch_outside = windows.launch_outside, lambda cmd, **k: sent.append(cmd)
+    capture_controller.Controller.reveal(Path(r"C:\Clips\Red Dead Redemption 2\Clip_1.mp4")); windows.launch_outside = real_launch
     assert sent == ['explorer /select,"C:\\Clips\\Red Dead Redemption 2\\Clip_1.mp4"'], sent
 revealed = []; ctl.reveal = lambda p: revealed.append(p.name)
-pad(cm.A); assert revealed == [c.name] and viewer.isVisible(), "Show in folder: the folder opens over the viewer, which stays"
+pad(input_devices.A); assert revealed == [c.name] and viewer.isVisible(), "Show in folder: the folder opens over the viewer, which stays"
 key(viewer, Qt.Key_Delete)               # Delete armed, nothing deleted yet
 assert viewer.del_btn.danger and viewer.focusWidget() is viewer.del_btn and c.exists()
-pad(cm.B); assert not viewer.del_btn.danger and not viewer.del_btn.text() and c.exists() and viewer.isVisible()
-cm.INPUT.set("keyboard"); app.processEvents()
+pad(input_devices.B); assert not viewer.del_btn.danger and not viewer.del_btn.text() and c.exists() and viewer.isVisible()
+input_devices.input_mode().set("keyboard"); app.processEvents()
 assert viewer.focusWidget() is viewer, "with the keyboard the viewer keeps the keys for its shortcuts"
 viewer.close_viewer()
 print("viewer highlight PASS")
@@ -86,19 +95,19 @@ assert gallery.isVisible() and not menu.isVisible()
 assert [n for n, _ in gallery.cats] == ["All", gallery.FAVORITES, "Neon Highway", "Frostfall"]
 assert gallery.cats[gallery.games.currentRow()][0] == "Frostfall", "opens on the current game"
 assert [p.name for p in gallery.cats[1][1]] == [a.name]
-pad(cm.L1); pad(cm.L1); assert gallery.cats[gallery.games.currentRow()][0] == gallery.FAVORITES
-pad(cm.L1); assert gallery.items == ctl.all_captures()           # All
-pad(cm.RIGHT); assert gallery.grid.currentRow() == 1
-pad(cm.Y); assert ctl.is_favorite(b)
-pad(cm.A); assert viewer.isVisible() and viewer.current == b
+pad(input_devices.L1); pad(input_devices.L1); assert gallery.cats[gallery.games.currentRow()][0] == gallery.FAVORITES
+pad(input_devices.L1); assert gallery.items == ctl.all_captures()           # All
+pad(input_devices.RIGHT); assert gallery.grid.currentRow() == 1
+pad(input_devices.Y); assert ctl.is_favorite(b)
+pad(input_devices.A); assert viewer.isVisible() and viewer.current == b
 viewer.folder_chip.click(); app.processEvents()
 assert viewer.isVisible() and gallery.isVisible(), "Show in folder keeps the viewer and the gallery behind it"
-pad(cm.B); assert not viewer.isVisible() and gallery.isVisible()
+pad(input_devices.B); assert not viewer.isVisible() and gallery.isVisible()
 gallery.grid.setCurrentRow(0); app.processEvents()   # ↑ from the top row reaches the buttons, and back down
-pad(cm.UP); assert gallery.focusWidget() in gallery._head_nav() and not gallery.grid_lit()
-pad(cm.DOWN); assert gallery.focusWidget() in (gallery.grid, gallery.games)
+pad(input_devices.UP); assert gallery.focusWidget() in gallery._head_nav() and not gallery.grid_lit()
+pad(input_devices.DOWN); assert gallery.focusWidget() in (gallery.grid, gallery.games)
 gallery.grid.setFocus(); app.processEvents()
-pad(cm.B); assert not gallery.isVisible()
+pad(input_devices.B); assert not gallery.isVisible()
 end = time.time() + 5
 while time.time() < end and any(ctl.thumb(p) is None for p in ctl.all_captures()):
     app.processEvents(); time.sleep(0.05)

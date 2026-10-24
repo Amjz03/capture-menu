@@ -38,7 +38,7 @@ os.environ["QT_QPA_PLATFORM"] = "offscreen"
 sys.path.insert(0, str(app_dir))
 from PySide6 import QtWidgets
 qa = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-import capture_menu as cm
-t = cm.Toast(); t.show_running("Capture Menu is running", "Press Alt + C or Create to open")
+from capturemenu import ui_notices
+t = ui_notices.Toast(); t.show_running("Capture Menu is running", "Press Alt + C or Create to open")
 assert t.isVisible() and t.thumb.isVisible() and t.title.text() == "Capture Menu is running" and t.path is None
 print("running notice PASS")

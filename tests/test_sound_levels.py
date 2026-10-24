@@ -3,15 +3,16 @@
 import re, subprocess, sys, tempfile, time
 from pathlib import Path
 sys.path.insert(0, sys.argv[1])
-import capture_menu as cm
+import math
+from capturemenu import capture_controller, media, preferences, ui_gallery, ui_settings, ui_viewer
 from PySide6 import QtCore, QtWidgets
 from PySide6.QtCore import Qt
 app = QtWidgets.QApplication([])
-ffmpeg = cm.find_tool("ffmpeg")
+ffmpeg = media.find_tool("ffmpeg")
 assert ffmpeg, "needs ffmpeg"
 
 root = Path(tempfile.mkdtemp())
-cm.STATE_PATH = root / "state.json"
+preferences.STATE_PATH = root / "state.json"
 clips = root / "Clips"
 clip = clips / "Elden Ring" / "Clip_2026-10-16_21-00-00_30s.mp4"
 clip.parent.mkdir(parents=True)
@@ -48,9 +49,9 @@ game_peak = lambda path: part_peak(path, 0.2, 1.4)
 before = peaks(clip)
 voice_before = voice_peak(clip)
 mtime = clip.stat().st_mtime
-assert cm.audio_tracks(clip) == 3
+assert media.audio_tracks(clip) == 3
 
-ctl = cm.Controller(dict(cm.DEFAULTS, clips_dir=str(clips)))
+ctl = capture_controller.Controller(dict(preferences.DEFAULTS, clips_dir=str(clips)))
 assert ctl.mix_of(clip) == (100, 100)            # 100 % = as recorded
 ctl._set_mix(clip, 400, 100)                     # voice 4x as loud = +20 dB
 after = peaks(clip)
@@ -60,7 +61,7 @@ assert clip.stat().st_mtime == mtime            # stays in its place in Recent a
 assert ctl.mix_of(clip) == (400, 100)
 assert not list(clip.parent.glob("*.part")), "no leftover temp file"
 assert set(ctl.all_captures()) == {clip}
-v = subprocess.run([cm.find_tool("ffprobe"), "-v", "error", "-select_streams", "v:0", "-count_packets",
+v = subprocess.run([media.find_tool("ffprobe"), "-v", "error", "-select_streams", "v:0", "-count_packets",
                     "-show_entries", "stream=codec_name,nb_read_packets", "-of", "csv=p=0", str(clip)],
                    capture_output=True, text=True).stdout.strip()
 assert v.startswith("h264,") and int(v.split(",")[1]) == 120, v   # the video is copied, frame for frame
@@ -72,20 +73,20 @@ ctl._set_mix(clip, 100, 25)                      # game a quarter as loud = -20 
 assert abs(game_peak(clip) - (game_before - 20)) < 1.5, (game_before, game_peak(clip))
 ctl._set_mix(clip, 0, 100)                       # voice muted
 assert voice_peak(clip) < -80, voice_peak(clip)
-assert cm.level_text(100).startswith("100%") and cm.level_text(0) == "Muted"
-assert abs(20 * cm.math.log10(cm.level_gain(200)) - 10) < 0.01   # twice as loud = +10 dB
+assert media.level_text(100).startswith("100%") and media.level_text(0) == "Muted"
+assert abs(20 * math.log10(media.level_gain(200)) - 10) < 0.01   # twice as loud = +10 dB
 print("remix PASS")
 
 # a short piece to listen to, from a point in the clip
 piece = root / "piece.mp4"
-cm.remix_audio(clip, 300, 100, piece, seconds=1.5, start=2.0)
-assert abs(cm.media_duration(piece) - 1.5) < 0.3 and cm.audio_tracks(piece) == 3
+media.remix_audio(clip, 300, 100, piece, seconds=1.5, start=2.0)
+assert abs(media.media_duration(piece) - 1.5) < 0.3 and media.audio_tracks(piece) == 3
 print("preview piece PASS")
 
 # the viewer's Sound panel: V opens it, the volume bars move, Enter saves through the controller
 from PySide6 import QtGui
 press = lambda w, k: QtWidgets.QApplication.sendEvent(w, QtGui.QKeyEvent(QtCore.QEvent.KeyPress, k, Qt.NoModifier))
-viewer = cm.Viewer(ctl)
+viewer = ui_viewer.Viewer(ctl)
 viewer.open([clip])
 for _ in range(20):
     app.processEvents()
@@ -123,14 +124,14 @@ assert not viewer.isVisible() and went == ["bar"]
 viewer.open([clip])                              # from a notice: Back just closes
 viewer.go_back()
 assert not viewer.isVisible() and went == ["bar"]
-gallery = cm.Gallery(ctl, viewer)
+gallery = ui_gallery.Gallery(ctl, viewer)
 gallery.open(back_to=lambda: went.append("bar2"))
 gallery.marked = {clip}
 gallery.go_back()                                # a selection goes first
 assert gallery.isVisible() and not gallery.marked
 gallery.go_back()
 assert not gallery.isVisible() and went[-1] == "bar2"
-settings = cm.Settings(ctl)
+settings = ui_settings.Settings(ctl)
 settings.open((1920, 1080), back_to=lambda: went.append("bar3"))
 press(settings, Qt.Key_Escape)
 assert not settings.isVisible() and went[-1] == "bar3"

@@ -10,18 +10,18 @@ from pathlib import Path
 repo, src = sys.argv[1:3]
 rounds = int(sys.argv[3]) if len(sys.argv) > 3 else 40
 sys.path.insert(0, repo)
-import capture_menu as cm
+from capturemenu import capture_controller, input_devices, preferences, ui_viewer
 from PySide6 import QtCore, QtGui, QtWidgets
 from PySide6.QtCore import Qt
 app = QtWidgets.QApplication([])
 root = Path(tempfile.mkdtemp())
-cm.STATE_PATH = root / "state.json"
+preferences.STATE_PATH = root / "state.json"
 clip = root / "Clips" / "Desktop" / Path(src).name
 clip.parent.mkdir(parents=True)
 shutil.copy(src, clip)
-ctl = cm.Controller(dict(cm.DEFAULTS, clips_dir=str(root / "Clips")))
-v = cm.Viewer(ctl)
-pad = cm.Gamepad(dict(cm.DEFAULTS))          # the controller reader, as in the app
+ctl = capture_controller.Controller(dict(preferences.DEFAULTS, clips_dir=str(root / "Clips")))
+v = ui_viewer.Viewer(ctl)
+pad = input_devices.Gamepad(dict(preferences.DEFAULTS))          # the controller reader, as in the app
 pad.connected.connect(lambda name, on: print("controller", "connected" if on else "gone", name, flush=True))
 pad.start()
 log = open(root / "stack.txt", "w")

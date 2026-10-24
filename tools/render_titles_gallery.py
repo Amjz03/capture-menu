@@ -1,13 +1,23 @@
 import sys, os, time, tempfile, subprocess, shutil
 from pathlib import Path
 sys.path.insert(0, sys.argv[1]); out = Path(sys.argv[2]); out.mkdir(exist_ok=True)
-import capture_menu as cm
-cm.MOTION_MS = 0     # stills: the focus has already grown into place
+from capturemenu import (
+    capture_controller,
+    input_devices,
+    media,
+    preferences,
+    ui_gallery,
+    ui_menu,
+    ui_notices,
+    ui_theme,
+    ui_viewer,
+)
+ui_theme.MOTION_MS = 0     # stills: the focus has already grown into place
 from PySide6 import QtWidgets, QtGui, QtCore
 from PySide6.QtCore import Qt
 app = QtWidgets.QApplication([])
 sys.path.insert(0, str(Path(__file__).resolve().parent)); from scene import draw_scene, game_name, frosted, is_page
-cm.STATE_PATH = Path(tempfile.mkdtemp()) / "state.json"
+preferences.STATE_PATH = Path(tempfile.mkdtemp()) / "state.json"
 W, H = 1920, 1080
 root = Path(tempfile.mkdtemp()); work = Path(tempfile.mkdtemp())
 game_bg = QtGui.QPixmap.fromImage(draw_scene(W, H, "dusk", 7))
@@ -31,12 +41,12 @@ for game, name, pal, seed, secs, ago, fav in specs:
                         "-f", "lavfi", "-i", "sine=f=800", "-map", "0", "-map", "1", "-map", "2", "-map", "3", "-t", "3",
                         "-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p", "-c:a", "aac", str(dst)], check=True)
     os.utime(dst, (now - ago,) * 2)
-ctl = cm.Controller(dict(cm.DEFAULTS, clips_dir=str(root))); ctl.refresh_status = lambda: None
+ctl = capture_controller.Controller(dict(preferences.DEFAULTS, clips_dir=str(root))); ctl.refresh_status = lambda: None
 for game, name, *_r, fav in specs:
-    p = root / game / name; cm.make_thumb(p, ctl.thumbs_dir)
+    p = root / game / name; media.make_thumb(p, ctl.thumbs_dir)
     if p.suffix != ".png": ctl.lengths[p] = [s[4] for s in specs if s[1] == name][0]
     if fav: ctl.toggle_favorite(p)
-viewer = cm.Viewer(ctl); m = cm.Menu(ctl, viewer); gallery = cm.Gallery(ctl, viewer); m.gallery = gallery
+viewer = ui_viewer.Viewer(ctl); m = ui_menu.Menu(ctl, viewer); gallery = ui_gallery.Gallery(ctl, viewer); m.gallery = gallery
 ctl.last_storage = {"used_gb": 214.3, "free_gb": 812, "limit_gb": 200, "over": True, "low": False}
 def pump(n=6):
     for _ in range(n): app.processEvents()
@@ -45,12 +55,12 @@ def compose(name, *layers):
     p = QtGui.QPainter(canvas)
     for pm, x, y in layers: p.drawPixmap(x, y, pm)
     p.end(); canvas.save(str(out / name))
-cm.INPUT.set("keyboard")
+input_devices.input_mode().set("keyboard")
 items = ctl.all_captures()
 ctl.set_meta(items[0], "Boss down on the first try", "no damage taken")
 ctl.set_meta(items[2], "Boss fight, phase 2", "")
 # toast with the Trim button
-t = cm.Toast(); t.thumbs_dir = ctl.thumbs_dir; t.hotkey = "ALT+C"
+t = ui_notices.Toast(); t.thumbs_dir = ctl.thumbs_dir; t.hotkey = "ALT+C"
 t.show_capture("Last 1 minute", str(items[0])); pump()
 compose("r1_toast_trim.png", (t.grab(), W - t.width() - 28, 28))
 # viewer with title + note, then the rename panel

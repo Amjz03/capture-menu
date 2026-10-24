@@ -4,8 +4,8 @@ name: Release
 # CaptureMenu.zip (the Python version, no tests or screenshots), and publishes them as a release.
 # Three ways to start it: change the VERSION file on main (e.g. to v0.0.2), run it from the
 # Actions tab with a version, or push a tag that starts with "v".
-# Both .exe files are signed through SignPath (free for open source) once the SIGNPATH_API_TOKEN
-# secret and the SIGNPATH_ORGANIZATION_ID variable are set; until then they are published unsigned.
+# Signing requires an approved SignPath project/policy and certificate, plus SIGNPATH_API_TOKEN
+# and SIGNPATH_ORGANIZATION_ID. If not configured, signing is skipped and artifacts are unsigned.
 on:
   workflow_dispatch:
     inputs:
@@ -22,7 +22,22 @@ permissions:
   contents: write
 
 jobs:
+  tests:
+    runs-on: windows-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install test dependencies
+        run: python -m pip install --disable-pip-version-check -r requirements.txt
+      - name: Run isolated release regression tests
+        run: python tests/run_release_tests.py
+
   release:
+    needs: tests
     runs-on: windows-latest
     env:
       SIGN: ${{ secrets.SIGNPATH_API_TOKEN != '' && vars.SIGNPATH_ORGANIZATION_ID != '' }}
@@ -56,15 +71,15 @@ jobs:
         env:
           TAG: ${{ steps.version.outputs.tag }}
         run: |
-          sed -i "s/^APP_VERSION = \"[^\"]*\"/APP_VERSION = \"${TAG#v}\"/" capture_menu.py
-          grep -n "^APP_VERSION" capture_menu.py
+          sed -i "s/^APP_VERSION = \"[^\"]*\"/APP_VERSION = \"${TAG#v}\"/" capturemenu/version.py
+          grep -n "^APP_VERSION" capturemenu/version.py
 
       - name: Build CaptureMenu.exe
         if: steps.version.outputs.skip != 'true'
         run: |
           python -m pip install --disable-pip-version-check -q -r requirements.txt pyinstaller
           python -m PyInstaller --noconfirm --windowed --name CaptureMenu --icon assets/icon.ico \
-            --add-data "assets;assets" --collect-all sdl2dll --collect-all obsws_python capture_menu.py
+            --add-data "assets;assets" --collect-submodules capturemenu --collect-all sdl2dll --collect-all obsws_python capture_menu.py
           test -f dist/CaptureMenu/CaptureMenu.exe
 
       - name: Upload CaptureMenu.exe for signing
@@ -137,7 +152,7 @@ jobs:
         if: steps.version.outputs.skip != 'true'
         run: |
           mkdir -p out/CaptureMenu
-          cp -r assets capture_menu.py config.json requirements.txt README.md LICENSE \
+          cp -r assets capturemenu capture_menu.py config.json requirements.txt README.md LICENSE \
                 installer/Setup.cmd installer/setup.ps1 installer/Uninstall.cmd installer/uninstall.ps1 out/CaptureMenu/
           cd out && 7z a -bso0 ../CaptureMenu.zip CaptureMenu
 

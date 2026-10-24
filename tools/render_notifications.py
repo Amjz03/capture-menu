@@ -1,8 +1,8 @@
 import sys, tempfile, subprocess
 from pathlib import Path
 sys.path.insert(0, sys.argv[1]); out = Path(sys.argv[2])
-import capture_menu as cm
-cm.MOTION_MS = 0     # stills: the focus has already grown into place
+from capturemenu import input_devices, ui_notices, ui_theme
+ui_theme.MOTION_MS = 0     # stills: the focus has already grown into place
 from PySide6 import QtWidgets, QtGui, QtCore
 from PySide6.QtCore import Qt
 app = QtWidgets.QApplication([])
@@ -25,7 +25,7 @@ trim = capture(game_name("Neon Highway"), "Clip_2026-10-16_21-10-00_trim.mp4", "
 share = capture(game_name("Neon Highway"), "Clip_2026-10-16_21-04-33_30s_discord10.mp4", "dusk", 7)
 
 def toast(setup):
-    t = cm.Toast(); t.thumbs_dir = thumbs; t.hotkey = "ALT+C"; t.pad_button = "create"
+    t = ui_notices.Toast(); t.thumbs_dir = thumbs; t.hotkey = "ALT+C"; t.pad_button = "create"
     setup(t)
     for _ in range(4): app.processEvents()
     return t.grab()
@@ -51,7 +51,7 @@ rows = [
 ]
 shots = []
 for label, mode, fn in rows:
-    cm.INPUT.set(mode); shots.append((label, toast(fn)))
+    input_devices.input_mode().set(mode); shots.append((label, toast(fn)))
 
 size = lambda pm: pm.deviceIndependentSize().toSize()   # grabs come at the screen's scale
 W, colw, pad, gap = 1920, 940, 28, 18

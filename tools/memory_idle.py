@@ -8,15 +8,24 @@ t0 = time.perf_counter()
 sys.path.insert(0, sys.argv[1])
 from PySide6 import QtWidgets, QtCore
 app = QtWidgets.QApplication([])
-import capture_menu as cm
+from capturemenu import (
+    capture_controller,
+    input_devices,
+    preferences,
+    ui_gallery,
+    ui_menu,
+    ui_notices,
+    ui_settings,
+    ui_viewer,
+)
 root = Path(tempfile.mkdtemp()); (root / "Game").mkdir()
 clip = root / "Game" / "Clip_2026-10-16_20-00-00_30s.mp4"
 subprocess.run(["ffmpeg", "-v", "error", "-f", "lavfi", "-i", "testsrc2=size=1280x720:rate=30", "-t", "3",
                 "-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p", str(clip)], check=True)
-ctl = cm.Controller(dict(cm.DEFAULTS, clips_dir=str(root))); ctl.refresh_status = lambda: None
-viewer = cm.Viewer(ctl); menu = cm.Menu(ctl, viewer); gallery = cm.Gallery(ctl, viewer)
-settings = cm.Settings(ctl) if hasattr(cm, "Settings") else None
-toast = cm.Toast(); sounds = cm.Sounds(True)
+ctl = capture_controller.Controller(dict(preferences.DEFAULTS, clips_dir=str(root))); ctl.refresh_status = lambda: None
+viewer = ui_viewer.Viewer(ctl); menu = ui_menu.Menu(ctl, viewer); gallery = ui_gallery.Gallery(ctl, viewer)
+settings = ui_settings.Settings(ctl)
+toast = ui_notices.Toast(); sounds = input_devices.Sounds(True)
 app.processEvents()
 print(f"idle after startup: {rss()} MB in {round((time.perf_counter()-t0)*1000)} ms")
 viewer.open([clip], 0)

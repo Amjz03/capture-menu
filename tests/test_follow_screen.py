@@ -1,19 +1,19 @@
 import sys, time, tempfile
 sys.path.insert(0, sys.argv[1])
-import capture_menu as cm
+from capturemenu import capture_controller, obs_client, preferences, windows
 from PySide6 import QtCore
 
 MON = {"itemName": "LG ULTRAGEAR: 2560x1440 @ 0,0 (Primary Monitor)", "itemValue": "\\\\?\\DISPLAY#GSM5BBF#1", "itemEnabled": True}
 TV  = {"itemName": "SAMSUNG: 3840x2160 @ 2560,0", "itemValue": "\\\\?\\DISPLAY#SAM7056#2", "itemEnabled": True}
-assert cm.pick_monitor_item([MON, TV], (2560, 0, 6400, 2160)) is TV
-assert cm.pick_monitor_item([MON, TV], (0, 0, 2560, 1440)) is MON
+assert windows.pick_monitor_item([MON, TV], (2560, 0, 6400, 2160)) is TV
+assert windows.pick_monitor_item([MON, TV], (0, 0, 2560, 1440)) is MON
 # "TV only" mode: Windows moves the TV to 0,0 -> no position match, matched by size
-assert cm.pick_monitor_item([TV | {"itemName": "SAMSUNG: 3840x2160 @ 0,0"}], (0, 0, 3840, 2160))["itemValue"] == TV["itemValue"]
-assert cm.pick_monitor_item([MON], (5000, 0, 6000, 1000)) is None
+assert windows.pick_monitor_item([TV | {"itemName": "SAMSUNG: 3840x2160 @ 0,0"}], (0, 0, 3840, 2160))["itemValue"] == TV["itemValue"]
+assert windows.pick_monitor_item([MON], (5000, 0, 6000, 1000)) is None
 
-class FakeObs(cm.Obs):
+class FakeObs(obs_client.Obs):
     def __init__(self, items, current):
-        super().__init__(dict(cm.DEFAULTS)); self.items, self.settings, self.calls = items, {"monitor_id": current}, []
+        super().__init__(dict(preferences.DEFAULTS)); self.items, self.settings, self.calls = items, {"monitor_id": current}, []
     def raw(self, req, data=None):
         self.calls.append(req)
         return {"GetInputList": {"inputs": [{"inputName": "Display Capture"}]},
@@ -38,14 +38,14 @@ print("capture follow PASS")
 
 # the controller only moves the capture for fullscreen windows that aren't ours
 app = QtCore.QCoreApplication([])
-ctl = cm.Controller(dict(cm.DEFAULTS, clips_dir=tempfile.mkdtemp()))
+ctl = capture_controller.Controller(dict(preferences.DEFAULTS, clips_dir=tempfile.mkdtemp()))
 seen = []
 ctl.obs = type("O", (), {"capture_monitor": lambda self, rect, only_if_missing=False: seen.append((rect, only_if_missing)) or None})()
 ctl._following = __import__("threading").Lock()
 for info in [None, {"own": True, "fullscreen": True, "rect": (0, 0, 1, 1), "device": "x"},
              {"own": False, "fullscreen": True, "rect": (2560, 0, 6400, 2160), "device": "\\\\.\\DISPLAY2"},
              {"own": False, "fullscreen": False, "rect": (0, 0, 2560, 1440), "device": "\\\\.\\DISPLAY1"}]:
-    cm.foreground_screen = lambda info=info: info
+    windows.foreground_screen = lambda info=info: info
     ctl._follow_tick(); time.sleep(0.2)
 assert seen == [((2560, 0, 6400, 2160), False), ((0, 0, 2560, 1440), True)], seen
 print("follow tick PASS")

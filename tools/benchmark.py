@@ -2,12 +2,12 @@ import sys, time, tempfile, subprocess, os, shutil, resource, hashlib, statistic
 from pathlib import Path
 T0 = time.perf_counter()
 sys.path.insert(0, sys.argv[1]); N = int(sys.argv[2])
-import capture_menu as cm
+from capturemenu import capture_controller, catalog, preferences, ui_gallery, ui_menu, ui_notices, ui_viewer
 from PySide6 import QtWidgets, QtCore, QtGui
 from PySide6.QtCore import Qt
 t_import = time.perf_counter() - T0
 app = QtWidgets.QApplication([])
-cm.STATE_PATH = Path(tempfile.mkdtemp()) / "state.json"
+preferences.STATE_PATH = Path(tempfile.mkdtemp()) / "state.json"
 root = Path(tempfile.mkdtemp())
 # N captures across 12 games: one real clip/png copied around; thumbnails pre-made (as after first use)
 seed_clip = root / "seed.mp4"; seed_png = root / "seed.png"; seed_jpg = root / "seed.jpg"
@@ -30,9 +30,9 @@ def ms(fn, reps=1):
 rss = lambda: resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024
 r = {}
 t = time.perf_counter()
-ctl = cm.Controller(dict(cm.DEFAULTS, clips_dir=str(root))); ctl.refresh_status = lambda: None
-viewer = cm.Viewer(ctl); menu = cm.Menu(ctl, viewer); gallery = cm.Gallery(ctl, viewer); menu.gallery = gallery
-toast = cm.Toast(); toast.thumbs_dir = ctl.thumbs_dir
+ctl = capture_controller.Controller(dict(preferences.DEFAULTS, clips_dir=str(root))); ctl.refresh_status = lambda: None
+viewer = ui_viewer.Viewer(ctl); menu = ui_menu.Menu(ctl, viewer); gallery = ui_gallery.Gallery(ctl, viewer); menu.gallery = gallery
+toast = ui_notices.Toast(); toast.thumbs_dir = ctl.thumbs_dir
 r["startup (windows built)"] = (time.perf_counter() - t) * 1000
 r["  of which: scan all captures"] = ms(ctl._scan_recent)
 r["open bar"] = ms(lambda: (menu.show_menu("Game 0"), menu.setGeometry(0, 0, 1920, 296), menu._place()), 5)
@@ -51,7 +51,7 @@ r["select all"] = ms(gallery.mark_all, 1)
 gallery.clear_marks(); gallery.close_gallery()
 r["open viewer"] = ms(lambda: viewer.open(ctl.all_captures(), 0), 1)
 viewer.close_viewer()
-r["storage check (walk folder)"] = ms(lambda: cm.folder_size_gb(root), 3)
+r["storage check (walk folder)"] = ms(lambda: catalog.folder_size_gb(root), 3)
 r["peak memory (MB)"] = rss()
 for k, v in r.items(): print(f"{k:34s} {v:8.0f}")
 print(f"{'python + Qt import':34s} {t_import * 1000:8.0f}")
