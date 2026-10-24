@@ -37,6 +37,7 @@ def pump(n=5):
 viewer.open([a, b], 0); pump()
 assert "Triple kill" in viewer.title.text() and "Neon Highway" in viewer.sub.text() and viewer.note.text() == "first try"
 viewer.start_edit(); assert viewer.editing and viewer.title_edit.text() == "Triple kill on the bridge"
+assert viewer.title_edit.isVisible() and not viewer.title.isVisible() and not hasattr(viewer, "edit_panel"), "in place, no window"
 assert cm.pad_key(cm.A, menu, viewer, gallery) is None and cm.pad_key(cm.B, menu, viewer, gallery) == Qt.Key_Escape
 viewer.title_edit.setText("Clutch 1v4"); viewer.note_edit.setText(""); viewer.save_edit()
 assert ctl.title_of(a) == "Clutch 1v4" and "note" not in ctl.meta(a) and not viewer.note.isVisible()

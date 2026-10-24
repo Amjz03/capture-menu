@@ -3873,9 +3873,6 @@ QLabel {{ color: {INK}; background: transparent; }}
            border-bottom-left-radius: 19px; border-bottom-right-radius: 19px; }}
 #footer {{ border-top: 1px solid rgba(255,255,255,16); }}
 #rule {{ background: rgba(255,255,255,40); }}
-#dialog {{ background: rgb(24,29,44); border: 1px solid rgba(255,255,255,26); border-radius: 22px; }}
-#dim {{ background: rgba(0,0,0,150); border-radius: 20px; }}
-#fieldLabel {{ font-size: 14px; font-weight: 600; }}
 QPushButton {{
     color: {INK}; font-size: 15px; font-weight: 600;
     background: rgba(255,255,255,10); border: 1px solid rgba(255,255,255,30); border-radius: 23px;
@@ -3897,13 +3894,14 @@ QPushButton#pill {{ min-height: 34px; padding: 0 16px; font-size: 13px; border-r
 QPushButton#ctl {{ padding: 0; min-width: 40px; max-width: 40px; min-height: 40px; border: 3px solid transparent;
                    background: transparent; border-radius: 20px; }}
 QPushButton#ctl:hover {{ background: rgba(255,255,255,24); }}
-QPushButton#noteToggle {{ text-align: left; padding: 0 16px; font-weight: 400; color: {MUTED}; }}
 QLineEdit {{
     color: {INK}; background: rgba(255,255,255,10); border: 1px solid rgba(255,255,255,40);
     border-radius: 14px; padding: 0 16px; min-height: 50px; font-size: 16px;
     selection-background-color: {BLUE}; selection-color: white;    /* typing replaces what's selected */
 }}
 QLineEdit:focus {{ border: 2px solid {INK}; padding: 0 15px; }}
+QLineEdit#titleEdit {{ font-family: {DISPLAY}; font-size: 30px; font-weight: 600; min-height: 54px; min-width: 520px; }}
+QLineEdit#noteEdit {{ font-size: 15px; min-height: 38px; min-width: 520px; }}
 QSlider::groove:horizontal {{ height: 4px; background: rgba(255,255,255,46); border-radius: 2px; }}
 QSlider::sub-page:horizontal {{ background: {INK}; border-radius: 2px; }}
 QSlider::handle:horizontal {{ width: 16px; height: 16px; margin: -6px 0; border-radius: 8px; background: white; }}
@@ -4425,6 +4423,12 @@ class Viewer(QtWidgets.QWidget):
         title_row.setSpacing(14)
         self.title = QtWidgets.QLabel(objectName="vTitle")
         title_row.addWidget(self.title)
+        # Rename: the title itself turns into the field, no window over the video
+        self.title_edit = QtWidgets.QLineEdit(objectName="titleEdit",
+                                              placeholderText=tr("Title, e.g. Boss down on the first try"))
+        self.title_edit.addAction(qicon("pencil"), QtWidgets.QLineEdit.LeadingPosition)
+        self.title_edit.setMaxLength(80)
+        title_row.addWidget(self.title_edit)
         self.rename_btn = button(title_row, "Rename", self.start_edit, "pencil", "pill")
         title_row.addStretch()
         titles.addLayout(title_row)
@@ -4433,6 +4437,15 @@ class Viewer(QtWidgets.QWidget):
         self.note = QtWidgets.QLabel(objectName="vNote")
         self.note.hide()
         titles.addWidget(self.note)
+        self.note_edit = QtWidgets.QLineEdit(objectName="noteEdit", placeholderText=tr("Note (optional)"))
+        self.note_edit.setMaxLength(200)
+        titles.addWidget(self.note_edit, 0, lead())
+        self.edit_hint = QtWidgets.QLabel(objectName="vNote")   # what to do now, or to click when Windows keeps the keys
+        titles.addWidget(self.edit_hint)
+        for w in (self.title_edit, self.note_edit):
+            w.returnPressed.connect(self.save_edit)
+            w.hide()
+        self.edit_hint.hide()
         head.addLayout(titles, 1)
         self.counter = QtWidgets.QLabel(objectName="hint")
         head.addWidget(self.counter, 0, Qt.AlignTop)
@@ -4634,43 +4647,6 @@ class Viewer(QtWidgets.QWidget):
             foot.addWidget(w)
         lay.addWidget(self.footer)
 
-        # ---- Rename: a small dialog over the dimmed video
-        self.edit_dim = QtWidgets.QWidget(self, objectName="dim")
-        self.edit_dim.setAttribute(Qt.WA_StyledBackground)
-        self.edit_panel = QtWidgets.QFrame(self, objectName="dialog")
-        el = QtWidgets.QVBoxLayout(self.edit_panel)
-        el.setContentsMargins(32, 28, 32, 28)
-        el.setSpacing(6)
-        self.edit_heading = QtWidgets.QLabel(tr("Rename"), objectName="panelTitle")
-        el.addWidget(self.edit_heading)
-        el.addWidget(QtWidgets.QLabel(tr("Type a new name, then press Enter"), objectName="panelSub"))
-        el.addSpacing(16)
-        el.addWidget(QtWidgets.QLabel(tr("Title"), objectName="fieldLabel"))
-        el.addSpacing(4)
-        self.title_edit = QtWidgets.QLineEdit(placeholderText=tr("Title, e.g. Boss down on the first try"))
-        self.title_edit.addAction(qicon("pencil"), QtWidgets.QLineEdit.LeadingPosition)   # a field to type in
-        self.note_edit = QtWidgets.QLineEdit(placeholderText=tr("Note (optional)"))
-        self.title_edit.setMaxLength(80)
-        self.note_edit.setMaxLength(200)
-        for w in (self.title_edit, self.note_edit):
-            w.returnPressed.connect(self.save_edit)
-        el.addWidget(self.title_edit)
-        el.addSpacing(10)
-        self.note_toggle = QtWidgets.QPushButton("+  " + tr("Add a note (optional)"), objectName="noteToggle")
-        self.note_toggle.setCursor(Qt.PointingHandCursor)
-        self.note_toggle.clicked.connect(self._show_note_field)
-        el.addWidget(self.note_toggle)
-        el.addWidget(self.note_edit)
-        el.addSpacing(18)
-        erow = QtWidgets.QHBoxLayout()
-        erow.setSpacing(10)
-        erow.addStretch()
-        button(erow, "Cancel", self.cancel_edit)
-        button(erow, "Save title", self.save_edit, None, "primary")
-        el.addLayout(erow)
-        self.edit_panel.setFixedWidth(600)
-        self.edit_dim.hide()
-        self.edit_panel.hide()
 
         self._disarm = QtCore.QTimer(self, singleShot=True, timeout=self._reset_delete)
         for b in self.findChildren(QtWidgets.QPushButton):
@@ -4857,7 +4833,6 @@ class Viewer(QtWidgets.QWidget):
         self.layout().setContentsMargins(side, 24 if self.full else 36, side, 24)
         if self.items and self.stage.currentWidget() is self.image:
             QtCore.QTimer.singleShot(0, self._fit_image)    # once the layout has settled
-        self._place_dialog()
 
     def _on_error(self, *_):
         path = self.current if self.items else None
@@ -4981,8 +4956,8 @@ class Viewer(QtWidgets.QWidget):
         meta = self.ctl.meta(self.current)
         self.title_edit.setText(meta.get("title", ""))
         self.note_edit.setText(meta.get("note", ""))
-        self.note_edit.setVisible(bool(meta.get("note")))
-        self.note_toggle.setVisible(not meta.get("note"))
+        if self.full:
+            self.toggle_full()             # the title is in the header
         if self.player is not None:
             self.player.pause()
         self._set_trimming(False)
@@ -4992,12 +4967,18 @@ class Viewer(QtWidgets.QWidget):
         bring_to_front(self, keyboard=True)     # after a controller press the keyboard may still be on the game
         self.title_edit.setFocus()
         self.title_edit.selectAll()
+        self._edit_hint()
 
-    def _show_note_field(self):
-        self.note_toggle.hide()
-        self.note_edit.show()
-        self.note_edit.setFocus()
-        self._place_dialog()
+    def _edit_hint(self):
+        """Says what to do now; if Windows kept the keyboard on another window, says to click the name
+        (a click always brings it here)."""
+        self.edit_hint.setText(tr("Type a new name, then press Enter") if self.isActiveWindow()
+                               else tr("Click the name, then type"))
+
+    def changeEvent(self, e):
+        if e.type() == QtCore.QEvent.ActivationChange and self.editing:
+            self._edit_hint()
+        super().changeEvent(e)
 
     def save_edit(self):
         if self.editing:
@@ -5217,22 +5198,13 @@ class Viewer(QtWidgets.QWidget):
         self.sound_buttons.setVisible(self.sounding)
         self.share_buttons.setVisible(self.sharing)
         self.full_btn.setIcon(qicon("minimize" if full else "maximize"))
-        self.edit_dim.setVisible(self.editing)
-        self.edit_panel.setVisible(self.editing)
-        if self.editing:
-            self._place_dialog()
-            self.edit_dim.raise_()
-            self.edit_panel.raise_()
+        editing = self.editing
+        for w in (self.title_edit, self.note_edit, self.edit_hint):
+            w.setVisible(editing)
+        self.title.setVisible(not editing)
+        self.rename_btn.setVisible(not editing)
+        self.note.setVisible(not editing and bool(self.note.text()))
         self.update_hints()
-
-    def _place_dialog(self):
-        if not self.edit_panel.isVisible():
-            return
-        card = self.card.geometry()
-        self.edit_dim.setGeometry(card)
-        w = self.edit_panel.width()
-        h = self.edit_panel.layout().totalHeightForWidth(w) if self.edit_panel.layout().hasHeightForWidth()             else self.edit_panel.sizeHint().height()
-        self.edit_panel.setGeometry(card.center().x() - w // 2, card.center().y() - h // 2, w, h)
 
     def update_hints(self):
         pad, mode = INPUT.mode != "keyboard", INPUT.mode
