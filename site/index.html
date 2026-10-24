@@ -11,52 +11,51 @@
   <meta property="og:url" content="https://amjz03.github.io/capture-menu/">
   <meta property="og:type" content="website">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="theme-color" content="#07080c">
+  <meta name="theme-color" content="#0b0c10">
   <link rel="icon" href="assets/icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Alexandria:wght@400;500;700;800&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=6">
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&family=IBM+Plex+Sans+Arabic:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css?v=8">
 </head>
 <body>
-  <div class="grain" aria-hidden="true"></div>
+  <a class="skip" href="#main" data-i18n="skip">Skip to content</a>
 
   <header class="nav">
-    <a class="brand" href="#top"><img src="assets/icon.png" alt="" width="34" height="34"><span>Capture Menu</span></a>
-    <nav class="links">
+    <a class="brand" href="#top"><img src="assets/icon.png" alt="" width="28" height="28"><span>Capture Menu</span></a>
+    <nav class="links" aria-label="Sections">
       <a href="#try" data-i18n="nav_try">Try it</a>
       <a href="#features" data-i18n="nav_features">Features</a>
       <a href="#faq" data-i18n="nav_faq">FAQ</a>
+      <a href="https://github.com/Amjz03/capture-menu">GitHub</a>
     </nav>
     <div class="nav-end">
-      <button class="lang" id="lang" type="button" aria-label="Switch language">ع</button>
+      <button class="lang" id="lang" type="button" aria-label="Switch language">العربية</button>
       <a class="btn btn-small" href="https://github.com/Amjz03/capture-menu/releases/latest/download/CaptureMenu-Setup.exe" data-i18n="download_short">Download</a>
     </div>
   </header>
 
   <main id="top">
-    <!-- hero -->
-    <section class="hero">
+    <section class="hero" id="main">
       <div class="hero-copy reveal">
-        <p class="kicker"><span class="rec-dot"></span><span data-i18n="kicker">Free · Open source · Windows 10 &amp; 11</span></p>
-        <h1 data-i18n-html="h1">The <em>PS5 Create button</em>, on your PC.</h1>
-        <p class="lede" data-i18n="lede">Capture Menu keeps the last 30 minutes of any game. Press once to pick what to save. Press twice to save the last 30 seconds, instantly.</p>
+        <p class="kicker" data-i18n="kicker">Free and open source, for Windows 10 and 11</p>
+        <h1 data-i18n-html="h1">The PS5 Create button, <span>on your PC.</span></h1>
+        <p class="lede" data-i18n="lede">Capture Menu keeps the last 30 minutes of any game. Press once to pick what to save. Press twice to save the last 30 seconds.</p>
         <div class="ctas">
           <a class="btn" href="https://github.com/Amjz03/capture-menu/releases/latest/download/CaptureMenu-Setup.exe">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0-5-5m5 5 5-5M4 20h16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 19.5h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
             <span data-i18n="download">Download for Windows</span>
           </a>
-          <a class="btn btn-ghost" href="https://github.com/Amjz03/capture-menu" data-i18n="github">View on GitHub</a>
+          <a class="link" href="https://github.com/Amjz03/capture-menu"><span data-i18n="github">Source on GitHub</span> <span class="arrow" aria-hidden="true">→</span></a>
         </div>
-        <p class="fine" data-i18n="fine">About 50 MB · No account · No ads · Sets up OBS and FFmpeg for you</p>
+        <p class="fine" data-i18n="fine">About 50 MB. No account, no ads. Setup installs OBS and FFmpeg for you.</p>
       </div>
 
       <div class="hero-stage reveal">
         <div class="screen">
-          <video id="hero-video" autoplay muted loop playsinline preload="auto" poster="assets/picker-en.jpg">
+          <video id="hero-video" autoplay muted loop playsinline preload="auto" poster="assets/picker-en.jpg" aria-label="Capture Menu in Red Dead Redemption 2">
             <source src="assets/hero-en.mp4" type="video/mp4">
           </video>
-          <div class="rec-pill"><span></span>REC</div>
         </div>
         <div class="buffer" id="buffer">
           <div class="buffer-head"><span data-i18n="buf_q">How much do you want to keep?</span><b id="buf-pick"></b></div>
@@ -67,23 +66,21 @@
       </div>
     </section>
 
-    <!-- input strip -->
     <section class="inputs reveal" aria-label="Works with">
-      <div class="input shortcut"><span class="key">Alt</span><b>+</b><span class="key">C</span></div>
-      <span class="slash">/</span>
-      <div class="input"><span class="logo ps"><svg viewBox="0 0 24 24"><path id="ps-path"/></svg></span><span>PlayStation</span><small>Create</small></div>
-      <span class="slash">/</span>
-      <div class="input"><span class="logo xbox"><svg viewBox="0 0 24 24"><path id="xbox-path"/></svg></span><span>Xbox</span><small>View</small></div>
-      <span class="slash">/</span>
+      <span class="inputs-label" data-i18n="works_with">Works with</span>
+      <div class="input shortcut"><kbd>Alt</kbd><span>+</span><kbd>C</kbd></div>
+      <span class="slash" aria-hidden="true">/</span>
+      <div class="input"><svg class="logo" viewBox="0 0 24 24" aria-hidden="true"><path id="ps-path"/></svg><span>PlayStation</span><small>Create</small></div>
+      <span class="slash" aria-hidden="true">/</span>
+      <div class="input"><svg class="logo" viewBox="0 0 24 24" aria-hidden="true"><path id="xbox-path"/></svg><span>Xbox</span><small>View</small></div>
+      <span class="slash" aria-hidden="true">/</span>
       <div class="input"><span data-i18n="more_pads">and most other controllers</span></div>
     </section>
 
-    <!-- try it -->
     <section class="try" id="try">
-      <div class="section-head reveal">
-        <p class="eyebrow" data-i18n="try_eyebrow">Try the whole app, right here</p>
-        <h2 data-i18n-html="try_h">Press <span class="key key-inline">Alt</span> + <span class="key key-inline">C</span></h2>
-        <p data-i18n="try_p">Once opens the real menu: move with the arrows or the mouse, pick with Enter. Save 15 seconds up to 30 minutes, take a screenshot, record, open your captures. Twice saves the last 30 seconds. A controller plugged in works too.</p>
+      <div class="section-head split reveal">
+        <h2 data-i18n="try_h">Try the menu</h2>
+        <p data-i18n="try_p">This is the real menu, rebuilt in the page. Press Alt + C once to open it, then move with the arrows or the mouse and pick with Enter. Press twice to save the last 30 seconds. A controller plugged into this computer works too.</p>
       </div>
       <div class="try-stage reveal" id="stage" tabindex="0" aria-label="Demo: press Alt + C">
         <div class="pc" id="pc">
@@ -94,43 +91,45 @@
           <img class="cm-page" id="cm-page" alt="">
           <div class="try-flash" id="try-flash"></div>
         </div>
-        <div class="try-hint"><span data-i18n="try_hint">Press Alt + C, click here, or use the buttons below</span></div>
+        <div class="try-hint"><span data-i18n="try_hint">Press Alt + C, or click here</span></div>
         <div class="page-hint" data-i18n="page_hint">Click or press Esc to go back</div>
       </div>
-      <div class="try-buttons reveal">
-        <button class="btn btn-ghost" id="press-once" type="button"><span class="times">×1</span><span data-i18n="press_once">Press once</span></button>
-        <button class="btn" id="press-twice" type="button"><span class="times">×2</span><span data-i18n="press_twice">Press twice</span></button>
+      <div class="try-bar reveal">
+        <div class="try-buttons">
+          <button class="btn btn-quiet" id="press-once" type="button" data-i18n="press_once">Press once</button>
+          <button class="btn btn-quiet" id="press-twice" type="button" data-i18n="press_twice">Press twice</button>
+        </div>
+        <p class="keys-legend" aria-hidden="true"><span><kbd>←</kbd><kbd>→</kbd> <span data-i18n="k_move">move</span></span><span><kbd>Enter</kbd> <span data-i18n="k_pick">pick</span></span><span><kbd>1</kbd>–<kbd>8</kbd> <span data-i18n="k_save">save a length</span></span><span><kbd>Esc</kbd> <span data-i18n="k_close">close</span></span></p>
         <p class="pad-status" id="pad-status" data-i18n="pad_none">No controller found. Plug one in and press any button.</p>
       </div>
     </section>
 
-    <!-- how it works -->
-    <section class="steps">
-      <div class="step reveal"><span class="num">01</span><h3 data-i18n="s1_h">Play</h3><p data-i18n="s1_p">It quietly keeps the last 30 minutes of your game, on any screen, with any graphics card.</p></div>
-      <div class="step reveal"><span class="num">02</span><h3 data-i18n="s2_h">Press</h3><p data-i18n="s2_p">Once for the menu over your game: save 15 seconds up to 30 minutes, screenshot or record. Twice to save the last 30 seconds.</p></div>
-      <div class="step reveal"><span class="num">03</span><h3 data-i18n="s3_h">Keep</h3><p data-i18n="s3_p">Every game gets its own folder. Watch it, trim it to the frame, share it to Discord or your phone.</p></div>
+    <section class="steps" aria-label="How it works">
+      <div class="step reveal"><span class="num">1</span><h3 data-i18n="s1_h">Play</h3><p data-i18n="s1_p">It quietly keeps the last 30 minutes of your game, on any screen, with any graphics card.</p></div>
+      <div class="step reveal"><span class="num">2</span><h3 data-i18n="s2_h">Press</h3><p data-i18n="s2_p">Once for the menu over your game: save 15 seconds up to 30 minutes, screenshot or record. Twice to save the last 30 seconds.</p></div>
+      <div class="step reveal"><span class="num">3</span><h3 data-i18n="s3_h">Keep</h3><p data-i18n="s3_p">Every game gets its own folder. Watch it, trim it to the frame, share it to Discord or your phone.</p></div>
     </section>
 
-    <!-- features -->
     <section class="features" id="features">
-      <div class="section-head reveal">
-        <p class="eyebrow" data-i18n="f_eyebrow">Everything in one button</p>
-        <h2 data-i18n="f_h">Made like a console. Built for PC.</h2>
+      <div class="section-head split reveal">
+        <h2 data-i18n="f_h">Everything after the press</h2>
+        <p data-i18n="f_p">Saving is one part. The rest of the app is built for what you do next with the clip, with a controller or a mouse.</p>
       </div>
-      <div class="bento">
-        <figure class="tile wide reveal"><img src="assets/picker-en.jpg" alt="" loading="lazy" data-src-lang><figcaption><h3 data-i18n="t1_h">Pick how much to keep</h3><p data-i18n="t1_p">The last 15 seconds, 1, 3, 5, 15 or 30 minutes, or everything. With the mouse, the keys or the d-pad.</p></figcaption></figure>
-        <figure class="tile reveal"><img src="assets/double-en.jpg" alt="" loading="lazy" data-src-lang><figcaption><h3 data-i18n="t2_h">Press twice, it's saved</h3><p data-i18n="t2_p">The last 30 seconds, without opening anything.</p></figcaption></figure>
-        <figure class="tile reveal"><img src="assets/twoways-en.jpg" alt="" loading="lazy" data-src-lang><figcaption><h3 data-i18n="t3_h">Every controller</h3><p data-i18n="t3_p">PlayStation / Xbox / most others, with button hints that match your pad.</p></figcaption></figure>
-        <figure class="tile wide reveal"><img src="assets/library-en.jpg" alt="" loading="lazy" data-src-lang><figcaption><h3 data-i18n="t4_h">A folder for every game</h3><p data-i18n="t4_p">Found automatically. Favorites, titles, notes, sizes, sorting.</p></figcaption></figure>
-        <figure class="tile reveal"><img src="assets/viewer-en.jpg" alt="" loading="lazy" data-src-lang><figcaption><h3 data-i18n="t5_h">Watch it right away</h3><p data-i18n="t5_p">A viewer with your voice and the game on their own tracks.</p></figcaption></figure>
-        <figure class="tile reveal"><img src="assets/trim-en.jpg" alt="" loading="lazy" data-src-lang><figcaption><h3 data-i18n="t6_h">Trim to the frame</h3><p data-i18n="t6_p">Then share a copy sized for Discord or your phone, straight to the clipboard.</p></figcaption></figure>
-        <figure class="tile reveal"><img src="assets/rec-en.jpg" alt="" loading="lazy" data-src-lang><figcaption><h3 data-i18n="t7_h">Record for hours</h3><p data-i18n="t7_p">A small REC timer while you record. Screenshots in full resolution.</p></figcaption></figure>
+      <figure class="row reveal"><img src="assets/picker-en.jpg" alt="" loading="lazy" data-src-lang><figcaption><h3 data-i18n="t1_h">Pick how much to keep</h3><p data-i18n="t1_p">The last 15 seconds, 1, 3, 5, 15 or 30 minutes, or everything. With the mouse, the keys or the d-pad.</p></figcaption></figure>
+      <figure class="row flip reveal"><img src="assets/library-en.jpg" alt="" loading="lazy" data-src-lang><figcaption><h3 data-i18n="t4_h">A folder for every game</h3><p data-i18n="t4_p">Found automatically. Favorites, titles, notes, sizes, sorting.</p></figcaption></figure>
+      <div class="grid">
+        <figure class="cell reveal"><img src="assets/viewer-en.jpg" alt="" loading="lazy" data-src-lang><figcaption><h3 data-i18n="t5_h">Watch it right away</h3><p data-i18n="t5_p">A viewer with your voice and the game on their own tracks.</p></figcaption></figure>
+        <figure class="cell reveal"><img src="assets/trim-en.jpg" alt="" loading="lazy" data-src-lang><figcaption><h3 data-i18n="t6_h">Trim to the frame</h3><p data-i18n="t6_p">Then share a copy sized for Discord or your phone, straight to the clipboard.</p></figcaption></figure>
+        <figure class="cell reveal"><img src="assets/app/settings-en.jpg" alt="" loading="lazy" data-src-lang><figcaption><h3 data-i18n="t8_h">Set up for your PC</h3><p data-i18n="t8_p">Resolution, frame rate, quality and how much to keep, on one page.</p></figcaption></figure>
+        <figure class="cell reveal"><img src="assets/rec-en.jpg" alt="" loading="lazy" data-src-lang><figcaption><h3 data-i18n="t7_h">Record for hours</h3><p data-i18n="t7_p">A small REC timer while you record. Screenshots in full resolution.</p></figcaption></figure>
       </div>
     </section>
 
-    <!-- faq -->
     <section class="faq" id="faq">
-      <div class="section-head reveal"><p class="eyebrow">FAQ</p><h2 data-i18n="faq_h">Good questions</h2></div>
+      <div class="faq-head reveal">
+        <h2 data-i18n="faq_h">Questions</h2>
+        <p data-i18n-html="faq_p">Something else? <a href="https://github.com/Amjz03/capture-menu/issues">Open an issue on GitHub</a>.</p>
+      </div>
       <div class="qa reveal">
         <details><summary data-i18n="q1">Is it really free?</summary><p data-i18n="a1">Yes. It's open source under the MIT license: no account, no ads, no watermark.</p></details>
         <details><summary data-i18n="q2">What does it need?</summary><p data-i18n="a2">Windows 10 or 11. Setup installs OBS Studio and FFmpeg if you don't have them and sets OBS up for your PC: resolution, the best encoder for your graphics card and the 30-minute replay buffer.</p></details>
@@ -142,18 +141,23 @@
     </section>
 
     <section class="final reveal">
-      <img src="assets/icon.png" alt="" width="96" height="96">
-      <h2 data-i18n="final_h">Never miss the play again.</h2>
-      <a class="btn" href="https://github.com/Amjz03/capture-menu/releases/latest/download/CaptureMenu-Setup.exe" data-i18n="download">Download for Windows</a>
+      <div>
+        <h2 data-i18n="final_h">Download Capture Menu</h2>
+        <p data-i18n="final_p">Free for Windows 10 and 11. Setup takes about a minute.</p>
+      </div>
+      <div class="ctas">
+        <a class="btn" href="https://github.com/Amjz03/capture-menu/releases/latest/download/CaptureMenu-Setup.exe" data-i18n="download">Download for Windows</a>
+        <a class="link" href="https://github.com/Amjz03/capture-menu/releases"><span data-i18n="all_releases">All releases</span> <span class="arrow" aria-hidden="true">→</span></a>
+      </div>
     </section>
   </main>
 
   <footer class="foot">
-    <span>Capture Menu · <a href="https://github.com/Amjz03/capture-menu/blob/main/LICENSE">MIT</a> · <a href="https://github.com/Amjz03/capture-menu">GitHub</a></span>
+    <span class="foot-brand"><img src="assets/icon.png" alt="" width="20" height="20">Capture Menu · <a href="https://github.com/Amjz03/capture-menu/blob/main/LICENSE">MIT</a> · <a href="https://github.com/Amjz03/capture-menu">GitHub</a></span>
     <span data-i18n="tm">PlayStation and Xbox are trademarks of their owners. Capture Menu is not affiliated with Sony or Microsoft.</span>
   </footer>
 
-  <script src="demo.js?v=6"></script>
-  <script src="app.js?v=6"></script>
+  <script src="demo.js?v=8"></script>
+  <script src="app.js?v=8"></script>
 </body>
 </html>
