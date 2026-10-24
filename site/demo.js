@@ -6,7 +6,7 @@
 const DEMO = (() => {
   const W = {
     en: {
-      game: "Overwatch", keeping: "Keeping the last 30 min", recording: "Recording",
+      game: "Call of Duty", keeping: "Keeping the last 30 min", recording: "Recording",
       save: "Save recent", save_hint: "last 30 min", shot: "Screenshot", rec: "Record", stop: "Stop  {t}",
       mic_on: "Mic on", mic_off: "Mic off", all: "All captures", settings: "Settings",
       move: "Move", select: "Select", instantly: "Save instantly", trim_latest: "Trim latest", close: "Close",
@@ -22,7 +22,7 @@ const DEMO = (() => {
       just_now: "just now", min_ago: "{n} min ago", mb: "MB", gb: "GB",
     },
     ar: {
-      game: "Overwatch", keeping: "يحفظ آخر 30 دقيقة من اللعب", recording: "تسجيل",
+      game: "Call of Duty", keeping: "يحفظ آخر 30 دقيقة من اللعب", recording: "تسجيل",
       save: "حفظ الأخير", save_hint: "آخر 30 دقيقة", shot: "لقطة شاشة", rec: "تسجيل", stop: "إيقاف  {t}",
       mic_on: "المايك شغّال", mic_off: "المايك مقفل", all: "كل الوسائط", settings: "الإعدادات",
       move: "تنقّل", select: "تحديد", instantly: "حفظ مباشر", trim_latest: "قص الأخير", close: "إغلاق",
@@ -72,11 +72,12 @@ const DEMO = (() => {
   const stage = $("stage"), pc = $("pc"), menu = $("cm-menu");
   let lang = "en", t = W.en, mode = "keyboard";
   const now = Date.now();
-  // the library the bar starts with: newest first, the same three captures as the README's bar
+  // the library the bar starts with, newest first: the bar shows every game's latest captures
+  const RD = "Red Dead Redemption 2";
   let caps = [
-    { kind: "clip", secs: 30, img: "assets/app/thumb1.jpg", at: now - 20 * 60e3 },
-    { kind: "clip", secs: 180, img: "assets/app/thumb2.jpg", at: now - 30 * 60e3 },
-    { kind: "shot", img: "assets/app/thumb3.jpg", at: now - 40 * 60e3 },
+    { kind: "clip", secs: 30, img: "assets/app/thumb1.jpg", at: now - 6 * 60e3 },
+    { kind: "clip", secs: 60, img: "assets/app/thumb2.jpg", at: now - 40 * 60e3, game: RD },
+    { kind: "shot", img: "assets/app/thumb3.jpg", at: now - 52 * 60e3, game: RD },
   ];
   let open = false, picking = false, focus = 0, lent = null, lastChoice = 3, page = null;
   let recStart = null, micOn = true, recTimer = null, toastTimer = null;
@@ -143,7 +144,7 @@ const DEMO = (() => {
     const info = $("cm-info");
     if (info) {
       const m = /^thumb(\d)$/.exec(id || "");
-      info.textContent = m ? `${t.game}    ${size(caps[+m[1]])}` : "";
+      info.textContent = m ? `${caps[+m[1]].game || t.game}    ${size(caps[+m[1]])}` : "";
     }
   }
   function setFocus(i) { focus = Math.max(0, Math.min(navIds().length - 1, i)); paintFocus(); }
@@ -159,7 +160,7 @@ const DEMO = (() => {
   function openPage(name) {
     hide();
     page = name;
-    $("cm-page").src = `assets/${name === "viewer" || name === "settings" ? "app/" : ""}${name}-${lang}.jpg`;
+    $("cm-page").src = `assets/${name === "settings" ? "app/" : ""}${name}-${lang}.jpg`;
     pc.classList.add("paging");
   }
   function closePage() { pc.classList.remove("paging"); page = null; open = false; show(); }   // Back comes to the bar
