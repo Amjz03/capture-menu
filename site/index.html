@@ -16,7 +16,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&family=IBM+Plex+Sans+Arabic:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=8">
+  <link rel="stylesheet" href="style.css?v=10">
 </head>
 <body>
   <a class="skip" href="#main" data-i18n="skip">Skip to content</a>
@@ -104,10 +104,13 @@
       </div>
     </section>
 
-    <section class="steps" aria-label="How it works">
-      <div class="step reveal"><span class="num">1</span><h3 data-i18n="s1_h">Play</h3><p data-i18n="s1_p">It quietly keeps the last 30 minutes of your game, on any screen, with any graphics card.</p></div>
-      <div class="step reveal"><span class="num">2</span><h3 data-i18n="s2_h">Press</h3><p data-i18n="s2_p">Once for the menu over your game: save 15 seconds up to 30 minutes, screenshot or record. Twice to save the last 30 seconds.</p></div>
-      <div class="step reveal"><span class="num">3</span><h3 data-i18n="s3_h">Keep</h3><p data-i18n="s3_p">Every game gets its own folder. Watch it, trim it to the frame, share it to Discord or your phone.</p></div>
+    <section class="steps" aria-labelledby="how-h">
+      <h2 class="reveal" id="how-h" data-i18n="how_h">How it works</h2>
+      <ol class="step-list">
+        <li class="step reveal"><span class="num">01</span><div><h3 data-i18n="s1_h">Play</h3><p data-i18n="s1_p">It quietly keeps the last 30 minutes of your game, on any screen, with any graphics card.</p></div></li>
+        <li class="step reveal"><span class="num">02</span><div><h3 data-i18n="s2_h">Press</h3><p data-i18n="s2_p">Once for the menu over your game: save 15 seconds up to 30 minutes, screenshot or record. Twice to save the last 30 seconds.</p></div></li>
+        <li class="step reveal"><span class="num">03</span><div><h3 data-i18n="s3_h">Keep</h3><p data-i18n="s3_p">Every game gets its own folder. Watch it, trim it to the frame, share it to Discord or your phone.</p></div></li>
+      </ol>
     </section>
 
     <section class="features" id="features">
@@ -115,13 +118,13 @@
         <h2 data-i18n="f_h">Everything after the press</h2>
         <p data-i18n="f_p">Saving is one part. The rest of the app is built for what you do next with the clip, with a controller or a mouse.</p>
       </div>
-      <figure class="row reveal"><img src="assets/picker-en.jpg" alt="" loading="lazy" data-src-lang><figcaption><h3 data-i18n="t1_h">Pick how much to keep</h3><p data-i18n="t1_p">The last 15 seconds, 1, 3, 5, 15 or 30 minutes, or everything. With the mouse, the keys or the d-pad.</p></figcaption></figure>
-      <figure class="row flip reveal"><img src="assets/library-en.jpg" alt="" loading="lazy" data-src-lang><figcaption><h3 data-i18n="t4_h">A folder for every game</h3><p data-i18n="t4_p">Found automatically. Favorites, titles, notes, sizes, sorting.</p></figcaption></figure>
+      <figure class="row reveal"><img src="assets/picker-en.jpg" alt="The Save recent gameplay row over Red Dead Redemption 2, with Last 30m picked" loading="lazy" data-src-lang><figcaption><h3 data-i18n="t1_h">Pick how much to keep</h3><p data-i18n="t1_p">The last 15 seconds, 1, 3, 5, 15 or 30 minutes, or everything. With the mouse, the keys or the d-pad.</p></figcaption></figure>
+      <figure class="row flip reveal"><img src="assets/library-en.jpg" alt="The Captures page: a sidebar of games and a grid of clips and screenshots" loading="lazy" data-src-lang><figcaption><h3 data-i18n="t4_h">A folder for every game</h3><p data-i18n="t4_p">Found automatically. Favorites, titles, notes, sizes, sorting.</p></figcaption></figure>
       <div class="grid">
-        <figure class="cell reveal"><img src="assets/viewer-en.jpg" alt="" loading="lazy" data-src-lang><figcaption><h3 data-i18n="t5_h">Watch it right away</h3><p data-i18n="t5_p">A viewer with your voice and the game on their own tracks.</p></figcaption></figure>
-        <figure class="cell reveal"><img src="assets/trim-en.jpg" alt="" loading="lazy" data-src-lang><figcaption><h3 data-i18n="t6_h">Trim to the frame</h3><p data-i18n="t6_p">Then share a copy sized for Discord or your phone, straight to the clipboard.</p></figcaption></figure>
-        <figure class="cell reveal"><img src="assets/app/settings-en.jpg" alt="" loading="lazy" data-src-lang><figcaption><h3 data-i18n="t8_h">Set up for your PC</h3><p data-i18n="t8_p">Resolution, frame rate, quality and how much to keep, on one page.</p></figcaption></figure>
-        <figure class="cell reveal"><img src="assets/rec-en.jpg" alt="" loading="lazy" data-src-lang><figcaption><h3 data-i18n="t7_h">Record for hours</h3><p data-i18n="t7_p">A small REC timer while you record. Screenshots in full resolution.</p></figcaption></figure>
+        <figure class="cell reveal"><img src="assets/viewer-en.jpg" alt="The viewer playing a Red Dead Redemption 2 clip, with Trim, Share and Favorite" loading="lazy" data-src-lang><figcaption><h3 data-i18n="t5_h">Watch it right away</h3><p data-i18n="t5_p">A viewer with your voice and the game on their own tracks.</p></figcaption></figure>
+        <figure class="cell reveal"><img src="assets/trim-en.jpg" alt="Trimming a clip on a timeline of frames" loading="lazy" data-src-lang><figcaption><h3 data-i18n="t6_h">Trim to the frame</h3><p data-i18n="t6_p">Then share a copy sized for Discord or your phone, straight to the clipboard.</p></figcaption></figure>
+        <figure class="cell reveal"><img src="assets/app/settings-en.jpg" alt="The Settings page: resolution, frame rate, quality and replay length" loading="lazy" data-src-lang><figcaption><h3 data-i18n="t8_h">Set up for your PC</h3><p data-i18n="t8_p">Resolution, frame rate, quality and how much to keep, on one page.</p></figcaption></figure>
+        <figure class="cell reveal"><img src="assets/rec-en.jpg" alt="Red Dead Redemption 2 at night with a small REC 12:34 timer in the corner" loading="lazy" data-src-lang><figcaption><h3 data-i18n="t7_h">Record for hours</h3><p data-i18n="t7_p">A small REC timer while you record. Screenshots in full resolution.</p></figcaption></figure>
       </div>
     </section>
 
@@ -130,14 +133,14 @@
         <h2 data-i18n="faq_h">Questions</h2>
         <p data-i18n-html="faq_p">Something else? <a href="https://github.com/Amjz03/capture-menu/issues">Open an issue on GitHub</a>.</p>
       </div>
-      <div class="qa reveal">
-        <details><summary data-i18n="q1">Is it really free?</summary><p data-i18n="a1">Yes. It's open source under the MIT license: no account, no ads, no watermark.</p></details>
-        <details><summary data-i18n="q2">What does it need?</summary><p data-i18n="a2">Windows 10 or 11. Setup installs OBS Studio and FFmpeg if you don't have them and sets OBS up for your PC: resolution, the best encoder for your graphics card and the 30-minute replay buffer.</p></details>
-        <details><summary data-i18n="q3">Windows says "Windows protected your PC"</summary><p data-i18n="a3">Windows shows that for apps that aren't signed yet. Click More info, then Run anyway. Code signing is on the way.</p></details>
-        <details><summary data-i18n="q4">Will it slow my game down?</summary><p data-i18n="a4">Capture Menu uses about 75 MB while it waits, and its FFmpeg work runs at low priority. The 30-minute buffer lives in OBS and uses RAM (up to about 2.9 GB at 1440p); pick a shorter buffer or lighter quality in Settings for less.</p></details>
-        <details><summary data-i18n="q5">Does anything leave my PC?</summary><p data-i18n="a5">No. It talks to OBS on your PC, and to GitHub only when you check for updates. Your clips stay with you.</p></details>
-        <details><summary data-i18n="q6">Is it in Arabic?</summary><p data-i18n="a6">Yes, the whole interface, right to left, like the PS5.</p></details>
-      </div>
+      <dl class="qa reveal">
+        <div class="qa-item"><dt data-i18n="q1">Is it really free?</dt><dd data-i18n="a1">Yes. It's open source under the MIT license: no account, no ads, no watermark.</dd></div>
+        <div class="qa-item"><dt data-i18n="q2">What does it need?</dt><dd data-i18n="a2">Windows 10 or 11. Setup installs OBS Studio and FFmpeg if you don't have them and sets OBS up for your PC: resolution, the best encoder for your graphics card and the 30-minute replay buffer.</dd></div>
+        <div class="qa-item"><dt data-i18n="q3">Windows says "Windows protected your PC"</dt><dd data-i18n="a3">Windows shows that for apps that aren't signed yet. Click More info, then Run anyway. Code signing is on the way.</dd></div>
+        <div class="qa-item"><dt data-i18n="q4">Will it slow my game down?</dt><dd data-i18n="a4">Capture Menu uses about 75 MB while it waits, and its FFmpeg work runs at low priority. The 30-minute buffer lives in OBS and uses RAM (up to about 2.9 GB at 1440p); pick a shorter buffer or lighter quality in Settings for less.</dd></div>
+        <div class="qa-item" id="privacy"><dt data-i18n="q5">Does anything leave my PC?</dt><dd data-i18n="a5">No. It talks to OBS on your PC, and to GitHub only when you check for updates. Your clips stay with you.</dd></div>
+        <div class="qa-item"><dt data-i18n="q6">Is it in Arabic?</dt><dd data-i18n="a6">Yes, the whole interface, right to left, like the PS5.</dd></div>
+      </dl>
     </section>
 
     <section class="final reveal">
@@ -153,11 +156,11 @@
   </main>
 
   <footer class="foot">
-    <span class="foot-brand"><img src="assets/icon.png" alt="" width="20" height="20">Capture Menu · <a href="https://github.com/Amjz03/capture-menu/blob/main/LICENSE">MIT</a> · <a href="https://github.com/Amjz03/capture-menu">GitHub</a></span>
+    <span class="foot-brand"><img src="assets/icon.png" alt="" width="20" height="20">Capture Menu · <a href="https://github.com/Amjz03/capture-menu/blob/main/LICENSE">MIT</a> · <a href="https://github.com/Amjz03/capture-menu">GitHub</a> · <a href="#privacy" data-i18n="privacy">Privacy</a></span>
     <span data-i18n="tm">PlayStation and Xbox are trademarks of their owners. Capture Menu is not affiliated with Sony or Microsoft.</span>
   </footer>
 
-  <script src="demo.js?v=8"></script>
-  <script src="app.js?v=8"></script>
+  <script src="demo.js?v=10"></script>
+  <script src="app.js?v=10"></script>
 </body>
 </html>

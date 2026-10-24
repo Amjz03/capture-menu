@@ -29,6 +29,7 @@ const T = {
     press_once: "Press once", press_twice: "Press twice",
     pad_none: "No controller found. Plug one in and press any button.",
     pad_on: "Controller found: {name}. Press Create / View.",
+    how_h: "How it works", privacy: "Privacy",
     s1_h: "Play", s1_p: "It quietly keeps the last 30 minutes of your game, on any screen, with any graphics card.",
     s2_h: "Press", s2_p: "Once for the menu over your game: save 15 seconds up to 30 minutes, screenshot or record. Twice to save the last 30 seconds.",
     s3_h: "Keep", s3_p: "Every game gets its own folder. Watch it, trim it to the frame, share it to Discord or your phone.",
@@ -78,6 +79,7 @@ const T = {
     press_once: "اضغط مرة", press_twice: "اضغط مرتين",
     pad_none: "ما فيه كنترولر. وصّل واحد واضغط أي زر.",
     pad_on: "لقينا الكنترولر: {name}. اضغط Create / View.",
+    how_h: "كيف يشتغل", privacy: "الخصوصية",
     s1_h: "العب", s1_p: "يحتفظ بهدوء بآخر 30 دقيقة من لعبك، على أي شاشة ومع أي كرت شاشة.",
     s2_h: "اضغط", s2_p: "مرة وتطلع القائمة فوق اللعبة: احفظ من 15 ثانية لين 30 دقيقة، أو صوّر، أو سجّل. ومرتين تحفظ آخر 30 ثانية.",
     s3_h: "احتفظ", s3_p: "كل لعبة لها مجلدها. شوفه، وقصّه بدقة الإطار، وشاركه للديسكورد أو جوالك.",
@@ -209,6 +211,14 @@ function poll() {
   lastDown = down;
   requestAnimationFrame(poll);
 }
+
+// ---------------------------------------------------------------- the nav marks the section in view
+const navLinks = [...document.querySelectorAll('.links a[href^="#"]')];
+const spy = new IntersectionObserver((entries) => entries.forEach((e) => {
+  if (!e.isIntersecting) return;
+  navLinks.forEach((a) => a.classList.toggle("here", a.getAttribute("href") === `#${e.target.id}`));
+}), { rootMargin: "-45% 0px -50% 0px" });
+navLinks.forEach((a) => { const el = document.querySelector(a.getAttribute("href")); if (el) spy.observe(el); });
 
 // ---------------------------------------------------------------- reveal on scroll
 const io = new IntersectionObserver((entries) => entries.forEach((e) => { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); } }),
