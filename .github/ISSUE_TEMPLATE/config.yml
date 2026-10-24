@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Question or help
+    url: https://github.com/Amjz03/capture-menu/discussions
+    about: How to do something, or not sure it's a bug? Ask in Discussions.

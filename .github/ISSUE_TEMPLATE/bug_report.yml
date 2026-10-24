@@ -1,0 +1,57 @@
+name: Something doesn't work
+description: A clip didn't save, the bar didn't open, a crash, anything that went wrong.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what you got instead.
+      placeholder: I pressed Alt + C twice in Overwatch, the notice said "Clip saved", but the clip isn't in the gallery.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: How can we make it happen again?
+      placeholder: |
+        1. Start the game
+        2. Press Create on the controller
+        3. ...
+  - type: input
+    id: version
+    attributes:
+      label: Capture Menu version
+      description: Settings → General → Updates shows it.
+      placeholder: "0.0.32"
+    validations:
+      required: true
+  - type: dropdown
+    id: input
+    attributes:
+      label: What were you using?
+      multiple: true
+      options:
+        - Keyboard (Alt + C)
+        - PlayStation controller
+        - Xbox controller
+        - Another controller
+        - Mouse
+  - type: input
+    id: system
+    attributes:
+      label: Windows version and graphics card
+      placeholder: Windows 11 24H2, NVIDIA RTX 4070
+  - type: input
+    id: game
+    attributes:
+      label: Game (if it matters)
+      placeholder: Red Dead Redemption 2
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: |
+        Drag `capture_menu.log`, and `crash.log` or `setup.log` if you have them, into this box.
+        They're in `%LOCALAPPDATA%\Programs\CaptureMenu` (paste that into the File Explorer address bar).
+        They hold your game names and folder paths; nothing else personal.

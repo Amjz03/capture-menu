@@ -1,0 +1,16 @@
+name: Idea or request
+description: Something Capture Menu could do, or do better.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would you like?
+      placeholder: Let me pick which game folder a clip goes into.
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: When would you use it?
+      description: The moment you wished it existed helps the most.

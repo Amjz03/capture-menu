@@ -1,0 +1,32 @@
+name: Tests
+
+# The release gate (tests/run_release_tests.py), on every push to main and every pull request, so a
+# regression shows up when it lands instead of on release day. Same setup as release.yml's tests job.
+on:
+  push:
+    branches: [main]
+    paths-ignore: ["**.md", "docs/**", "installer/winget/**", ".github/ISSUE_TEMPLATE/**"]
+  pull_request:
+    paths-ignore: ["**.md", "docs/**", "installer/winget/**", ".github/ISSUE_TEMPLATE/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install test dependencies
+        run: python -m pip install --disable-pip-version-check -r requirements.txt
+      - name: Run isolated release regression tests
+        run: python tests/run_release_tests.py
