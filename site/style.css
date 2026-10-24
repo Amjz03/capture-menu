@@ -1,14 +1,14 @@
 /* Capture Menu's site. The app's own rules: a quiet blue-black, white for the thing to press,
    red only where something is being recorded. */
 :root {
-  --bg: #0b0c10;
-  --bg-2: #111318;
+  --bg: #0d0e13;
+  --bg-2: #15171e;
   --void: #05060a;
-  --line: rgba(255, 255, 255, 0.08);
-  --line-2: rgba(255, 255, 255, 0.14);
-  --ink: #ededf0;
-  --muted: #9b9ea9;
-  --faint: #6c6f7a;
+  --line: rgba(255, 255, 255, 0.09);
+  --line-2: rgba(255, 255, 255, 0.16);
+  --ink: #f2f3f6;
+  --muted: #aeb2bd;
+  --faint: #80848f;
   --red: #ff453a;
   --sans: "Geist", "IBM Plex Sans Arabic", system-ui, sans-serif;
   --mono: "Geist Mono", ui-monospace, monospace;
@@ -47,7 +47,7 @@ kbd {
 /* ------------------------------------------------------------- nav */
 .nav {
   position: sticky; top: 0; z-index: var(--z-nav); display: flex; align-items: center; justify-content: space-between; gap: 20px;
-  padding: 12px max(24px, calc((100% - var(--max)) / 2)); background: rgba(11, 12, 16, 0.82);
+  padding: 12px max(24px, calc((100% - var(--max)) / 2)); background: rgba(13, 14, 19, 0.78);
   backdrop-filter: blur(14px); border-bottom: 1px solid var(--line);
 }
 .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; font-weight: 600; font-size: 15px; }
@@ -66,11 +66,11 @@ html[dir="rtl"] .lang { font-family: "Geist", var(--sans); }
 /* ------------------------------------------------------------- buttons */
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 9px; height: 46px; padding: 0 20px; border-radius: 10px;
-  border: 1px solid transparent; background: var(--ink); color: #0b0c10; cursor: pointer;
-  font: 500 15px var(--sans); text-decoration: none; white-space: nowrap; transition: background .2s, transform .12s;
+  border: 1px solid transparent; background: var(--ink); color: #0d0e13; cursor: pointer;
+  font: 500 15px var(--sans); text-decoration: none; white-space: nowrap; transition: background .2s, transform .2s var(--ease), box-shadow .2s;
 }
 .btn svg { width: 18px; height: 18px; }
-.btn:hover { background: #fff; }
+.btn:hover { background: #fff; transform: translateY(-1px); box-shadow: 0 8px 24px -10px rgba(255, 255, 255, 0.45); }
 .btn:active { transform: translateY(1px); }
 .btn-small { height: 34px; padding: 0 14px; font-size: 14px; border-radius: 8px; }
 .btn-quiet { background: transparent; color: var(--ink); border-color: var(--line-2); height: 40px; font-size: 14px; }
@@ -92,18 +92,25 @@ html[dir="rtl"] h1 { line-height: 1.25; font-size: clamp(36px, 4vw, 54px); }
 .ctas { display: flex; flex-wrap: wrap; align-items: center; gap: 22px; }
 .fine { color: var(--faint); font-size: 13px; margin: 22px 0 0; }
 
-.screen { border-radius: 12px; overflow: hidden; border: 1px solid var(--line-2); background: var(--void); box-shadow: 0 40px 90px -40px rgba(4, 8, 24, 0.95), 0 0 0 1px rgba(4, 8, 24, 0.6); }
+.hero-stage { position: relative; isolation: isolate; }
+.ambient {
+  position: absolute; z-index: -1; left: 0; top: 0; width: 100%; aspect-ratio: 16 / 9; height: auto;
+  filter: blur(60px) saturate(1.9) brightness(1.35); opacity: 0.95; transform: scale(1.12); pointer-events: none;
+}
+.screen { position: relative; border-radius: 12px; overflow: hidden; border: 1px solid var(--line-2); background: var(--void); box-shadow: 0 40px 90px -40px rgba(4, 8, 24, 0.95), 0 0 0 1px rgba(4, 8, 24, 0.6); }
 .screen video { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; display: block; }
 
 .buffer { margin-top: 26px; }
 .buffer-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 10px; color: var(--muted); font-size: 14px; }
 .buffer-head b { color: var(--ink); font-weight: 500; white-space: nowrap; }
 .buffer-track { position: relative; height: 8px; border-radius: 4px; background: rgba(255, 255, 255, 0.07); overflow: hidden; direction: ltr; cursor: pointer; touch-action: none; }
-.buffer-fill { position: absolute; inset: 0; background: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.16) 0 1px, transparent 1px 24px); }
-.buffer-slice { position: absolute; right: 0; top: 0; bottom: 0; background: var(--red); border-radius: 4px; transition: width .5s var(--ease); }
+.buffer-fill { position: absolute; inset: 0; background: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.2) 0 1px, transparent 1px 24px); animation: flow 2.4s linear infinite; }
+@keyframes flow { to { background-position: -24px 0; } }
+.buffer-slice { position: absolute; right: 0; top: 0; bottom: 0; background: linear-gradient(90deg, #ff6a5f, var(--red)); border-radius: 4px; box-shadow: 0 0 14px rgba(255, 69, 58, 0.55); transition: width .5s var(--ease); }
 .buffer-labels { display: flex; justify-content: space-between; margin-top: 8px; color: var(--faint); font: 12px var(--mono); direction: ltr; }
 .buffer-labels .now { display: flex; align-items: center; gap: 6px; }
-.buffer-labels i { width: 6px; height: 6px; border-radius: 50%; background: var(--red); }
+.buffer-labels i { width: 6px; height: 6px; border-radius: 50%; background: var(--red); animation: live 1.6s ease-in-out infinite; }
+@keyframes live { 50% { box-shadow: 0 0 0 5px rgba(255, 69, 58, 0); } 0%, 100% { box-shadow: 0 0 0 0 rgba(255, 69, 58, 0.55); } }
 .buffer-chips { display: flex; flex-wrap: wrap; gap: 2px; margin-top: 14px; padding: 3px; width: fit-content; border: 1px solid var(--line); border-radius: 9px; }
 .buffer-chips button {
   min-width: 46px; height: 30px; padding: 0 10px; border-radius: 6px; border: 0; background: none; color: var(--muted);
@@ -122,7 +129,26 @@ html[dir="rtl"] h1 { line-height: 1.25; font-size: clamp(36px, 4vw, 54px); }
 .input small { color: var(--faint); font-size: 13px; font-weight: 400; }
 .input.shortcut { direction: ltr; gap: 6px; color: var(--muted); }
 .logo { width: 20px; height: 20px; fill: var(--ink); }
+.input:nth-of-type(2) .logo { fill: #2f8cff; }
+.input:nth-of-type(3) .logo { fill: #5dc21e; }
 .slash { color: var(--faint); font-size: 18px; }
+
+/* ------------------------------------------------------------- the reel */
+main > section.reel { width: 100%; overflow: hidden; padding: 56px 0 0; mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent); }
+.reel-track { display: flex; gap: 14px; width: max-content; animation: drift 70s linear infinite; }
+html[dir="rtl"] .reel-track { animation-name: drift-rtl; }
+.reel:hover .reel-track { animation-play-state: paused; }
+@keyframes drift { to { transform: translateX(-50%); } }
+@keyframes drift-rtl { to { transform: translateX(50%); } }
+.reel-item { position: relative; margin: 0; flex: none; }
+.reel-item img { width: 240px; height: 135px; object-fit: cover; border-radius: 10px; border: 1px solid var(--line); transition: transform .4s var(--ease); }
+.reel-item:hover img { transform: translateY(-4px); }
+.reel-item b {
+  position: absolute; right: 8px; bottom: 8px; padding: 1px 6px; border-radius: 5px; background: rgba(0, 0, 0, 0.62);
+  font: 500 11px/18px var(--mono); color: #fff; direction: ltr;
+}
+.reel-item b.shot { padding: 3px 4px; line-height: 0; }
+.reel-item b svg { width: 12px; height: 12px; fill: none; stroke: #fff; stroke-width: 2; }
 
 /* ------------------------------------------------------------- section heads */
 .section-head { margin: 0 0 40px; }
@@ -133,6 +159,11 @@ html[dir="rtl"] h1 { line-height: 1.25; font-size: clamp(36px, 4vw, 54px); }
 
 /* ------------------------------------------------------------- try it */
 .try { padding: 120px 0 24px; }
+.stage-wrap { position: relative; isolation: isolate; }
+.stage-light {
+  position: absolute; z-index: -1; inset: 4%; pointer-events: none; border-radius: 12px;
+  background: url("assets/game.jpg") center / cover; filter: blur(70px) saturate(1.6) brightness(1.2); opacity: 0.55;
+}
 .try-stage {
   position: relative; aspect-ratio: 16 / 9; border-radius: 12px; overflow: hidden; outline: none; cursor: pointer;
   border: 1px solid var(--line-2); background: var(--void);
@@ -288,7 +319,16 @@ html[dir="rtl"] .cm-toast { padding: 12px 12px 12px 20px; }
 
 /* ------------------------------------------------------------- features */
 .features { padding: 120px 0 24px; }
-.features figure { margin: 0; }
+.features figure { margin: 0; position: relative; isolation: isolate; }
+.cast {
+  position: absolute; z-index: -1; left: 6%; top: 6%; width: 88%; aspect-ratio: 16 / 9; border-radius: 10px; pointer-events: none;
+  background: center / cover; filter: blur(48px) saturate(1.8) brightness(1.3); opacity: 0.7; transition: opacity .4s var(--ease);
+}
+.row .cast { left: auto; inset-inline-start: 2%; width: 62%; top: 50%; translate: 0 -50%; }
+.row.flip .cast { inset-inline-start: auto; inset-inline-end: 2%; }
+.features figure:hover .cast { opacity: 0.95; }
+.features figure img { transition: transform .4s var(--ease); }
+.features figure:hover img { transform: translateY(-3px); }
 .features img, .screen video {
   background: linear-gradient(100deg, var(--bg-2) 30%, #181b22 50%, var(--bg-2) 70%) 0 0 / 300% 100% var(--bg-2);
   animation: shimmer 1.6s linear infinite;

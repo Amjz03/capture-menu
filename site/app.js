@@ -230,6 +230,32 @@ document.querySelectorAll(".features img").forEach((img) => {
 });
 document.getElementById("hero-video").addEventListener("loadeddata", (e) => e.target.classList.add("loaded"), { once: true });
 
+// ---------------------------------------------------------------- light from the game
+// The hero video paints a 32 × 18 canvas behind itself every frame; CSS blows it up and blurs it,
+// so the colour around the video follows the game, like a TV's ambient light.
+const heroVideo = document.getElementById("hero-video");
+const ambient = document.getElementById("ambient").getContext("2d", { alpha: false });
+let lastPaint = 0;
+(function glow(now) {
+  if (now - lastPaint > 66 && heroVideo.readyState >= 2) { ambient.drawImage(heroVideo, 0, 0, 32, 18); lastPaint = now; }
+  requestAnimationFrame(glow);
+})(0);
+// each screenshot casts its own soft light
+document.querySelectorAll(".features figure").forEach((fig) => {
+  const img = fig.querySelector("img"), light = document.createElement("span");
+  light.className = "cast"; light.setAttribute("aria-hidden", "true");
+  const sync = () => { light.style.backgroundImage = `url("${img.currentSrc || img.src}")`; };
+  img.addEventListener("load", sync); sync();
+  img.before(light);
+});
+
+// ---------------------------------------------------------------- a reel of real captures, drifting by
+const REEL = [["rd1", "0:30"], ["cod1", ""], ["rd2", "1:00"], ["rd3", "3:00"], ["rd4", "0:30"], ["rdshot", ""],
+              ["rd5", "5:00"], ["rd6", "12:34"], ["rd7", "0:15"], ["rd8", "1:00"]];
+const reelItems = REEL.map(([name, len]) => `<figure class="reel-item"><img src="assets/strip/${name}.jpg" alt="" loading="lazy" width="240" height="135">` +
+  `<b class="${len ? "" : "shot"}">${len || '<svg viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></svg>'}</b></figure>`).join("");
+document.getElementById("reel").innerHTML = reelItems + reelItems;   // twice, so the loop has no seam
+
 // ---------------------------------------------------------------- reveal on scroll
 const io = new IntersectionObserver((entries) => entries.forEach((e) => { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); } }),
                                     { threshold: 0.12 });

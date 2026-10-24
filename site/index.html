@@ -16,7 +16,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&family=IBM+Plex+Sans+Arabic:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=11">
+  <link rel="stylesheet" href="style.css?v=13">
 </head>
 <body>
   <a class="skip" href="#main" data-i18n="skip">Skip to content</a>
@@ -52,6 +52,7 @@
       </div>
 
       <div class="hero-stage reveal">
+        <canvas class="ambient" id="ambient" width="32" height="18" aria-hidden="true"></canvas>
         <div class="screen">
           <video id="hero-video" autoplay muted loop playsinline preload="auto" poster="assets/picker-en.jpg" aria-label="Capture Menu in Red Dead Redemption 2">
             <source src="assets/hero-en.mp4" type="video/mp4">
@@ -77,12 +78,16 @@
       <div class="input"><span data-i18n="more_pads">and most other controllers</span></div>
     </section>
 
+    <section class="reel" aria-hidden="true"><div class="reel-track" id="reel"></div></section>
+
     <section class="try" id="try">
       <div class="section-head split reveal">
         <h2 data-i18n="try_h">Try the menu</h2>
         <p data-i18n="try_p">This is the real menu, rebuilt in the page. Press Alt + C once to open it, then move with the arrows or the mouse and pick with Enter. Press twice to save the last 30 seconds. A controller plugged into this computer works too.</p>
       </div>
-      <div class="try-stage reveal" id="stage" tabindex="0" aria-label="Demo: press Alt + C">
+      <div class="stage-wrap reveal">
+        <span class="stage-light" aria-hidden="true"></span>
+      <div class="try-stage" id="stage" tabindex="0" aria-label="Demo: press Alt + C">
         <div class="pc" id="pc">
           <img class="pc-game" src="assets/game.jpg" alt="Call of Duty on a snowy rooftop, the game the menu opens over" data-i18n-alt="alt_game">
           <div class="cm-menu" id="cm-menu"></div>
@@ -93,6 +98,7 @@
         </div>
         <div class="try-hint"><span data-i18n="try_hint">Press Alt + C, or click here</span></div>
         <div class="page-hint" data-i18n="page_hint">Click or press Esc to go back</div>
+      </div>
       </div>
       <div class="try-bar reveal">
         <div class="try-buttons">
@@ -160,7 +166,7 @@
     <span data-i18n="tm">PlayStation and Xbox are trademarks of their owners. Capture Menu is not affiliated with Sony or Microsoft.</span>
   </footer>
 
-  <script src="demo.js?v=11"></script>
-  <script src="app.js?v=11"></script>
+  <script src="demo.js?v=13"></script>
+  <script src="app.js?v=13"></script>
 </body>
 </html>
