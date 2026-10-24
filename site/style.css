@@ -90,7 +90,13 @@ h1 span { color: var(--muted); }
 html[dir="rtl"] h1 { line-height: 1.25; font-size: clamp(36px, 4vw, 54px); }
 .lede { color: var(--muted); font-size: 18px; line-height: 1.55; margin: 22px 0 32px; max-width: 30em; }
 .ctas { display: flex; flex-wrap: wrap; align-items: center; gap: 22px; }
-.fine { color: var(--faint); font-size: 13px; margin: 22px 0 0; }
+.fine { color: var(--faint); font-size: 13px; margin: 8px 0 0; }
+.release { margin: 22px 0 0; font-size: 13px; }
+.release[hidden] + .fine { margin-top: 22px; }
+.release a { color: var(--muted); text-decoration: none; font-variant-numeric: tabular-nums; }
+.release a > span { color: var(--ink); }
+.release a:hover > span { text-decoration: underline; text-underline-offset: 3px; }
+html[dir="rtl"] .release .arrow { display: inline-block; transform: scaleX(-1); }
 
 .hero-stage { position: relative; isolation: isolate; }
 .ambient {

@@ -30,6 +30,7 @@ const T = {
     pad_none: "No controller found. Plug one in and press any button.",
     pad_on: "Controller found: {name}. Press Create / View.",
     alt_picker: "The Save recent gameplay row over Red Dead Redemption 2, with Last 30m picked", alt_library: "The Captures page: a sidebar of games and a grid of clips and screenshots", alt_viewer: "The viewer playing a Red Dead Redemption 2 clip, with Trim, Share and Favorite", alt_trim: "Trimming a clip on a timeline of frames", alt_settings: "The Settings page: resolution, frame rate, quality and replay length", alt_rec: "Red Dead Redemption 2 at night with a small REC 12:34 timer in the corner", alt_game: "Call of Duty on a snowy rooftop, the game the menu opens over",
+    whats_new: "What's new", released: "Version {v} · {date}",
     how_h: "How it works", privacy: "Privacy",
     s1_h: "Play", s1_p: "It quietly keeps the last 30 minutes of your game, on any screen, with any graphics card.",
     s2_h: "Press", s2_p: "Once for the menu over your game: save 15 seconds up to 30 minutes, screenshot or record. Twice to save the last 30 seconds.",
@@ -81,6 +82,7 @@ const T = {
     pad_none: "ما فيه كنترولر. وصّل واحد واضغط أي زر.",
     pad_on: "لقينا الكنترولر: {name}. اضغط Create / View.",
     alt_picker: "صف حفظ اللعب الأخير فوق Red Dead Redemption 2، ومختار آخر 30 دقيقة", alt_library: "صفحة الوسائط: قائمة الألعاب على جنب وشبكة من المقاطع ولقطات الشاشة", alt_viewer: "العارض يشغّل مقطع من Red Dead Redemption 2، وفيه القص والمشاركة والمفضلة", alt_trim: "قص مقطع على شريط من الإطارات", alt_settings: "صفحة الإعدادات: الدقة وعدد الإطارات والجودة ومدة الحفظ", alt_rec: "Red Dead Redemption 2 بالليل، وفي الزاوية مؤقت REC 12:34 صغير", alt_game: "Call of Duty فوق سطح مغطّى بالثلج، واللعبة اللي تنفتح القائمة فوقها",
+    whats_new: "وش الجديد", released: "الإصدار {v} · {date}",
     how_h: "كيف يشتغل", privacy: "الخصوصية",
     s1_h: "العب", s1_p: "يحتفظ بهدوء بآخر 30 دقيقة من لعبك، على أي شاشة ومع أي كرت شاشة.",
     s2_h: "اضغط", s2_p: "مرة وتطلع القائمة فوق اللعبة: احفظ من 15 ثانية لين 30 دقيقة، أو صوّر، أو سجّل. ومرتين تحفظ آخر 30 ثانية.",
@@ -119,7 +121,10 @@ const store = {
   get(k) { try { return localStorage.getItem(k); } catch { return null; } },
   set(k, v) { try { localStorage.setItem(k, v); } catch { /* private mode: the choice just isn't remembered */ } },
 };
-let lang = store.get("lang") || ((navigator.language || "").toLowerCase().startsWith("ar") ? "ar" : "en");
+// ?lang=ar (or en) in the address wins, so a shared link opens in its language; then the visitor's
+// last choice, then the browser's language
+const asked = new URLSearchParams(location.search).get("lang");
+let lang = ["ar", "en"].includes(asked) ? asked : store.get("lang") || ((navigator.language || "").toLowerCase().startsWith("ar") ? "ar" : "en");
 let padName = "";
 
 function applyLang() {
@@ -136,11 +141,37 @@ function applyLang() {
   renderBuffer();
   const video = document.getElementById("hero-video");
   video.poster = `assets/picker-${lang}.jpg`;
-  if (!video.currentSrc.endsWith(`hero-${lang}.mp4`)) { video.querySelector("source").src = `assets/hero-${lang}.mp4`; video.load(); video.play().catch(() => {}); }
+  if (!video.currentSrc.includes(`hero-${lang}`)) {
+    video.querySelectorAll("source").forEach((src) => { src.src = src.getAttribute("src").replace(/hero-(en|ar)/, `hero-${lang}`); });
+    video.load(); video.play().catch(() => {});
+  }
+  renderRelease();
   document.getElementById("lang").textContent = lang === "ar" ? "English" : "العربية";
   updatePadStatus();
 }
-document.getElementById("lang").addEventListener("click", () => { lang = lang === "ar" ? "en" : "ar"; store.set("lang", lang); applyLang(); });
+document.getElementById("lang").addEventListener("click", () => {
+  lang = lang === "ar" ? "en" : "ar"; store.set("lang", lang);
+  const url = new URL(location.href);
+  lang === "ar" ? url.searchParams.set("lang", "ar") : url.searchParams.delete("lang");
+  history.replaceState(null, "", url);
+  applyLang();
+});
+
+// ---------------------------------------------------------------- the latest release, from GitHub
+let release = null;
+function renderRelease() {
+  if (!release) return;
+  const date = new Intl.DateTimeFormat(lang === "ar" ? "ar-SA-u-ca-gregory-nu-latn" : "en-GB", { day: "numeric", month: "long", year: "numeric" })
+    .format(new Date(release.published_at));
+  const link = document.getElementById("release-link");
+  link.href = release.html_url;
+  link.innerHTML = `${T[lang].released.replace("{v}", release.tag_name.replace(/^v/, "")).replace("{date}", date)} · <span>${T[lang].whats_new} <span class="arrow" aria-hidden="true">→</span></span>`;
+  document.getElementById("release").hidden = false;
+}
+fetch("https://api.github.com/repos/Amjz03/capture-menu/releases/latest")
+  .then((r) => (r.ok ? r.json() : null))
+  .then((r) => { if (r && r.tag_name) { release = r; renderRelease(); } })
+  .catch(() => {});   // offline or rate-limited: the line just stays hidden
 
 // ---------------------------------------------------------------- hero: pick how much of the 30 minutes to keep
 // The red slice is what gets saved, measured against the whole 30 minutes. It walks through the

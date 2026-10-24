@@ -19,6 +19,7 @@
 
 <p align="center">
   <a href="https://github.com/Amjz03/capture-menu/releases/latest"><b>Download</b></a> ·
+  <a href="https://amjz03.github.io/capture-menu/">Website</a> ·
   <a href="#install">Install</a> ·
   <a href="#using-it">Using it</a> ·
   <a href="#settings">Settings</a> ·

@@ -9,6 +9,9 @@
   <meta property="og:description" content="Save the last 30 seconds up to 30 minutes of any game with Alt + C or your controller. Free, no account, no ads.">
   <meta property="og:image" content="https://amjz03.github.io/capture-menu/assets/social-preview.jpg">
   <meta property="og:url" content="https://amjz03.github.io/capture-menu/">
+  <link rel="alternate" hreflang="en" href="https://amjz03.github.io/capture-menu/">
+  <link rel="alternate" hreflang="ar" href="https://amjz03.github.io/capture-menu/?lang=ar">
+  <link rel="alternate" hreflang="x-default" href="https://amjz03.github.io/capture-menu/">
   <meta property="og:type" content="website">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="theme-color" content="#0b0c10">
@@ -16,7 +19,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&family=IBM+Plex+Sans+Arabic:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=14">
+  <link rel="stylesheet" href="style.css?v=15">
 </head>
 <body>
   <a class="skip" href="#main" data-i18n="skip">Skip to content</a>
@@ -48,6 +51,7 @@
           </a>
           <a class="link" href="https://github.com/Amjz03/capture-menu"><span data-i18n="github">Source on GitHub</span> <span class="arrow" aria-hidden="true">→</span></a>
         </div>
+        <p class="release" id="release" hidden><a id="release-link" href="https://github.com/Amjz03/capture-menu/releases/latest"></a></p>
         <p class="fine" data-i18n="fine">About 50 MB. No account, no ads. Setup installs OBS and FFmpeg for you.</p>
       </div>
 
@@ -55,6 +59,7 @@
         <canvas class="ambient" id="ambient" width="32" height="18" aria-hidden="true"></canvas>
         <div class="screen">
           <video id="hero-video" autoplay muted loop playsinline preload="auto" poster="assets/picker-en.jpg" aria-label="Capture Menu in Red Dead Redemption 2">
+            <source src="assets/hero-en-sm.mp4" type="video/mp4" media="(max-width: 700px)">
             <source src="assets/hero-en.mp4" type="video/mp4">
           </video>
         </div>
@@ -164,7 +169,7 @@
     <span data-i18n="tm">PlayStation and Xbox are trademarks of their owners. Capture Menu is not affiliated with Sony or Microsoft.</span>
   </footer>
 
-  <script src="demo.js?v=14"></script>
-  <script src="app.js?v=14"></script>
+  <script src="demo.js?v=15"></script>
+  <script src="app.js?v=15"></script>
 </body>
 </html>
