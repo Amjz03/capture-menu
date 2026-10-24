@@ -249,7 +249,8 @@ class Obs:
             time.sleep(0.3)
             path = self.last_replay()
             if path and path != before and Path(path).exists():
-                media.wait_until_written(Path(path))
+                if not media.wait_until_written(Path(path), timeout=max(5.0, deadline - time.monotonic())):
+                    raise TimeoutError(f"OBS is still writing {path}")
                 return Path(path)
         raise TimeoutError("OBS did not report the saved replay")
 

@@ -592,7 +592,9 @@ class Controller(QtCore.QObject):
             return
         path = self.obs.stop_record()
         self.recording.emit(False)
-        media.wait_until_written(path)
+        if not media.wait_until_written(path, timeout=120):   # never move (copy) a file OBS is still writing
+            raise RuntimeError(language.tr("OBS is still writing the recording · it's safe in {folder}",
+                                           folder=path.parent))
         game = self.record_game or game
         self.record_game = None
         dest = self.folder_for(game) / f"Recording_{self._stamp()}{path.suffix}"

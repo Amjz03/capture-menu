@@ -1,13 +1,14 @@
 import sys, time, shutil, subprocess, tempfile
 from pathlib import Path
 sys.path.insert(0, sys.argv[1])
-from capturemenu import capture_controller, catalog, preferences, windows
+from capturemenu import capture_controller, catalog, preferences, runtime, windows
 
 # folder names
 for raw, want in [("Cyberpunk 2077™", "Cyberpunk 2077"), ('Half-Life: Alyx', "Half-Life Alyx"),
                   ("  Game. ", "Game"), ("CON", "CON_"), ("", "Desktop"), ("a/b\\c?", "a b c")]:
     got = windows.safe_folder_name(raw); assert got == want, (raw, got)
-assert windows.foreground_app({}) == "Desktop"   # non-Windows fallback
+if not runtime.IS_WINDOWS:
+    assert windows.foreground_app({}) == "Desktop"   # non-Windows fallback (on Windows: whatever is in front)
 
 tmp = Path(tempfile.mkdtemp()); src = tmp / "obs_out"; src.mkdir()
 master = tmp / "master.mp4"

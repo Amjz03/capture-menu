@@ -12,15 +12,35 @@ import time
 from . import language, runtime
 
 
-def wait_until_written(path: Path, timeout: float = 30):
-    """Waits until OBS has finished writing the file (its size stops changing)."""
+def wait_until_written(path: Path, timeout: float = 30) -> bool:
+    """Waits until OBS has finished writing the file: its size stops changing and nothing else has it
+    open. The size alone isn't enough: OBS writes a recording in fragments seconds apart, and a file
+    moved in between is copied half-written. False if OBS still has it after `timeout`."""
     last, deadline = -1, time.monotonic() + timeout
     while time.monotonic() < deadline:
-        size = path.stat().st_size
-        if size > 0 and size == last:
-            return
+        size = path.stat().st_size if path.exists() else 0
+        if size > 0 and size == last and not open_elsewhere(path):
+            return True
         last = size
         time.sleep(0.5)
+    return False
+
+
+def open_elsewhere(path: Path) -> bool:
+    """Is another program (OBS) still writing this file? Asks Windows for it with no sharing at all."""
+    if not runtime.IS_WINDOWS:
+        return False
+    import ctypes
+    from ctypes import wintypes
+    k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    k32.CreateFileW.restype = wintypes.HANDLE
+    k32.CreateFileW.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD, wintypes.LPVOID,
+                                wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE]
+    handle = k32.CreateFileW(str(path), 0x80000000, 0, None, 3, 0x80, None)   # GENERIC_READ, no sharing, OPEN_EXISTING
+    if handle == wintypes.HANDLE(-1).value:
+        return ctypes.get_last_error() == 32                                    # ERROR_SHARING_VIOLATION
+    k32.CloseHandle(handle)
+    return False
 
 
 # ---------------------------------------------------------------- ffmpeg
