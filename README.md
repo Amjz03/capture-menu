@@ -18,7 +18,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/preview.jpg" alt="The Capture Menu bar over a game">
+  <img src="docs/poster.jpg" alt="Capture Menu over Call of Duty, Red Dead Redemption 2 and Overwatch">
 </p>
 
 ## Features
