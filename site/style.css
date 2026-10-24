@@ -3,6 +3,7 @@
 :root {
   --bg: #0b0c10;
   --bg-2: #111318;
+  --void: #05060a;
   --line: rgba(255, 255, 255, 0.08);
   --line-2: rgba(255, 255, 255, 0.14);
   --ink: #ededf0;
@@ -13,6 +14,7 @@
   --mono: "Geist Mono", ui-monospace, monospace;
   --max: 1160px;
   --ease: cubic-bezier(.2, .8, .2, 1);
+  --z-grain: 40; --z-nav: 50; --z-skip: 60;   /* the only layers above the page */
 }
 html[dir="rtl"] { --sans: "IBM Plex Sans Arabic", "Geist", system-ui, sans-serif; }
 
@@ -23,7 +25,7 @@ body {
   -webkit-font-smoothing: antialiased; overflow-x: hidden;
 }
 body::after {
-  content: ""; position: fixed; inset: 0; z-index: 40; pointer-events: none; opacity: 0.035;
+  content: ""; position: fixed; inset: 0; z-index: var(--z-grain); pointer-events: none; opacity: 0.035;
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
 }
 a { color: inherit; }
@@ -34,7 +36,7 @@ p { text-wrap: pretty; }
 main > section { width: min(var(--max), 100% - 48px); margin-inline: auto; }
 section { scroll-margin-top: 80px; }
 :focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; border-radius: 4px; }
-.skip { position: absolute; inset-inline-start: 16px; top: -60px; padding: 8px 14px; background: var(--ink); color: var(--bg); border-radius: 8px; z-index: 60; text-decoration: none; }
+.skip { position: absolute; inset-inline-start: 16px; top: -60px; padding: 8px 14px; background: var(--ink); color: var(--bg); border-radius: 8px; z-index: var(--z-skip); text-decoration: none; }
 .skip:focus { top: 12px; }
 kbd {
   display: inline-grid; place-items: center; min-width: 26px; height: 26px; padding: 0 7px; border-radius: 6px;
@@ -44,7 +46,7 @@ kbd {
 
 /* ------------------------------------------------------------- nav */
 .nav {
-  position: sticky; top: 0; z-index: 50; display: flex; align-items: center; justify-content: space-between; gap: 20px;
+  position: sticky; top: 0; z-index: var(--z-nav); display: flex; align-items: center; justify-content: space-between; gap: 20px;
   padding: 12px max(24px, calc((100% - var(--max)) / 2)); background: rgba(11, 12, 16, 0.82);
   backdrop-filter: blur(14px); border-bottom: 1px solid var(--line);
 }
@@ -90,7 +92,7 @@ html[dir="rtl"] h1 { line-height: 1.25; font-size: clamp(36px, 4vw, 54px); }
 .ctas { display: flex; flex-wrap: wrap; align-items: center; gap: 22px; }
 .fine { color: var(--faint); font-size: 13px; margin: 22px 0 0; }
 
-.screen { border-radius: 12px; overflow: hidden; border: 1px solid var(--line-2); background: #000; box-shadow: 0 40px 90px -40px rgba(4, 8, 24, 0.95), 0 0 0 1px rgba(4, 8, 24, 0.6); }
+.screen { border-radius: 12px; overflow: hidden; border: 1px solid var(--line-2); background: var(--void); box-shadow: 0 40px 90px -40px rgba(4, 8, 24, 0.95), 0 0 0 1px rgba(4, 8, 24, 0.6); }
 .screen video { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; display: block; }
 
 .buffer { margin-top: 26px; }
@@ -133,7 +135,7 @@ html[dir="rtl"] h1 { line-height: 1.25; font-size: clamp(36px, 4vw, 54px); }
 .try { padding: 120px 0 24px; }
 .try-stage {
   position: relative; aspect-ratio: 16 / 9; border-radius: 12px; overflow: hidden; outline: none; cursor: pointer;
-  border: 1px solid var(--line-2); background: #000;
+  border: 1px solid var(--line-2); background: var(--void);
 }
 .try-stage:focus-visible { box-shadow: 0 0 0 2px var(--ink); }
 .try-hint {
@@ -287,7 +289,13 @@ html[dir="rtl"] .cm-toast { padding: 12px 12px 12px 20px; }
 /* ------------------------------------------------------------- features */
 .features { padding: 120px 0 24px; }
 .features figure { margin: 0; }
-.features img { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 10px; border: 1px solid var(--line); background: var(--bg-2); }
+.features img, .screen video {
+  background: linear-gradient(100deg, var(--bg-2) 30%, #181b22 50%, var(--bg-2) 70%) 0 0 / 300% 100% var(--bg-2);
+  animation: shimmer 1.6s linear infinite;
+}
+@keyframes shimmer { to { background-position: -150% 0; } }
+.features img.loaded, .screen video.loaded { animation: none; background: var(--bg-2); }
+.features img { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 10px; border: 1px solid var(--line); }
 .row { display: grid; grid-template-columns: 8fr 4fr; gap: 48px; align-items: center; padding: 32px 0; }
 .row.flip { grid-template-columns: 4fr 8fr; }
 .row.flip img { order: 2; }

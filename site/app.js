@@ -29,6 +29,7 @@ const T = {
     press_once: "Press once", press_twice: "Press twice",
     pad_none: "No controller found. Plug one in and press any button.",
     pad_on: "Controller found: {name}. Press Create / View.",
+    alt_picker: "The Save recent gameplay row over Red Dead Redemption 2, with Last 30m picked", alt_library: "The Captures page: a sidebar of games and a grid of clips and screenshots", alt_viewer: "The viewer playing a Red Dead Redemption 2 clip, with Trim, Share and Favorite", alt_trim: "Trimming a clip on a timeline of frames", alt_settings: "The Settings page: resolution, frame rate, quality and replay length", alt_rec: "Red Dead Redemption 2 at night with a small REC 12:34 timer in the corner", alt_game: "Call of Duty on a snowy rooftop, the game the menu opens over",
     how_h: "How it works", privacy: "Privacy",
     s1_h: "Play", s1_p: "It quietly keeps the last 30 minutes of your game, on any screen, with any graphics card.",
     s2_h: "Press", s2_p: "Once for the menu over your game: save 15 seconds up to 30 minutes, screenshot or record. Twice to save the last 30 seconds.",
@@ -79,6 +80,7 @@ const T = {
     press_once: "اضغط مرة", press_twice: "اضغط مرتين",
     pad_none: "ما فيه كنترولر. وصّل واحد واضغط أي زر.",
     pad_on: "لقينا الكنترولر: {name}. اضغط Create / View.",
+    alt_picker: "صف حفظ اللعب الأخير فوق Red Dead Redemption 2، ومختار آخر 30 دقيقة", alt_library: "صفحة الوسائط: قائمة الألعاب على جنب وشبكة من المقاطع ولقطات الشاشة", alt_viewer: "العارض يشغّل مقطع من Red Dead Redemption 2، وفيه القص والمشاركة والمفضلة", alt_trim: "قص مقطع على شريط من الإطارات", alt_settings: "صفحة الإعدادات: الدقة وعدد الإطارات والجودة ومدة الحفظ", alt_rec: "Red Dead Redemption 2 بالليل، وفي الزاوية مؤقت REC 12:34 صغير", alt_game: "Call of Duty فوق سطح مغطّى بالثلج، واللعبة اللي تنفتح القائمة فوقها",
     how_h: "كيف يشتغل", privacy: "الخصوصية",
     s1_h: "العب", s1_p: "يحتفظ بهدوء بآخر 30 دقيقة من لعبك، على أي شاشة ومع أي كرت شاشة.",
     s2_h: "اضغط", s2_p: "مرة وتطلع القائمة فوق اللعبة: احفظ من 15 ثانية لين 30 دقيقة، أو صوّر، أو سجّل. ومرتين تحفظ آخر 30 ثانية.",
@@ -127,6 +129,7 @@ function applyLang() {
   document.title = t.title;
   document.querySelectorAll("[data-i18n]").forEach((el) => { if (t[el.dataset.i18n]) el.textContent = t[el.dataset.i18n]; });
   document.querySelectorAll("[data-i18n-html]").forEach((el) => { el.innerHTML = t[el.dataset.i18nHtml]; });
+  document.querySelectorAll("[data-i18n-alt]").forEach((el) => { el.alt = t[el.dataset.i18nAlt]; });
   // the app's own screens, in the same language
   document.querySelectorAll("img[data-src-lang]").forEach((img) => { img.src = img.src.replace(/-(en|ar)\.jpg$/, `-${lang}.jpg`); });
   DEMO.setLang(lang);
@@ -219,6 +222,13 @@ const spy = new IntersectionObserver((entries) => entries.forEach((e) => {
   navLinks.forEach((a) => a.classList.toggle("here", a.getAttribute("href") === `#${e.target.id}`));
 }), { rootMargin: "-45% 0px -50% 0px" });
 navLinks.forEach((a) => { const el = document.querySelector(a.getAttribute("href")); if (el) spy.observe(el); });
+
+// screenshots shimmer until they've loaded
+document.querySelectorAll(".features img").forEach((img) => {
+  const done = () => img.classList.add("loaded");
+  img.complete && img.naturalWidth ? done() : img.addEventListener("load", done, { once: true });
+});
+document.getElementById("hero-video").addEventListener("loadeddata", (e) => e.target.classList.add("loaded"), { once: true });
 
 // ---------------------------------------------------------------- reveal on scroll
 const io = new IntersectionObserver((entries) => entries.forEach((e) => { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); } }),
