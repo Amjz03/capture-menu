@@ -80,7 +80,7 @@ const DEMO = (() => {
     { kind: "clip", secs: 60, img: "assets/app/thumb2.jpg", at: now - 40 * 60e3, game: RD },
   ];
   let open = false, picking = false, focus = 0, lent = null, lastChoice = 3, page = null;
-  let recStart = null, micOn = true, recTimer = null, toastTimer = null;
+  let recStart = null, micOn = true, recTimer = null, toastTimer = null, toastHtml = null;
 
   // ---------------------------------------------------------------- words
   const clock = (ms) => { const s = Math.floor(ms / 1000); return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`; };
@@ -172,7 +172,7 @@ const DEMO = (() => {
     hide();
     const len = secs === null ? 1800 : secs;
     addCapture({ kind: "clip", secs: len, img: "assets/game.jpg" });
-    toastCapture(t.clip_saved, secs === null ? fill(t.everything, { l: clock(1800e3) }) : fill(t.last, { l: duration(secs) }), true);
+    toastCapture("clip_saved", () => secs === null ? fill(t.everything, { l: clock(1800e3) }) : fill(t.last, { l: duration(secs) }), true);
   }
   function screenshot() {
     hide();
@@ -180,7 +180,7 @@ const DEMO = (() => {
       const flash = $("try-flash");
       flash.classList.remove("go"); void flash.offsetWidth; flash.classList.add("go");
       addCapture({ kind: "shot", img: "assets/game.jpg" });
-      toastCapture(t.shot_saved, "", false);
+      toastCapture("shot_saved", () => "", false);
     }, 250);
   }
   function toggleRecord() {
@@ -189,13 +189,13 @@ const DEMO = (() => {
       recStart = Date.now();
       $("cm-rec").classList.add("on");
       recTimer = setInterval(tick, 1000); tick();
-      toastMessage(t.rec_started, true);
+      toastMessage("rec_started", true);
     } else {
       const secs = Math.max(1, Math.round((Date.now() - recStart) / 1000));
       recStart = null; clearInterval(recTimer);
       $("cm-rec").classList.remove("on");
       addCapture({ kind: "rec", secs, img: "assets/game.jpg" });
-      toastCapture(t.rec_saved, fill(t.length, { l: clock(secs * 1000) }), true);
+      toastCapture("rec_saved", () => fill(t.length, { l: clock(secs * 1000) }), true);
     }
   }
   function tick() {
@@ -211,7 +211,7 @@ const DEMO = (() => {
   function toggleMic() {
     micOn = !micOn;
     render();
-    toastMessage(micOn ? t.mic_msg_on : t.mic_msg_off, false);
+    toastMessage(micOn ? "mic_msg_on" : "mic_msg_off", false);
   }
   function activate(id) {
     if (id === "save") { picking = true; render(); setFocus(lastChoice); }
@@ -227,24 +227,31 @@ const DEMO = (() => {
   function closePicker() { picking = false; render(); setFocus(0); }
 
   // ---------------------------------------------------------------- notices
-  function present(html, ms) {
+  function present(make, ms) {
     const el = $("cm-toast");
-    el.innerHTML = html;
+    toastHtml = make;
+    el.innerHTML = make();
     el.classList.remove("in"); void el.offsetWidth; el.classList.add("in");
     clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove("in"), ms);
   }
+  // title and detail are keys and values for t, read when the notice is written (and rewritten)
   function toastCapture(title, detail, trimmable) {
+    present(() => captureHtml(t[title], detail(), trimmable), 6000);
+  }
+  function captureHtml(title, detail, trimmable) {
     const k = G.keyboard, p = G[mode] || G.xbox;
     const open = mode === "keyboard" ? g(k.alt) + "&nbsp;" + g(k.c) : g(p.create);
     const view = mode === "keyboard" ? g(k.v) : g(p.y);
     const sub = [detail, t.game].filter(Boolean).join("  ·  ");
-    present(`<div class="thumbnail" style="background-image:url(assets/game.jpg)"></div>
+    return `<div class="thumbnail" style="background-image:url(assets/game.jpg)"></div>
       <div class="text"><b>${title}</b><span>${sub}</span><small>${fill(t.to_view, { open, view })}</small></div>
-      ${trimmable ? `<button class="trim" data-act="trim" tabindex="-1">${svg("scissors", 16)}<span>${t.trim}</span></button>` : ""}`, 6000);
+      ${trimmable ? `<button class="trim" data-act="trim" tabindex="-1">${svg("scissors", 16)}<span>${t.trim}</span></button>` : ""}`;
   }
-  function toastMessage(text, rec) {
-    const [title, sub] = text.split(" · ");
-    present(`<div class="text"><b>${rec ? '<span class="red">●</span>&nbsp;&nbsp;' : ""}${title}</b>${sub ? `<span>${sub}</span>` : ""}</div>`, 3500);
+  function toastMessage(key, rec) {
+    present(() => {
+      const [title, sub] = t[key].split(" · ");
+      return `<div class="text"><b>${rec ? '<span class="red">●</span>&nbsp;&nbsp;' : ""}${title}</b>${sub ? `<span>${sub}</span>` : ""}</div>`;
+    }, 3500);
   }
   $("cm-toast").addEventListener("click", (e) => {
     e.stopPropagation();
@@ -308,7 +315,12 @@ const DEMO = (() => {
 
   return {
     toggle, key, setMode, isOpen: () => open || !!page,
-    saveLast30() { hide(); page = null; pc.classList.remove("paging"); addCapture({ kind: "clip", secs: 30, img: "assets/game.jpg" }); toastCapture(t.clip_saved, fill(t.last, { l: duration(30) }), true); },
-    setLang(l) { lang = l; t = W[l]; if (page) $("cm-page").src = $("cm-page").src.replace(/-(en|ar)\.jpg$/, `-${l}.jpg`); if (open) render(); },
+    saveLast30() { hide(); page = null; pc.classList.remove("paging"); addCapture({ kind: "clip", secs: 30, img: "assets/game.jpg" }); toastCapture("clip_saved", () => fill(t.last, { l: duration(30) }), true); },
+    setLang(l) {
+      lang = l; t = W[l];
+      if (page) $("cm-page").src = $("cm-page").src.replace(/-(en|ar)\.jpg$/, `-${l}.jpg`);
+      if (open) render();                                  // focus, the picker and REC stay as they are
+      if (toastHtml && $("cm-toast").classList.contains("in")) $("cm-toast").innerHTML = toastHtml();   // same notice, same time left
+    },
   };
 })();

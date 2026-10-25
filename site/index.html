@@ -19,7 +19,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&family=IBM+Plex+Sans+Arabic:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=42">
+  <link rel="stylesheet" href="style.css?v=43">
 </head>
 <body>
   <a class="skip" href="#main" data-i18n="skip">Skip to content</a>
@@ -121,8 +121,8 @@
       <h2 class="reveal" id="how-h" data-i18n="how_h">How it works</h2>
       <ol class="step-list">
         <li class="step reveal"><span class="num">01</span><div><h3 data-i18n="s1_h">Play</h3><p data-i18n="s1_p">It quietly keeps the last 30 minutes of your game, on any screen, with any graphics card.</p></div></li>
-        <li class="step reveal"><span class="num">02</span><div><h3 data-i18n="s2_h">Press</h3><p data-i18n="s2_p">Once for the menu over your game: save 15 seconds up to 30 minutes, screenshot or record. Twice to save the last 30 seconds.</p></div></li>
-        <li class="step reveal"><span class="num">03</span><div><h3 data-i18n="s3_h">Keep</h3><p data-i18n="s3_p">Every game gets its own folder. Watch it, trim it to the frame, share it to Discord or your phone.</p></div></li>
+        <li class="step reveal"><span class="num">02</span><div><h3 data-i18n="s2_h">Press</h3><p data-i18n="s2_p">Once for the menu over your game, to save, take a screenshot or record. Twice to save the last 30 seconds.</p></div></li>
+        <li class="step reveal"><span class="num">03</span><div><h3 data-i18n="s3_h">Keep</h3><p data-i18n="s3_p">Every clip lands in its game's folder, ready to watch, trim and share.</p></div></li>
       </ol>
     </section>
 
@@ -144,25 +144,18 @@
       </div>
     </section>
 
-    <section class="all" id="all-features" aria-labelledby="all-h">
-      <div class="faq-head reveal">
-        <h2 id="all-h" data-i18n="all_h">Everything it does</h2>
-        <p data-i18n="all_p">Everything Capture Menu does, in one place.</p>
+    <section class="faq" id="faq" aria-labelledby="faq-h">
+      <h2 class="reveal" id="faq-h" data-i18n="faq_h">Questions</h2>
+      <div class="faq-list reveal">
+        <details class="faq-item"><summary data-i18n="q_perf_h">Will it slow my game down?</summary><p data-i18n="q_perf_p">OBS records on your graphics card, and the last minutes are kept on your drive, not in RAM. Capture Menu itself waits quietly in the tray.</p></details>
+        <details class="faq-item"><summary data-i18n="q_pads_h">Which controllers work?</summary><p data-i18n="q_pads_p">DualSense, Xbox and most others, plus Alt + C on the keyboard. The buttons on screen match the controller in your hands.</p></details>
+        <details class="faq-item"><summary data-i18n="q_files_h">Where do my clips go?</summary><p data-i18n="q_files_p">A folder for every game, found by itself. Clips and screenshots can go to different drives, and recording follows your game across monitors and TVs.</p></details>
+        <details class="faq-item"><summary data-i18n="q_voice_h">Is my voice recorded?</summary><p data-i18n="q_voice_p">If you want. It goes on its own track, so you can make it louder or quieter in any clip later, or leave it out of a copy you share.</p></details>
+        <details class="faq-item"><summary data-i18n="q_share_h">How do I share a clip?</summary><p data-i18n="q_share_p">Pick Phone & WhatsApp, or Discord at 10, 50 or 500 MB. A copy that fits is made and copied, ready to paste with Ctrl + V.</p></details>
+        <details class="faq-item"><summary data-i18n="q_safe_h">Why does my browser or Windows warn me?</summary><p data-i18n-html="q_safe_p">Capture Menu isn't code-signed yet, so Windows can't show a verified publisher. Download it only from the <a href="https://github.com/Amjz03/capture-menu/releases/latest">official release on GitHub</a> and follow the install steps below. A clean virus scan is a good sign, not a guarantee.</p></details>
+        <details class="faq-item" id="privacy"><summary data-i18n="q_privacy_h">Does anything leave my PC?</summary><p data-i18n="q_privacy_p">Your clips and settings aren't sent anywhere. It talks to OBS on your PC, and to GitHub only when you check for updates.</p></details>
+        <details class="faq-item"><summary data-i18n="q_free_h">Is it really free?</summary><p data-i18n="q_free_p">Yes. Open source under the MIT license, with no account, no ads and no watermark. In English and Arabic.</p></details>
       </div>
-      <dl class="qa reveal">
-        <div class="qa-item"><dt data-i18n="f_save_h">The last 15 seconds to 30 minutes</dt><dd data-i18n="f_save_p">It keeps the last 30 minutes of any game on your drive, so your RAM stays free for the game. Save 15 or 30 seconds, 1, 3, 5, 15 or 30 minutes, or all of it.</dd></div>
-        <div class="qa-item"><dt data-i18n="f_twice_h">Press twice, it's saved</dt><dd data-i18n="f_twice_p">Alt + C or Create twice saves the last 30 seconds, without opening anything.</dd></div>
-        <div class="qa-item"><dt data-i18n="f_shot_h">Screenshots and recordings</dt><dd data-i18n="f_shot_p">From the same bar. A small REC timer shows while you record, for as long as you like.</dd></div>
-        <div class="qa-item"><dt data-i18n="f_pads_h">Every controller</dt><dd data-i18n="f_pads_p">DualSense, Xbox and most others. The buttons on screen match the controller in your hands.</dd></div>
-        <div class="qa-item"><dt data-i18n="f_folders_h">A folder for every game</dt><dd data-i18n="f_folders_p">Found by itself, like the PS5. Clips and screenshots can go to different drives.</dd></div>
-        <div class="qa-item"><dt data-i18n="f_trim_h">Watch and trim to the frame</dt><dd data-i18n="f_trim_p">Open a clip right away, skip through it and cut it exactly where you want. The original stays.</dd></div>
-        <div class="qa-item"><dt data-i18n="f_voice_h">Your voice on its own track</dt><dd data-i18n="f_voice_p">Make your voice louder or quieter in any clip afterwards, and change it back whenever you like.</dd></div>
-        <div class="qa-item"><dt data-i18n="f_share_h">Share in one step</dt><dd data-i18n="f_share_p">A copy sized for your phone or Discord (10, 50 or 500 MB) goes straight to the clipboard.</dd></div>
-        <div class="qa-item"><dt data-i18n="f_follow_h">Follows your game</dt><dd data-i18n="f_follow_p">Across monitors and TVs, and it never shows up in your own recordings.</dd></div>
-        <div class="qa-item" id="privacy"><dt data-i18n="f_privacy_h">Nothing leaves your PC</dt><dd data-i18n="f_privacy_p">It only talks to OBS on your PC, and to GitHub when you check for updates. Your clips stay with you.</dd></div>
-        <div class="qa-item"><dt data-i18n="f_arabic_h">English and Arabic</dt><dd data-i18n="f_arabic_p">The whole interface, right to left in Arabic, like the PS5.</dd></div>
-        <div class="qa-item"><dt data-i18n="f_free_h">Free, with no account</dt><dd data-i18n="f_free_p">Open source under the MIT license. No ads and no watermark.</dd></div>
-      </dl>
     </section>
 
     <section class="steps install" id="install" aria-labelledby="install-h">
@@ -172,8 +165,8 @@
       </div>
       <ol class="step-list">
         <li class="step reveal"><span class="num">01</span><div><h3 data-i18n="i_dl_h">Download</h3><p data-i18n-html="i_dl_p">Get <a href="https://github.com/Amjz03/capture-menu/releases/latest/download/CaptureMenu-Setup.exe">CaptureMenu-Setup.exe</a>, about 50 MB.</p></div></li>
-        <li class="step reveal"><span class="num">02</span><div><h3 data-i18n="i_browser_h">If your browser warns you, keep it</h3><p data-i18n-html="i_browser_p">Capture Menu isn't signed yet, so browsers don't know it. Windows Defender finds nothing in it. <b>Chrome:</b> open Downloads and press <span class="ui">Keep</span>. <b>Edge:</b> press <span class="ui">···</span> next to the file, then <span class="ui">Keep</span>, then <span class="ui">Keep anyway</span>.</p></div></li>
-        <li class="step reveal"><span class="num">03</span><div><h3 data-i18n="i_smartscreen_h">If Windows says “Windows protected your PC”</h3><p data-i18n-html="i_smartscreen_p">Press <span class="ui">More info</span>, then <span class="ui">Run anyway</span>.</p></div></li>
+        <li class="step reveal"><span class="num">02</span><div><h3 data-i18n="i_browser_h">If your browser warns you</h3><p data-i18n-html="i_browser_p">Capture Menu isn't code-signed yet, so browsers don't recognise it and may warn you. Keep the file only if it came from the <a href="https://github.com/Amjz03/capture-menu/releases/latest">official release page</a>. <b>Chrome:</b> open Downloads and press <span class="ui">Keep</span>. <b>Edge:</b> press <span class="ui">···</span> next to the file, then <span class="ui">Keep</span>, then <span class="ui">Keep anyway</span>.</p></div></li>
+        <li class="step reveal"><span class="num">03</span><div><h3 data-i18n="i_smartscreen_h">If Windows says “Windows protected your PC”</h3><p data-i18n-html="i_smartscreen_p">Without a signature, Windows shows the publisher as unknown. If the file came from the official release, press <span class="ui">More info</span>, then <span class="ui">Run anyway</span>.</p></div></li>
         <li class="step reveal"><span class="num">04</span><div><h3 data-i18n="i_install_h">Press Install</h3><p data-i18n-html="i_install_p">Setup installs OBS Studio and FFmpeg if you don't have them and sets everything up for your PC. A minute later, press <span class="ui">Alt + C</span> in a game.</p></div></li>
       </ol>
     </section>
@@ -195,7 +188,7 @@
     <span data-i18n="tm">PlayStation and Xbox are trademarks of their owners. Capture Menu is not affiliated with Sony or Microsoft.</span>
   </footer>
 
-  <script src="demo.js?v=42"></script>
-  <script src="app.js?v=42"></script>
+  <script src="demo.js?v=43"></script>
+  <script src="app.js?v=43"></script>
 </body>
 </html>
