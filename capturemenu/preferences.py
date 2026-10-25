@@ -36,6 +36,7 @@ DEFAULTS = {
     "rumble": True,
     "storage_warn_gb": 200,
     "voice_track": True,
+    "mic_on": True,             # the microphone is recorded (the menu's Mic button turns it off until the next start)
     "hdr": "auto",              # auto: HDR clips while Windows HDR is on for the game's screen / off
     "colours": "vivid",         # natural / soft / vivid / max: COLOUR_BOOST for an HDR screen recorded in normal colours
     "resolution": "native",     # native / 1440p / 1080p / 720p

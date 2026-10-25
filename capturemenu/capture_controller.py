@@ -622,6 +622,7 @@ class Controller(QtCore.QObject):
             self.save_lengths()
             try:
                 self.apply_mic()
+                self.obs.set_mic_muted(not self.cfg.get("mic_on", True))   # Settings → Record your microphone
             except obs_client.ObsOffline:
                 pass
             except Exception:

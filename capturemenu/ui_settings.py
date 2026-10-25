@@ -55,7 +55,8 @@ class Settings(QtWidgets.QWidget):
         head.addSpacing(18)
         titles = QtWidgets.QVBoxLayout()
         titles.setSpacing(2)
-        titles.addWidget(QtWidgets.QLabel(language.tr("Settings"), objectName="vTitle"))
+        self.title = QtWidgets.QLabel(language.tr("Settings"), objectName="vTitle")
+        titles.addWidget(self.title)
         self.info = QtWidgets.QLabel(objectName="vSub")
         titles.addWidget(self.info)
         head.addLayout(titles)
@@ -159,6 +160,9 @@ class Settings(QtWidgets.QWidget):
                                     [("follow", "Follow the game")], self._screen_text)
         self.mic_row = self._row("mic_device", "Microphone", "choice",
                                  [("default", "Same as Windows")], self._mic_text)
+        self._row("mic_on", "Record your microphone", "bool",
+                  describe=lambda v: "Your voice goes into your clips. The menu's Mic button turns it off for now"
+                  if v else "Clips have the game's sound only")
         self._section("CONTROLS")
         hk = self._row("hotkey", "Keyboard shortcut", "action",
                        describe=lambda v: "Opens the menu. Press Enter, then the new keys")
@@ -561,3 +565,82 @@ class Settings(QtWidgets.QWidget):
             self.go_back()
         else:
             super().keyPressEvent(e)
+
+
+class Welcome(Settings):
+    """The first start: four choices before anything is recorded (how much to keep, quality, the
+    microphone, frame rate), each saying it can be changed later in Settings. Same page and rows as
+    Settings; Start saves them and setup goes on (OBS is set up with them, no restart)."""
+
+    LATER = "You can change it later in Settings."
+
+    def __init__(self, ctl: capture_controller.Controller, done):
+        self.done = done
+        super().__init__(ctl)
+        self.title.setText(language.tr("Welcome to Capture Menu"))
+        self.save_btn.setText(language.tr("Start"))
+        for b in (self.back_btn, self.defaults_btn, self.cancel_btn):
+            b.hide()
+
+    def _later(self, text: str) -> str:
+        first = language.tr(text).rstrip()
+        if not first.endswith((".", "?", "؟", "!")):
+            first += "."      # Settings' own descriptions have no full stop
+        return f"{first} {language.tr(self.LATER)}"
+
+    def _build_rows(self):
+        self.card = ui_widgets.SettingsCard()
+        self.rows_layout.addWidget(self.card)
+        self._row("buffer_minutes", "How much should it keep?", "choice",
+                  [(m, language.tr("The last {n} min", n=m)) for m in (5, 10, 15, 30, 60)],
+                  lambda v: self._later(language.tr("Uses about {gb} GB of RAM.", gb=f"{self._buffer_gb(v):.1f}")))
+        self._row("quality", "What quality?", "choice",
+                  [("light", "Light"), ("balanced", "Balanced"), ("high", "High"), ("max", "Max")],
+                  lambda v: self._later("Higher is sharper and makes bigger files."))
+        self._row("mic_on", "Record your microphone?", "bool",
+                  describe=lambda v: self._later("Your voice goes into your clips." if v else
+                                                 "Clips have the game's sound only."))
+        self._row("fps", "How many frames per second?", "choice", [(30, "30 FPS"), (60, "60 FPS"), (120, "120 FPS")],
+                  lambda v: self._later("60 suits every game; 120 is for fast shooters."))
+        self.rows_layout.addStretch()
+
+    def _buffer_gb(self, minutes) -> float:
+        return obs_client.buffer_memory_mb(dict(self._plan_cfg(), buffer_minutes=minutes or 30), *self.screen_px,
+                                           obs_client.choose_encoder(self.encoder or "nvenc_av1", "auto")) / 1024
+
+    def _refresh(self):
+        super()._refresh()
+        self.info.setText(language.tr("Four quick choices before it starts recording"))
+
+    def open(self, screen_px: tuple[int, int] | None = None):
+        if screen_px:
+            self.screen_px = screen_px
+        for r in self.rows:
+            r.set_value(self.ctl.cfg.get(r.key, preferences.DEFAULTS.get(r.key)))
+        if self.encoder is None:     # the quality line's bitrate follows the graphics card, found in the background
+            threading.Thread(target=lambda: runtime.safe_emit(self.encoder_ready, obs_client.pick_encoder(
+                obs_client.gpu_names(), preferences.load_state().get("failed_encoders", []))), daemon=True).start()
+        self._refresh()
+        ui_theme.dress(self)
+        self.setGeometry(windows.ui_screen(True).geometry())
+        self.show()
+        ui_theme.bring_to_front(self)
+        self.rows[0].setFocus()
+
+    def save(self):
+        chosen = self.values()
+        preferences.save_config(chosen)
+        self.ctl.cfg.update(chosen)
+        preferences.save_state(preferences.load_state() | {"welcomed": True})
+        runtime.log.info("first start: %s", ", ".join(f"{k}={v}" for k, v in chosen.items()))
+        self.hide()
+        self.done()
+
+    def go_back(self):
+        self.save()        # Esc / B: start with what's picked (the recommended choices if nothing changed)
+
+    def update_hints(self):
+        pad = input_devices.input_mode().mode != "keyboard"
+        self.hints.set_items(
+            [("DPAD_UD", "Move"), ("DPAD_LR", "Change"), ("Y", "Start")] if pad
+            else [("k:↑ ↓", "Move"), ("k:← →", "Change"), ("k:S", "Start")], input_devices.input_mode().mode)

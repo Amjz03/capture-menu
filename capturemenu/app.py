@@ -135,9 +135,11 @@ def main():
     ctl.recording.connect(lambda on: sounds.play("record") if on else None)
 
     def pad_press(button: int):
-        key = input_devices.pad_key(button, menu, viewer, gallery, settings)
+        welcome = next((p for p in pages if isinstance(p, ui_settings.Welcome) and p.isVisible()), None)
+        page = welcome or settings     # the first-start questions take the pad like Settings does
+        key = input_devices.pad_key(button, menu, viewer, gallery, page)
         if key is not None:
-            input_devices.send_key(settings if settings.isVisible() else viewer if viewer.isVisible()
+            input_devices.send_key(page if page.isVisible() else viewer if viewer.isVisible()
                      else gallery if gallery.isVisible() else menu, key)
 
     try:
@@ -198,6 +200,15 @@ def main():
 
     primary = app.primaryScreen()
     native = primary.size() * primary.devicePixelRatio()
-    ctl.startup((native.width(), native.height()))
-    ctl.start_following()
+
+    def begin():
+        ctl.startup((native.width(), native.height()))
+        ctl.start_following()
+    state = preferences.load_state()
+    if state.get("welcomed") or state.get("obs_setup"):   # set up before: no questions
+        begin()
+    else:   # the first start: a few choices first, so OBS is set up with them
+        welcome = ui_settings.Welcome(ctl, begin)
+        pages += (welcome,)
+        welcome.open((native.width(), native.height()))
     sys.exit(app.exec())
