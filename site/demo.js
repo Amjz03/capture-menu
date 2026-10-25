@@ -23,7 +23,7 @@ const DEMO = (() => {
     },
     ar: {
       game: "Call of Duty", keeping: "يحتفظ بآخر 30 دقيقة", recording: "تسجيل",
-      save: "حفظ الأخير", save_hint: "آخر 30 دقيقة", shot: "لقطة شاشة", rec: "تسجيل", stop: "إيقاف  {t}",
+      save: "حفظ آخر لقطة", save_hint: "آخر 30 دقيقة", shot: "لقطة شاشة", rec: "تسجيل", stop: "إيقاف  {t}",
       mic_on: "المايك يعمل", mic_off: "المايك مغلق", all: "كل المقاطع واللقطات", settings: "الإعدادات",
       move: "تنقّل", select: "اختيار", instantly: "حفظ فوري", trim_latest: "قص الأخير", close: "إغلاق",
       view_latest: "عرض الأخير", choose: "اختيار", save_k: "حفظ", pick: "اختيار سريع", back: "رجوع",

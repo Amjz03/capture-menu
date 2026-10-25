@@ -42,7 +42,7 @@ language.set_language("en")
 assert language.tr("Save recent") == "Save recent" and not language.is_rtl() and language.forward(Qt.Key_Right) == 1
 language.set_language("ar")
 assert language.LANG == "ar" and language.is_rtl()
-assert language.tr("Save recent") == "حفظ الأخير"
+assert language.tr("Save recent") == "حفظ آخر لقطة"
 assert language.tr("Keeping the last {length}", length="30 min") == "يحتفظ بآخر 30 min"
 assert language.duration_label(None) == "كل اللعب المسجّل" and ui_widgets.chip_label(30) == "آخر 30 ث"
 assert language.forward(Qt.Key_Right) == -1 and language.lead() == Qt.AlignRight | Qt.AlignAbsolute   # mirrored, and Qt mustn't flip it back
