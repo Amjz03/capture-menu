@@ -31,6 +31,7 @@ const T = {
     pad_on: "Controller found: {name}. Press Create / View.",
     alt_picker: "The Save recent gameplay row over Red Dead Redemption 2, with Last 30m picked", alt_library: "The Captures page: a sidebar of games and a grid of clips and screenshots", alt_viewer: "The viewer playing a Red Dead Redemption 2 clip, with Trim, Share and Favorite", alt_trim: "Trimming a clip on a timeline of frames", alt_settings: "The Settings page: resolution, frame rate, quality and replay length", alt_rec: "Red Dead Redemption 2 at night with a small REC 12:34 timer in the corner", alt_game: "Call of Duty on a snowy rooftop, the game the menu opens over",
     whats_new: "What's new", released: "Version {v} · {date}",
+    rec_note: "Keeping the last 30 min", anywhere: "Press it anywhere on this page",
     how_h: "How it works", privacy: "Privacy",
     s1_h: "Play", s1_p: "It quietly keeps the last 30 minutes of your game, on any screen, with any graphics card.",
     s2_h: "Press", s2_p: "Once for the menu over your game: save 15 seconds up to 30 minutes, screenshot or record. Twice to save the last 30 seconds.",
@@ -83,6 +84,7 @@ const T = {
     pad_on: "لقينا الكنترولر: {name}. اضغط Create / View.",
     alt_picker: "صف حفظ اللعب الأخير فوق Red Dead Redemption 2، ومختار آخر 30 دقيقة", alt_library: "صفحة الوسائط: قائمة الألعاب على جنب وشبكة من المقاطع ولقطات الشاشة", alt_viewer: "العارض يشغّل مقطع من Red Dead Redemption 2، وفيه القص والمشاركة والمفضلة", alt_trim: "قص مقطع على شريط من الإطارات", alt_settings: "صفحة الإعدادات: الدقة وعدد الإطارات والجودة ومدة الحفظ", alt_rec: "Red Dead Redemption 2 بالليل، وفي الزاوية مؤقت REC 12:34 صغير", alt_game: "Call of Duty فوق سطح مغطّى بالثلج، واللعبة اللي تنفتح القائمة فوقها",
     whats_new: "وش الجديد", released: "الإصدار {v} · {date}",
+    rec_note: "يحفظ آخر 30 دقيقة", anywhere: "اضغطه في أي مكان بالصفحة",
     how_h: "كيف يشتغل", privacy: "الخصوصية",
     s1_h: "العب", s1_p: "يحتفظ بهدوء بآخر 30 دقيقة من لعبك، على أي شاشة ومع أي كرت شاشة.",
     s2_h: "اضغط", s2_p: "مرة وتطلع القائمة فوق اللعبة: احفظ من 15 ثانية لين 30 دقيقة، أو صوّر، أو سجّل. ومرتين تحفظ آخر 30 ثانية.",
@@ -139,12 +141,13 @@ function applyLang() {
   document.querySelectorAll("img[data-src-lang]").forEach((img) => { img.src = img.src.replace(/-(en|ar)\.jpg$/, `-${lang}.jpg`); });
   DEMO.setLang(lang);
   renderBuffer();
-  const video = document.getElementById("hero-video");
-  video.poster = `assets/picker-${lang}.jpg`;
-  if (!video.currentSrc.includes(`hero-${lang}`)) {
+  // the app's own screens, in motion, in the same language
+  document.querySelectorAll("video[data-lang-video]").forEach((video) => {
+    video.poster = video.getAttribute("poster").replace(/-(en|ar)\.jpg$/, `-${lang}.jpg`);
+    if (video.currentSrc && video.currentSrc.includes(`hero-${lang}`)) return;
     video.querySelectorAll("source").forEach((src) => { src.src = src.getAttribute("src").replace(/hero-(en|ar)/, `hero-${lang}`); });
-    video.load(); video.play().catch(() => {});
-  }
+    if (video.currentSrc) { video.load(); if (video.dataset.playing) video.play().catch(() => {}); }
+  });
   renderRelease();
   document.getElementById("lang").textContent = lang === "ar" ? "English" : "العربية";
   updatePadStatus();
@@ -206,6 +209,8 @@ bufAuto = setInterval(() => { bufPick = BUF[(BUF.indexOf(bufPick) + 1) % BUF.len
 const stage = document.getElementById("stage");
 let pending = null;
 function press() {
+  const r = stage.getBoundingClientRect();
+  if (r.bottom < 80 || r.top > innerHeight - 80) stage.scrollIntoView({ behavior: "smooth", block: "center" });
   stage.classList.add("used");
   if (pending) { clearTimeout(pending); pending = null; DEMO.saveLast30(); return; }
   pending = setTimeout(() => { pending = null; DEMO.toggle(); }, 350);
@@ -259,25 +264,27 @@ document.querySelectorAll(".features img").forEach((img) => {
   const done = () => img.classList.add("loaded");
   img.complete && img.naturalWidth ? done() : img.addEventListener("load", done, { once: true });
 });
-document.getElementById("hero-video").addEventListener("loadeddata", (e) => e.target.classList.add("loaded"), { once: true });
 
-// ---------------------------------------------------------------- light from the game
-// The hero video paints a 32 × 18 canvas behind itself every frame; CSS blows it up and blurs it,
-// so the colour around the video follows the game, like a TV's ambient light.
-const heroVideo = document.getElementById("hero-video");
-const ambient = document.getElementById("ambient").getContext("2d", { alpha: false });
-let lastPaint = 0;
-(function glow(now) {
-  if (now - lastPaint > 66 && heroVideo.readyState >= 2) { ambient.drawImage(heroVideo, 0, 0, 32, 18); lastPaint = now; }
-  requestAnimationFrame(glow);
-})(0);
+// ---------------------------------------------------------------- the hero: the game plays, REC counts
+// The clock is how long this page has been open: the time Capture Menu would already be keeping.
+const recClock = document.getElementById("rec-clock"), opened = Date.now();
+setInterval(() => {
+  const sec = Math.floor((Date.now() - opened) / 1000);
+  recClock.textContent = `${String(Math.floor(sec / 60)).padStart(2, "0")}:${String(sec % 60).padStart(2, "0")}`;
+}, 1000);
+if (matchMedia("(prefers-reduced-motion: reduce)").matches) document.getElementById("hero-bg").pause();
+// the menu loop plays only while it's on screen
+const lazyVideos = new IntersectionObserver((entries) => entries.forEach(({ target: v, isIntersecting }) => {
+  if (isIntersecting) { v.dataset.playing = "1"; v.play().catch(() => {}); } else { delete v.dataset.playing; v.pause(); }
+}), { threshold: 0.25 });
+document.querySelectorAll(".lazy-video").forEach((v) => lazyVideos.observe(v));
 // each screenshot casts its own soft light
 document.querySelectorAll(".features figure").forEach((fig) => {
-  const img = fig.querySelector("img"), light = document.createElement("span");
+  const media = fig.querySelector("img, video"), light = document.createElement("span");
   light.className = "cast"; light.setAttribute("aria-hidden", "true");
-  const sync = () => { light.style.backgroundImage = `url("${img.currentSrc || img.src}")`; };
-  img.addEventListener("load", sync); sync();
-  img.before(light);
+  const sync = () => { light.style.backgroundImage = `url("${media.poster || media.currentSrc || media.src}")`; };
+  media.addEventListener(media.tagName === "VIDEO" ? "loadeddata" : "load", sync); sync();
+  media.before(light);
 });
 
 // ---------------------------------------------------------------- reveal on scroll

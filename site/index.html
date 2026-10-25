@@ -19,7 +19,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&family=IBM+Plex+Sans+Arabic:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=15">
+  <link rel="stylesheet" href="style.css?v=17">
 </head>
 <body>
   <a class="skip" href="#main" data-i18n="skip">Skip to content</a>
@@ -40,34 +40,36 @@
 
   <main id="top">
     <section class="hero" id="main">
-      <div class="hero-copy reveal">
-        <p class="kicker" data-i18n="kicker">Free and open source, for Windows 10 and 11</p>
-        <h1 data-i18n-html="h1">The PS5 Create button, <span>on your PC.</span></h1>
-        <p class="lede" data-i18n="lede">Capture Menu keeps the last 30 minutes of any game. Press once to pick what to save. Press twice to save the last 30 seconds.</p>
-        <div class="ctas">
-          <a class="btn" href="https://github.com/Amjz03/capture-menu/releases/latest/download/CaptureMenu-Setup.exe">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 19.5h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            <span data-i18n="download">Download for Windows</span>
-          </a>
-          <a class="link" href="https://github.com/Amjz03/capture-menu"><span data-i18n="github">Source on GitHub</span> <span class="arrow" aria-hidden="true">→</span></a>
-        </div>
-        <p class="release" id="release" hidden><a id="release-link" href="https://github.com/Amjz03/capture-menu/releases/latest"></a></p>
-        <p class="fine" data-i18n="fine">About 50 MB. No account, no ads. Setup installs OBS and FFmpeg for you.</p>
+      <div class="hero-bg" aria-hidden="true">
+        <video id="hero-bg" autoplay muted loop playsinline preload="auto" poster="assets/hero-bg.jpg">
+          <source src="assets/hero-bg-sm.mp4" type="video/mp4" media="(max-width: 700px)">
+          <source src="assets/hero-bg.mp4" type="video/mp4">
+        </video>
       </div>
-
-      <div class="hero-stage reveal">
-        <canvas class="ambient" id="ambient" width="32" height="18" aria-hidden="true"></canvas>
-        <div class="screen">
-          <video id="hero-video" autoplay muted loop playsinline preload="auto" poster="assets/picker-en.jpg" aria-label="Capture Menu in Red Dead Redemption 2">
-            <source src="assets/hero-en-sm.mp4" type="video/mp4" media="(max-width: 700px)">
-            <source src="assets/hero-en.mp4" type="video/mp4">
-          </video>
+      <p class="hero-rec" aria-hidden="true" title="Capture Menu would have kept all of this"><i></i><b>REC</b><span id="rec-clock">00:00</span><span class="hero-rec-note" data-i18n="rec_note">Keeping the last 30 min</span></p>
+      <div class="hero-inner">
+        <div class="hero-copy reveal">
+          <p class="kicker" data-i18n="kicker">Free and open source, for Windows 10 and 11</p>
+          <h1 data-i18n-html="h1">The PS5 Create button, <span>on your PC.</span></h1>
+          <p class="lede" data-i18n="lede">Capture Menu keeps the last 30 minutes of any game. Press once to pick what to save. Press twice to save the last 30 seconds.</p>
+          <div class="ctas">
+            <a class="btn" href="https://github.com/Amjz03/capture-menu/releases/latest/download/CaptureMenu-Setup.exe">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 19.5h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <span data-i18n="download">Download for Windows</span>
+            </a>
+            <a class="link" href="https://github.com/Amjz03/capture-menu"><span data-i18n="github">Source on GitHub</span> <span class="arrow" aria-hidden="true">→</span></a>
+          </div>
+          <p class="release" id="release" hidden><a id="release-link" href="https://github.com/Amjz03/capture-menu/releases/latest"></a></p>
+          <p class="fine" data-i18n="fine">About 50 MB. No account, no ads. Setup installs OBS and FFmpeg for you.</p>
         </div>
-        <div class="buffer" id="buffer">
-          <div class="buffer-head"><span data-i18n="buf_q">How much do you want to keep?</span><b id="buf-pick"></b></div>
-          <div class="buffer-track" id="buf-track" aria-hidden="true"><div class="buffer-fill"></div><div class="buffer-slice" id="buf-slice"></div></div>
-          <div class="buffer-labels" aria-hidden="true"><span data-i18n="ago">30 min ago</span><span class="now"><i></i><span data-i18n="now">now</span></span></div>
-          <div class="buffer-chips" id="buf-chips" role="group" aria-label="How much to keep"></div>
+        <div class="hero-panel reveal">
+          <div class="buffer" id="buffer">
+            <div class="buffer-head"><span data-i18n="buf_q">How much do you want to keep?</span><b id="buf-pick"></b></div>
+            <div class="buffer-track" id="buf-track" aria-hidden="true"><div class="buffer-fill"></div><div class="buffer-slice" id="buf-slice"></div></div>
+            <div class="buffer-labels" aria-hidden="true"><span data-i18n="ago">30 min ago</span><span class="now"><i></i><span data-i18n="now">now</span></span></div>
+            <div class="buffer-chips" id="buf-chips" role="group" aria-label="How much to keep"></div>
+          </div>
+          <p class="anywhere"><span data-i18n="anywhere">Press it anywhere on this page</span> <span class="keys" dir="ltr"><kbd>Alt</kbd><kbd>C</kbd></span></p>
         </div>
       </div>
     </section>
@@ -127,7 +129,10 @@
         <h2 data-i18n="f_h">Everything after the press</h2>
         <p data-i18n="f_p">Saving is one part. The rest of the app is built for what you do next with the clip, with a controller or a mouse.</p>
       </div>
-      <figure class="row reveal"><img src="assets/picker-en.jpg" alt="The Save recent gameplay row over Red Dead Redemption 2, with Last 30m picked" data-i18n-alt="alt_picker" loading="lazy" data-src-lang><figcaption><h3 data-i18n="t1_h">Pick how much to keep</h3><p data-i18n="t1_p">The last 15 seconds, 1, 3, 5, 15 or 30 minutes, or everything. With the mouse, the keys or the d-pad.</p></figcaption></figure>
+      <figure class="row reveal"><video class="lazy-video" muted loop playsinline preload="none" poster="assets/picker-en.jpg" data-lang-video aria-label="Capture Menu in Red Dead Redemption 2: the bar opens, a length is picked, the clip is saved">
+          <source src="assets/hero-en-sm.mp4" type="video/mp4" media="(max-width: 700px)">
+          <source src="assets/hero-en.mp4" type="video/mp4">
+        </video><figcaption><h3 data-i18n="t1_h">Pick how much to keep</h3><p data-i18n="t1_p">The last 15 seconds, 1, 3, 5, 15 or 30 minutes, or everything. With the mouse, the keys or the d-pad.</p></figcaption></figure>
       <figure class="row flip reveal"><img src="assets/library-en.jpg" alt="The Captures page: a sidebar of games and a grid of clips and screenshots" data-i18n-alt="alt_library" loading="lazy" data-src-lang><figcaption><h3 data-i18n="t4_h">A folder for every game</h3><p data-i18n="t4_p">Found automatically. Favorites, titles, notes, sizes, sorting.</p></figcaption></figure>
       <div class="grid">
         <figure class="cell reveal"><img src="assets/viewer-en.jpg" alt="The viewer playing a Red Dead Redemption 2 clip, with Trim, Share and Favorite" data-i18n-alt="alt_viewer" loading="lazy" data-src-lang><figcaption><h3 data-i18n="t5_h">Watch it right away</h3><p data-i18n="t5_p">A viewer with your voice and the game on their own tracks.</p></figcaption></figure>
@@ -169,7 +174,7 @@
     <span data-i18n="tm">PlayStation and Xbox are trademarks of their owners. Capture Menu is not affiliated with Sony or Microsoft.</span>
   </footer>
 
-  <script src="demo.js?v=15"></script>
-  <script src="app.js?v=15"></script>
+  <script src="demo.js?v=17"></script>
+  <script src="app.js?v=17"></script>
 </body>
 </html>
