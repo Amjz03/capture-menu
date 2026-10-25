@@ -83,6 +83,10 @@
   "2026-10-23": {
    "count": 142,
    "uniques": 48
+  },
+  "2026-10-24": {
+   "count": 108,
+   "uniques": 39
   }
  },
  "downloads": {
@@ -639,6 +643,24 @@
    },
    "setup_exe": 45,
    "total": 61
+  },
+  "2026-10-25": {
+   "by_release": {
+    "v0.0.30": {
+     "CaptureMenu-Setup.exe": 8,
+     "CaptureMenu.zip": 0
+    },
+    "v0.0.32": {
+     "CaptureMenu-Setup.exe": 22,
+     "CaptureMenu.zip": 1
+    },
+    "v0.0.33": {
+     "CaptureMenu-Setup.exe": 1,
+     "CaptureMenu.zip": 0
+    }
+   },
+   "setup_exe": 31,
+   "total": 32
   }
  },
  "paths": {
@@ -1138,6 +1160,68 @@
     "title": "/releases/tag/v0.0.1",
     "uniques": 1
    }
+  ],
+  "2026-10-25": [
+   {
+    "count": 22,
+    "path": "/Amjz03/capture-menu/releases/tag/v0.0.2",
+    "title": "/releases/tag/v0.0.2",
+    "uniques": 17
+   },
+   {
+    "count": 22,
+    "path": "/Amjz03/capture-menu",
+    "title": "Overview",
+    "uniques": 6
+   },
+   {
+    "count": 2,
+    "path": "/Amjz03/capture-menu/releases",
+    "title": "/releases",
+    "uniques": 2
+   },
+   {
+    "count": 2,
+    "path": "/Amjz03/capture-menu/releases/tag/v0.0.4",
+    "title": "/releases/tag/v0.0.4",
+    "uniques": 2
+   },
+   {
+    "count": 1,
+    "path": "/Amjz03/capture-menu/blob/main/docs/icon.png",
+    "title": "/blob/main/docs/icon.png",
+    "uniques": 1
+   },
+   {
+    "count": 1,
+    "path": "/Amjz03/capture-menu/blob/main/docs/preview.jpg",
+    "title": "/blob/main/docs/preview.jpg",
+    "uniques": 1
+   },
+   {
+    "count": 1,
+    "path": "/Amjz03/capture-menu/blob/main/docs/screenshots/notifications.jpg",
+    "title": "/blob/main/docs/screenshots/notifications.jpg",
+    "uniques": 1
+   },
+   {
+    "count": 1,
+    "path": "/Amjz03/capture-menu/blob/main/docs/screenshots/running-notice.jpg",
+    "title": "/blob/main/docs/screenshots/running-notice.jpg",
+    "uniques": 1
+   },
+   {
+    "count": 1,
+    "path": "/Amjz03/capture-menu/blob/main/docs/screenshots/save-recent.jpg",
+    "title": "/blob/main/docs/screenshots/save-recent.jpg",
+    "uniques": 1
+   },
+   {
+    "count": 1,
+    "path": "/Amjz03/capture-menu/blob/main/docs/screenshots/settings.jpg",
+    "title": "/blob/main/docs/screenshots/settings.jpg",
+    "uniques": 1
+   }
   ]
  },
  "referrers": {
@@ -1202,14 +1286,26 @@
     "referrer": "github.com",
     "uniques": 1
    }
+  ],
+  "2026-10-25": [
+   {
+    "count": 14,
+    "referrer": "t.co",
+    "uniques": 13
+   },
+   {
+    "count": 8,
+    "referrer": "github.com",
+    "uniques": 1
+   }
   ]
  },
  "repo": {
   "forks": 0,
-  "stars": 1,
-  "watchers": 1
+  "stars": 2,
+  "watchers": 0
  },
- "updated": "2026-10-24T08:13:01+00:00",
+ "updated": "2026-10-25T08:30:29+00:00",
  "views": {
   "2026-10-03": {
    "count": 0,
@@ -1293,6 +1389,10 @@
   },
   "2026-10-23": {
    "count": 4,
+   "uniques": 1
+  },
+  "2026-10-24": {
+   "count": 13,
    "uniques": 1
   }
  }
