@@ -393,7 +393,7 @@ html[dir="rtl"] .cm-toast { padding: 12px 12px 12px 20px; }
 .install .step a { color: var(--ink); text-underline-offset: 3px; }
 .install .step b { color: var(--ink); font-weight: 500; }
 .ui { display: inline-block; padding: 0 7px; border-radius: 6px; border: 1px solid var(--line-2); background: var(--bg-2);
-      color: var(--ink); font-size: 13px; line-height: 22px; white-space: nowrap; direction: ltr; }
+      color: var(--ink); font-size: 13px; line-height: 22px; white-space: nowrap; unicode-bidi: isolate; }
 
 /* ------------------------------------------------------------- download */
 .final {
