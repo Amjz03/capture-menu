@@ -43,10 +43,10 @@ assert language.tr("Save recent") == "Save recent" and not language.is_rtl() and
 language.set_language("ar")
 assert language.LANG == "ar" and language.is_rtl()
 assert language.tr("Save recent") == "حفظ الأخير"
-assert language.tr("Keeping the last {length}", length="30 min") == "يحفظ آخر 30 min من اللعب"
-assert language.duration_label(None) == "كل اللعب المحفوظ" and ui_widgets.chip_label(30) == "آخر 30 ث"
+assert language.tr("Keeping the last {length}", length="30 min") == "يحتفظ بآخر 30 min"
+assert language.duration_label(None) == "كل اللعب المسجّل" and ui_widgets.chip_label(30) == "آخر 30 ث"
 assert language.forward(Qt.Key_Right) == -1 and language.lead() == Qt.AlignRight | Qt.AlignAbsolute   # mirrored, and Qt mustn't flip it back
-assert catalog.time_ago(time.time()) == "الحين"
+assert catalog.time_ago(time.time()) == "الآن"
 assert language.tr("Not a known text") == "Not a known text"      # anything new falls back to English
 language.set_language("xx")                                        # unknown: follow Windows (en or ar)
 assert language.LANG in language.LANGUAGES

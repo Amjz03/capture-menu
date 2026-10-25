@@ -592,6 +592,10 @@ class Welcome(Settings):
     def _build_rows(self):
         self.card = ui_widgets.SettingsCard()
         self.rows_layout.addWidget(self.card)
+        lang = self._row("language", "Which language?", "choice",
+                         [("auto", "Same as Windows"), *language.LANGUAGES.items()],
+                         lambda v: self._later("The page switches to it right away."))
+        lang.changed.connect(self._switch_language)
         self._row("buffer_minutes", "How much should it keep?", "choice",
                   [(m, language.tr("The last {n} min", n=m)) for m in (5, 10, 15, 30, 60)],
                   lambda v: self._later(language.tr("Uses about {gb} GB of RAM.", gb=f"{self._buffer_gb(v):.1f}")))
@@ -605,13 +609,25 @@ class Welcome(Settings):
                   lambda v: self._later("60 suits every game; 120 is for fast shooters."))
         self.rows_layout.addStretch()
 
+    def _switch_language(self, *_):
+        """The language is the first question, so the rest are read in it: a different language
+        restarts the app straight back here (these questions are only done once Start is pressed)."""
+        choice = next(r.value for r in self.rows if r.key == "language")
+        wanted = language.system_language() if choice not in language.LANGUAGES else choice
+        if wanted == language.LANG:
+            return
+        preferences.save_config({"language": choice})
+        runtime.log.info("first start: language %s", choice)
+        self.hide()
+        self.restart()
+
     def _buffer_gb(self, minutes) -> float:
         return obs_client.buffer_memory_mb(dict(self._plan_cfg(), buffer_minutes=minutes or 30), *self.screen_px,
                                            obs_client.choose_encoder(self.encoder or "nvenc_av1", "auto")) / 1024
 
     def _refresh(self):
         super()._refresh()
-        self.info.setText(language.tr("Four quick choices before it starts recording"))
+        self.info.setText(language.tr("A few quick choices before it starts recording"))
 
     def open(self, screen_px: tuple[int, int] | None = None):
         if screen_px:
