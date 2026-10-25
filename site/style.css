@@ -82,23 +82,10 @@ html[dir="rtl"] .lang { font-family: "Geist", var(--sans); }
 html[dir="rtl"] .link .arrow { transform: scaleX(-1); }
 html[dir="rtl"] .link:hover .arrow { transform: scaleX(-1) translateX(3px); }
 
-/* ------------------------------------------------------------- hero: the game, full screen, still */
+/* ------------------------------------------------------------- hero */
 main > section.hero {
-  position: relative; isolation: isolate; width: 100%; min-height: min(calc(100svh - 58px), 940px);
-  display: flex; align-items: flex-end; padding: 120px 0 64px; overflow: hidden;
-}
-.hero-bg { position: absolute; inset: 0; z-index: -2; background: #0d0e13 url("assets/hero-bg.jpg") center 40% / cover; animation: settle 9s var(--ease) both; }
-@keyframes settle { from { transform: scale(1.08); } to { transform: scale(1); } }
-.hero::before {   /* dark where the words are, open where the game is */
-  content: ""; position: absolute; inset: 0; z-index: -1;
-  background:
-    linear-gradient(0deg, var(--bg) 0%, rgba(13, 14, 19, 0.82) 22%, rgba(13, 14, 19, 0.25) 60%, rgba(13, 14, 19, 0.45) 100%),
-    linear-gradient(90deg, rgba(13, 14, 19, 0.78) 0%, rgba(13, 14, 19, 0.2) 55%, transparent 80%);
-}
-html[dir="rtl"] .hero::before {
-  background:
-    linear-gradient(0deg, var(--bg) 0%, rgba(13, 14, 19, 0.82) 22%, rgba(13, 14, 19, 0.25) 60%, rgba(13, 14, 19, 0.45) 100%),
-    linear-gradient(270deg, rgba(13, 14, 19, 0.78) 0%, rgba(13, 14, 19, 0.2) 55%, transparent 80%);
+  position: relative; isolation: isolate; width: 100%;
+  display: flex; align-items: flex-end; padding: 150px 0 72px; overflow: hidden;
 }
 .hero-rec {   /* the app's REC indicator: how long this page has been open */
   position: absolute; top: 24px; left: max(24px, calc((100% - var(--max)) / 2)); margin: 0;
@@ -432,7 +419,6 @@ html[dir="rtl"] .final::after { background: linear-gradient(270deg, var(--bg-2) 
   main > section { width: calc(100% - 32px); }
   .nav { padding-inline: 16px; }
   .hero-inner { width: calc(100% - 32px); }
-  .hero-bg { background-image: url("assets/hero-bg-sm.jpg"); }
   .hero-rec { left: 16px; top: 16px; }
   html[dir="rtl"] .hero-rec { right: 16px; }
   .hero-panel { padding: 18px 16px 14px; }
