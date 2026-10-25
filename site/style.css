@@ -374,8 +374,8 @@ html[dir="rtl"] .cm-toast { padding: 12px 12px 12px 20px; }
 .cell h3 { font-size: 18px; margin-bottom: 6px; }
 .cell p { color: var(--muted); margin: 0; font-size: 15px; max-width: 34em; }
 
-/* ------------------------------------------------------------- faq: every answer in view */
-.faq { padding: 140px 0 24px; }
+/* ------------------------------------------------------------- everything it does: every line in view */
+.all { padding: 140px 0 24px; }
 .faq-head { display: grid; grid-template-columns: 5fr 7fr; gap: 64px; align-items: end; margin-bottom: 40px; }
 .faq-head p { margin: 0; }
 .faq-head p a { color: var(--ink); text-underline-offset: 3px; }
@@ -385,6 +385,15 @@ html[dir="rtl"] .cm-toast { padding: 12px 12px 12px 20px; }
 .qa dd { margin: 0; color: var(--muted); font-size: 15px; max-width: 36em; }
 .qa-item:target dt { color: #fff; }
 .qa-item:target { border-bottom-color: var(--line-2); }
+/* install: the same numbered list as How it works */
+.install { padding-top: 140px; }
+.install > div:first-child { position: sticky; top: 110px; }
+.install h2 { position: static; }
+.install-note { color: var(--muted); margin: 14px 0 0; font-size: 15px; }
+.install .step a { color: var(--ink); text-underline-offset: 3px; }
+.install .step b { color: var(--ink); font-weight: 500; }
+.ui { display: inline-block; padding: 0 7px; border-radius: 6px; border: 1px solid var(--line-2); background: var(--bg-2);
+      color: var(--ink); font-size: 13px; line-height: 22px; white-space: nowrap; direction: ltr; }
 
 /* ------------------------------------------------------------- download */
 .final {
@@ -419,7 +428,7 @@ html[dir="rtl"] .final::after { background: linear-gradient(270deg, var(--bg-2) 
 /* ------------------------------------------------------------- small screens */
 @media (max-width: 980px) {
   .hero-inner, .split, .steps, .faq-head { grid-template-columns: 1fr; gap: 28px; }
-  .steps h2 { position: static; }
+  .steps h2, .install > div:first-child { position: static; }
   .qa { grid-template-columns: 1fr; }
   main > section.hero { padding: 96px 0 40px; min-height: 0; }
   .hero-inner { gap: 36px; }

@@ -19,7 +19,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&family=IBM+Plex+Sans+Arabic:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=24">
+  <link rel="stylesheet" href="style.css?v=25">
 </head>
 <body>
   <a class="skip" href="#main" data-i18n="skip">Skip to content</a>
@@ -29,7 +29,7 @@
     <nav class="links" aria-label="Sections">
       <a href="#try" data-i18n="nav_try">Try it</a>
       <a href="#features" data-i18n="nav_features">Features</a>
-      <a href="#faq" data-i18n="nav_faq">FAQ</a>
+      <a href="#install" data-i18n="nav_install">Install</a>
       <a href="https://github.com/Amjz03/capture-menu">GitHub</a>
     </nav>
     <div class="nav-end">
@@ -144,19 +144,38 @@
       </div>
     </section>
 
-    <section class="faq" id="faq">
+    <section class="all" id="all-features" aria-labelledby="all-h">
       <div class="faq-head reveal">
-        <h2 data-i18n="faq_h">Questions</h2>
-        <p data-i18n-html="faq_p">Something else? <a href="https://github.com/Amjz03/capture-menu/issues">Open an issue on GitHub</a>.</p>
+        <h2 id="all-h" data-i18n="all_h">Everything it does</h2>
+        <p data-i18n="all_p">Everything Capture Menu does, in one place.</p>
       </div>
       <dl class="qa reveal">
-        <div class="qa-item"><dt data-i18n="q1">Is it really free?</dt><dd data-i18n="a1">Yes. It's open source under the MIT license: no account, no ads, no watermark.</dd></div>
-        <div class="qa-item"><dt data-i18n="q2">What does it need?</dt><dd data-i18n="a2">Windows 10 or 11. Setup installs OBS Studio and FFmpeg if you don't have them and sets OBS up for your PC: resolution, the best encoder for your graphics card and the 30-minute replay buffer.</dd></div>
-        <div class="qa-item"><dt data-i18n="q3">The browser or Windows says it's unsafe</dt><dd data-i18n="a3">It isn't: Windows Defender finds nothing in it. Browsers and Windows warn about new apps that aren't signed yet. In Chrome or Edge, open Downloads and choose Keep (in Edge: ··· then Keep anyway). If Windows then shows &quot;Windows protected your PC&quot;, click More info, then Run anyway. Code signing is on the way.</dd></div>
-        <div class="qa-item"><dt data-i18n="q4">Will it slow my game down?</dt><dd data-i18n="a4">Capture Menu uses about 75 MB while it waits, and its FFmpeg work runs at low priority. The 30-minute buffer lives in OBS and uses RAM (up to about 2.9 GB at 1440p); pick a shorter buffer or lighter quality in Settings for less.</dd></div>
-        <div class="qa-item" id="privacy"><dt data-i18n="q5">Does anything leave my PC?</dt><dd data-i18n="a5">No. It talks to OBS on your PC, and to GitHub only when you check for updates. Your clips stay with you.</dd></div>
-        <div class="qa-item"><dt data-i18n="q6">Is it in Arabic?</dt><dd data-i18n="a6">Yes, the whole interface, right to left, like the PS5.</dd></div>
+        <div class="qa-item"><dt data-i18n="f_save_h">The last 15 seconds to 30 minutes</dt><dd data-i18n="f_save_p">It keeps the last 30 minutes of any game. Save 15 or 30 seconds, 1, 3, 5, 15 or 30 minutes, or all of it.</dd></div>
+        <div class="qa-item"><dt data-i18n="f_twice_h">Press twice, it's saved</dt><dd data-i18n="f_twice_p">Alt + C or Create twice saves the last 30 seconds, without opening anything.</dd></div>
+        <div class="qa-item"><dt data-i18n="f_shot_h">Screenshots and recordings</dt><dd data-i18n="f_shot_p">From the same bar. A small REC timer shows while you record, for as long as you like.</dd></div>
+        <div class="qa-item"><dt data-i18n="f_pads_h">Every controller</dt><dd data-i18n="f_pads_p">DualSense, Xbox and most others. The buttons on screen match the controller in your hands.</dd></div>
+        <div class="qa-item"><dt data-i18n="f_folders_h">A folder for every game</dt><dd data-i18n="f_folders_p">Found by itself, like the PS5. Clips and screenshots can go to different drives.</dd></div>
+        <div class="qa-item"><dt data-i18n="f_trim_h">Watch and trim to the frame</dt><dd data-i18n="f_trim_p">Open a clip right away, skip through it and cut it exactly where you want. The original stays.</dd></div>
+        <div class="qa-item"><dt data-i18n="f_voice_h">Your voice on its own track</dt><dd data-i18n="f_voice_p">Make your voice louder or quieter in any clip afterwards, and change it back whenever you like.</dd></div>
+        <div class="qa-item"><dt data-i18n="f_share_h">Share in one step</dt><dd data-i18n="f_share_p">A copy sized for your phone or Discord (10, 50 or 500 MB) goes straight to the clipboard.</dd></div>
+        <div class="qa-item"><dt data-i18n="f_follow_h">Follows your game</dt><dd data-i18n="f_follow_p">Across monitors and TVs, and it never shows up in your own recordings.</dd></div>
+        <div class="qa-item" id="privacy"><dt data-i18n="f_privacy_h">Nothing leaves your PC</dt><dd data-i18n="f_privacy_p">It only talks to OBS on your PC, and to GitHub when you check for updates. Your clips stay with you.</dd></div>
+        <div class="qa-item"><dt data-i18n="f_arabic_h">English and Arabic</dt><dd data-i18n="f_arabic_p">The whole interface, right to left in Arabic, like the PS5.</dd></div>
+        <div class="qa-item"><dt data-i18n="f_free_h">Free, with no account</dt><dd data-i18n="f_free_p">Open source under the MIT license. No ads and no watermark.</dd></div>
       </dl>
+    </section>
+
+    <section class="steps install" id="install" aria-labelledby="install-h">
+      <div class="reveal">
+        <h2 id="install-h" data-i18n="install_h">Install it in a minute</h2>
+        <p class="install-note" data-i18n="install_p">Windows 10 or 11. No admin rights needed.</p>
+      </div>
+      <ol class="step-list">
+        <li class="step reveal"><span class="num">01</span><div><h3 data-i18n="i_dl_h">Download</h3><p data-i18n-html="i_dl_p">Get <a href="https://github.com/Amjz03/capture-menu/releases/latest/download/CaptureMenu-Setup.exe">CaptureMenu-Setup.exe</a>, about 50 MB.</p></div></li>
+        <li class="step reveal"><span class="num">02</span><div><h3 data-i18n="i_browser_h">If your browser warns you, keep it</h3><p data-i18n-html="i_browser_p">Capture Menu isn't signed yet, so browsers don't know it. Windows Defender finds nothing in it. <b>Chrome:</b> open Downloads and press <span class="ui">Keep</span>. <b>Edge:</b> press <span class="ui">···</span> next to the file, then <span class="ui">Keep</span>, then <span class="ui">Keep anyway</span>.</p></div></li>
+        <li class="step reveal"><span class="num">03</span><div><h3 data-i18n="i_smartscreen_h">If Windows says “Windows protected your PC”</h3><p data-i18n-html="i_smartscreen_p">Press <span class="ui">More info</span>, then <span class="ui">Run anyway</span>.</p></div></li>
+        <li class="step reveal"><span class="num">04</span><div><h3 data-i18n="i_install_h">Press Install</h3><p data-i18n-html="i_install_p">Setup installs OBS Studio and FFmpeg if you don't have them and sets everything up for your PC. A minute later, press <span class="ui">Alt + C</span> in a game.</p></div></li>
+      </ol>
     </section>
 
     <section class="final reveal">
@@ -176,7 +195,7 @@
     <span data-i18n="tm">PlayStation and Xbox are trademarks of their owners. Capture Menu is not affiliated with Sony or Microsoft.</span>
   </footer>
 
-  <script src="demo.js?v=24"></script>
-  <script src="app.js?v=24"></script>
+  <script src="demo.js?v=25"></script>
+  <script src="app.js?v=25"></script>
 </body>
 </html>
