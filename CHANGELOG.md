@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.0.36 · 2026-10-25
+
+- The first button in the menu is now called **حفظ آخر لقطة** in Arabic.
+
 ## 0.0.35 · 2026-10-25
 
 - **Simpler Arabic.** Messages in the app use everyday words (بدون، عندك، حوالي، لا يمكن) and say what Capture Menu does ("نسجّل صوتك") instead of long passive forms, still in clear Arabic everyone reads.
