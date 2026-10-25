@@ -18,7 +18,7 @@ const T = {
     q_safe_h: "Why does my browser or Windows warn me?",
     q_safe_p: "Capture Menu isn't code-signed yet, so Windows can't show a verified publisher. Download it only from the <a href=\"https://github.com/Amjz03/capture-menu/releases/latest\">official release on GitHub</a> and follow the install steps below. A clean virus scan is a good sign, not a guarantee.",
     q_privacy_h: "Does anything leave my PC?",
-    q_privacy_p: "Your clips and settings aren't sent anywhere. It talks to OBS on your PC, and to GitHub only when you check for updates.",
+    q_privacy_p: "Your clips and settings aren't sent anywhere. It talks to OBS on your PC, and to GitHub only when you check for updates. This website counts visits with GoatCounter, without cookies.",
     q_free_h: "Is it really free?",
     q_free_p: "Yes. Open source under the MIT license, with no account, no ads and no watermark. In English and Arabic.",
     install_h: "Install it in a minute",
@@ -93,7 +93,7 @@ const T = {
     q_safe_h: "لماذا يحذّرني المتصفح أو ويندوز؟",
     q_safe_p: "لأن Capture Menu ما زال بدون توقيع رقمي، فلا يعرض ويندوز ناشرًا موثّقًا. نزّله فقط من <a href=\"https://github.com/Amjz03/capture-menu/releases/latest\">صفحة الإصدار الرسمية على GitHub</a> وتابع خطوات التثبيت في الأسفل. ونتيجة فحص الفيروسات النظيفة علامة جيدة، لكنها ليست ضمانًا.",
     q_privacy_h: "هل يخرج شيء من جهازي؟",
-    q_privacy_p: "لا نرسل مقاطعك ولا إعداداتك إلى أي مكان. البرنامج يتصل بـ OBS على جهازك، وبـ GitHub فقط عندما تبحث عن تحديث.",
+    q_privacy_p: "لا نرسل مقاطعك ولا إعداداتك إلى أي مكان. البرنامج يتصل بـ OBS على جهازك، وبـ GitHub فقط عندما تبحث عن تحديث. وهذا الموقع يعدّ الزيارات بـ GoatCounter بدون كوكيز.",
     q_free_h: "هل هو مجاني فعلًا؟",
     q_free_p: "نعم. مفتوح المصدر برخصة MIT، بدون حساب أو إعلانات أو علامة مائية، وبالعربية والإنجليزية.",
     install_h: "ثبّته في دقيقة",
@@ -305,6 +305,26 @@ const spy = new IntersectionObserver((entries) => entries.forEach((e) => {
   navLinks.forEach((a) => a.classList.toggle("here", a.getAttribute("href") === `#${e.target.id}`));
 }), { rootMargin: "-45% 0px -50% 0px" });
 navLinks.forEach((a) => { const el = document.querySelector(a.getAttribute("href")); if (el) spy.observe(el); });
+
+// ---------------------------------------------------------------- visitors and downloads (GoatCounter)
+// Page views are counted by GoatCounter's script, without cookies. Two events on top:
+// "new-device" once per browser (a flag in localStorage, no ID is sent), so it counts devices, not
+// visits; and "download" for every click on a Setup.exe link (GitHub counts the downloads themselves).
+function count(path, title) {
+  const send = (tries) => {
+    if (window.goatcounter && window.goatcounter.count) { window.goatcounter.count({ path, title, event: true }); return true; }
+    if (tries) setTimeout(() => send(tries - 1), 1000);   // its script loads after this one
+    return false;
+  };
+  send(10);
+}
+if (!store.get("seen")) {
+  store.set("seen", "1");
+  if (store.get("seen")) count("new-device", "New device");   // only where it's remembered: private windows that forget it aren't counted every time
+}
+document.addEventListener("click", (e) => {
+  if (e.target.closest('a[href$="CaptureMenu-Setup.exe"]')) count("download", "Download Setup.exe");
+});
 
 // a link to a question (the footer's Privacy) opens it
 const openAsked = () => { const d = location.hash && document.querySelector(`details${location.hash}`); if (d) d.open = true; };
