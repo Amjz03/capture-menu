@@ -24,7 +24,7 @@ const DEMO = (() => {
     ar: {
       game: "Call of Duty", keeping: "يحتفظ بآخر 30 دقيقة", recording: "تسجيل",
       save: "حفظ الأخير", save_hint: "آخر 30 دقيقة", shot: "لقطة شاشة", rec: "تسجيل", stop: "إيقاف  {t}",
-      mic_on: "الميكروفون يعمل", mic_off: "الميكروفون مغلق", all: "كل المقاطع واللقطات", settings: "الإعدادات",
+      mic_on: "المايك يعمل", mic_off: "المايك مغلق", all: "كل المقاطع واللقطات", settings: "الإعدادات",
       move: "تنقّل", select: "اختيار", instantly: "حفظ فوري", trim_latest: "قص الأخير", close: "إغلاق",
       view_latest: "عرض الأخير", choose: "اختيار", save_k: "حفظ", pick: "اختيار سريع", back: "رجوع",
       caption: "حفظ اللعب الأخير", full: "الفيديو كاملًا", last_s: "آخر {n} ث", last_m: "آخر {n} د",
@@ -33,7 +33,7 @@ const DEMO = (() => {
       sec: "{n} ثانية", min: "{n} دقيقة", one_min: "دقيقة واحدة",
       to_view: "{open}&nbsp; ثم &nbsp;{view}&nbsp; للعرض", trim: "قص",
       rec_started: "بدأ التسجيل · افتح القائمة واختر «إيقاف» لإنهائه",
-      mic_msg_off: "الميكروفون مغلق · لن يُسجَّل صوتك", mic_msg_on: "الميكروفون يعمل · صوتك يُسجَّل",
+      mic_msg_off: "المايك مغلق · لن يُسجَّل صوتك", mic_msg_on: "المايك يعمل · صوتك يُسجَّل",
       clip: "مقطع", clip_len: "مقطع · {l}", screenshot: "لقطة شاشة", recording_kind: "تسجيل",
       just_now: "الآن", min_ago: "قبل {n} د", mb: "ميجابايت", gb: "جيجابايت",
     },
