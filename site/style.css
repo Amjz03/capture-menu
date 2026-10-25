@@ -139,23 +139,30 @@ html[dir="rtl"] .release .arrow { display: inline-block; transform: scaleX(-1); 
 .anywhere > span:first-child { margin-inline-end: auto; }
 .anywhere .keys { display: flex; gap: 6px; }
 .buffer { margin: 0; }
-.buffer-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 10px; color: var(--muted); font-size: 14px; }
-.buffer-head b { color: var(--ink); font-weight: 500; white-space: nowrap; }
-.buffer-track { position: relative; height: 8px; border-radius: 4px; background: rgba(255, 255, 255, 0.07); overflow: hidden; direction: ltr; cursor: pointer; touch-action: none; }
-.buffer-fill { position: absolute; inset: 0; background: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.2) 0 1px, transparent 1px 24px); animation: flow 2.4s linear infinite; }
-@keyframes flow { to { background-position: -24px 0; } }
-.buffer-slice { position: absolute; right: 0; top: 0; bottom: 0; background: linear-gradient(90deg, #ff6a5f, var(--red)); border-radius: 4px; box-shadow: 0 0 14px rgba(255, 69, 58, 0.55); transition: width .5s var(--ease); }
-.buffer-labels { display: flex; justify-content: space-between; margin-top: 8px; color: var(--faint); font: 12px var(--mono); direction: ltr; }
-.buffer-labels .now { display: flex; align-items: center; gap: 6px; }
+.buffer-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 16px; color: var(--muted); font-size: 14px; }
+.buffer-head b { color: var(--ink); font-size: 17px; font-weight: 600; white-space: nowrap; }
+/* 30 minutes on a square-root scale, so 15 seconds is still something you can see */
+.buffer-track { position: relative; height: 12px; border-radius: 6px; background: rgba(255, 255, 255, 0.1); box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.4); direction: ltr; cursor: pointer; touch-action: none; }
+.buffer-fill { position: absolute; inset: 0; border-radius: inherit; background: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.18) 0 1px, transparent 1px 20px); animation: flow 2.4s linear infinite; }
+@keyframes flow { to { background-position: -20px 0; } }
+.buffer-slice { position: absolute; right: 0; top: 0; bottom: 0; background: linear-gradient(90deg, #ff7a70, var(--red)); border-radius: 6px; box-shadow: 0 0 18px rgba(255, 69, 58, 0.6); transition: width .5s var(--ease); }
+.buffer-slice::before {   /* where the clip starts, like a trim handle */
+  content: ""; position: absolute; left: -2px; top: -5px; bottom: -5px; width: 4px; border-radius: 2px; background: #fff; box-shadow: 0 0 10px rgba(255, 255, 255, 0.6);
+}
+.buffer-labels { display: flex; justify-content: space-between; margin-top: 10px; color: var(--faint); font: 12px var(--mono); direction: ltr; }
+.buffer-labels .now { display: flex; align-items: center; gap: 6px; color: var(--muted); }
 .buffer-labels i { width: 6px; height: 6px; border-radius: 50%; background: var(--red); animation: live 1.6s ease-in-out infinite; }
 @keyframes live { 50% { box-shadow: 0 0 0 5px rgba(255, 69, 58, 0); } 0%, 100% { box-shadow: 0 0 0 0 rgba(255, 69, 58, 0.55); } }
-.buffer-chips { display: flex; flex-wrap: wrap; gap: 2px; margin-top: 14px; padding: 3px; width: fit-content; border: 1px solid var(--line); border-radius: 9px; }
-.buffer-chips button {
-  min-width: 46px; height: 30px; padding: 0 10px; border-radius: 6px; border: 0; background: none; color: var(--muted);
-  font: 500 13px var(--mono); cursor: pointer; transition: background .2s, color .2s;
+.buffer-chips {
+  display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-top: 18px; padding: 4px;
+  border-radius: 11px; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--line);
 }
-.buffer-chips button:hover { color: var(--ink); }
-.buffer-chips button.on { background: var(--ink); color: #0b0c10; }
+.buffer-chips button {
+  height: 34px; padding: 0; border-radius: 8px; border: 0; background: none; color: var(--muted);
+  font: 500 14px var(--sans); font-variant-numeric: tabular-nums; cursor: pointer; transition: background .2s, color .2s, box-shadow .2s;
+}
+.buffer-chips button:hover { color: var(--ink); background: rgba(255, 255, 255, 0.06); }
+.buffer-chips button.on { background: var(--ink); color: #0d0e13; box-shadow: 0 4px 14px -4px rgba(255, 255, 255, 0.35); }
 
 /* ------------------------------------------------------------- works with */
 .inputs {

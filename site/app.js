@@ -187,7 +187,7 @@ function bufWords(s) {
   return s < 60 ? `Last ${s} seconds` : s === 60 ? "Last minute" : `Last ${s / 60} minutes`;
 }
 function renderBuffer() {
-  document.getElementById("buf-slice").style.width = `${Math.max(1.6, (bufPick / 1800) * 100)}%`;
+  document.getElementById("buf-slice").style.width = `${Math.sqrt(bufPick / 1800) * 100}%`;   // square root: short lengths stay visible
   document.getElementById("buf-pick").textContent = bufWords(bufPick);
   document.getElementById("buf-chips").innerHTML = BUF.map((s) =>
     `<button type="button" data-s="${s}" class="${s === bufPick ? "on" : ""}" aria-pressed="${s === bufPick}">${bufChip(s)}</button>`).join("");
@@ -197,8 +197,8 @@ document.getElementById("buf-chips").addEventListener("click", (e) => { const b 
 const track = document.getElementById("buf-track");
 function fromTrack(e) {   // the track runs left to right, now on the right, in both languages
   const r = track.getBoundingClientRect();
-  const secs = Math.max(0, Math.min(1, (r.right - e.clientX) / r.width)) * 1800;
-  pickBuffer(BUF.reduce((a, b) => (Math.abs(b - secs) < Math.abs(a - secs) ? b : a)));
+  const secs = Math.max(0, Math.min(1, (r.right - e.clientX) / r.width)) ** 2 * 1800;   // the same square-root scale
+  pickBuffer(BUF.reduce((a, b) => (Math.abs(Math.sqrt(b) - Math.sqrt(secs)) < Math.abs(Math.sqrt(a) - Math.sqrt(secs)) ? b : a)));
 }
 track.addEventListener("pointerdown", (e) => { track.setPointerCapture(e.pointerId); fromTrack(e); });
 track.addEventListener("pointermove", (e) => { if (track.hasPointerCapture(e.pointerId)) fromTrack(e); });
