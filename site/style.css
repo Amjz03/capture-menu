@@ -84,8 +84,22 @@ html[dir="rtl"] .link:hover .arrow { transform: scaleX(-1) translateX(3px); }
 
 /* ------------------------------------------------------------- hero */
 main > section.hero {
-  position: relative; isolation: isolate; width: 100%;
+  position: relative; isolation: isolate; width: 100%; min-height: min(calc(100svh - 58px), 900px);
   display: flex; align-items: flex-end; padding: 150px 0 72px; overflow: hidden;
+}
+/* a misty ride in Red Dead behind it all, slow and quiet */
+.hero-bg { position: absolute; inset: 0; z-index: -2; background: #0d0e13 url("assets/hero-bg.jpg") center / cover; }
+.hero-bg video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.hero::before {   /* dark where the words are */
+  content: ""; position: absolute; inset: 0; z-index: -1;
+  background:
+    linear-gradient(0deg, var(--bg) 0%, rgba(13, 14, 19, 0.7) 24%, rgba(13, 14, 19, 0.2) 62%, rgba(13, 14, 19, 0.4) 100%),
+    linear-gradient(90deg, rgba(13, 14, 19, 0.72) 0%, rgba(13, 14, 19, 0.15) 55%, transparent 80%);
+}
+html[dir="rtl"] .hero::before {
+  background:
+    linear-gradient(0deg, var(--bg) 0%, rgba(13, 14, 19, 0.7) 24%, rgba(13, 14, 19, 0.2) 62%, rgba(13, 14, 19, 0.4) 100%),
+    linear-gradient(270deg, rgba(13, 14, 19, 0.72) 0%, rgba(13, 14, 19, 0.15) 55%, transparent 80%);
 }
 .hero-rec {   /* the app's REC indicator: how long this page has been open */
   position: absolute; top: 24px; left: max(24px, calc((100% - var(--max)) / 2)); margin: 0;
@@ -433,4 +447,5 @@ html[dir="rtl"] .final::after { background: linear-gradient(270deg, var(--bg-2) 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
   .reveal { opacity: 1; transform: none; }
+  .hero-bg video { display: none; }
 }
