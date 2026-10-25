@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.0.34 · 2026-10-25
+
+- **Your PC feels lighter: the last minutes are on the drive, not in RAM.** Until now OBS kept the last 30 minutes in memory, several GB while you play. Now OBS records into a hidden folder (`%LOCALAPPDATA%\CaptureMenu\Buffer`), a new file every minute, and Capture Menu deletes what's older than you keep, so it never grows past that. Saving joins the files it needs without re-encoding: the same quality, saved in about a second. A manual recording is the same files from Start to Stop. Settings shows the drive space it takes. Nothing to do: OBS is set up again once when you update.
+- **OBS records the whole time Capture Menu runs.** Every minute Capture Menu checks that OBS is really recording, and fixes it if not: OBS closed or crashed is started again; a graphics driver update or reset that left OBS recording nothing restarts it (keeping your encoder, since it was the driver, not the card); a recording that stopped growing restarts it. It never restarts OBS while you stream, and says a problem once instead of every try. It also warns when the drive with the last minutes runs low on space.
+- **Back by itself after a crash.** If Capture Menu closes without Quit, Windows starts it again within 3 minutes and the old minutes are cleaned up. Quit stops OBS's recording and keeps it closed.
+- Uninstalling also removes the hidden folder and stops OBS's recording.
+
 ## 0.0.33 · 2026-10-25
 
 - **A first-start setup.** The first time Capture Menu starts, it asks what's worth choosing before anything is recorded: the language (first, so the rest are read in it), start with Windows, how much to keep, what a double press saves, quality, resolution, frame rate, the microphone, the keys and controller button that open the menu, and where clips go. Which screen and HDR are only asked when there's a choice. Each question says it can be changed later in Settings, the recommended choices come picked, and OBS is set up with what you chose. It's never asked again, and nothing changes for people who already use Capture Menu.
