@@ -265,14 +265,13 @@ document.querySelectorAll(".features img").forEach((img) => {
   img.complete && img.naturalWidth ? done() : img.addEventListener("load", done, { once: true });
 });
 
-// ---------------------------------------------------------------- the hero: the game plays, REC counts
+// ---------------------------------------------------------------- the hero: REC counts
 // The clock is how long this page has been open: the time Capture Menu would already be keeping.
 const recClock = document.getElementById("rec-clock"), opened = Date.now();
 setInterval(() => {
   const sec = Math.floor((Date.now() - opened) / 1000);
   recClock.textContent = `${String(Math.floor(sec / 60)).padStart(2, "0")}:${String(sec % 60).padStart(2, "0")}`;
 }, 1000);
-if (matchMedia("(prefers-reduced-motion: reduce)").matches) document.getElementById("hero-bg").pause();
 // the menu loop plays only while it's on screen
 const lazyVideos = new IntersectionObserver((entries) => entries.forEach(({ target: v, isIntersecting }) => {
   if (isIntersecting) { v.dataset.playing = "1"; v.play().catch(() => {}); } else { delete v.dataset.playing; v.pause(); }
