@@ -30,7 +30,7 @@ assert p["video"]["outputHeight"] == 1440 and p["video"]["fpsNumerator"] == 60 a
 q = obs_client.obs_plan(dict(preferences.DEFAULTS, resolution="1080p", fps=120, quality="high", video_codec="h264", buffer_minutes=10), 2560, 1440, "nvenc_av1", "31.0")
 qp = {(c, n): v for c, n, v in q["profile"]}
 assert q["video"]["outputWidth"] == 1920 and q["video"]["outputHeight"] == 1080 and q["video"]["fpsNumerator"] == 120
-assert qp[("SimpleOutput", "RecEncoder")] == "nvenc" and qp[("SimpleOutput", "RecQuality")] == "HQ" and qp[("SimpleOutput", "RecRBTime")] == "600"
+assert qp[("SimpleOutput", "RecEncoder")] == "nvenc" and qp[("SimpleOutput", "RecQuality")] == "HQ" and qp[("SimpleOutput", "RecRB")] == "false"
 assert q["summary"] != p["summary"], "a change must re-run the OBS setup"
 assert obs_client.choose_encoder("nvenc_hevc", "av1") == "nvenc_hevc", "never asks a GPU for a codec it lacks"
 assert obs_client.choose_encoder("x264", "av1") == "x264" and obs_client.choose_encoder("amd_av1", "hevc") == "amd_hevc"
@@ -40,7 +40,7 @@ print("plan PASS", q["summary"])
 s.open((2560, 1440)); app.processEvents()
 vals = s.values()
 assert vals["buffer_minutes"] == 45 and vals["fps"] == 60 and vals["quality"] == "balanced" and vals["hotkey"] == "alt+c"
-assert "2560×1440" in s.res_row.text() and "GB of RAM" in s.memory.text()
+assert "2560×1440" in s.res_row.text() and "GB on the drive" in s.memory.text()
 print("open PASS", s.memory.text())
 
 # 3) keyboard: down to frame rate, right = 120; quality right = high

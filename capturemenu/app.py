@@ -47,7 +47,10 @@ def main():
         runtime.log.info("already running, exiting")
         return
     app.aboutToQuit.connect(lock.unlock)
-    threading.Thread(target=windows.update_start_with_windows, daemon=True).start()   # schtasks takes a moment
+    def tasks():          # schtasks takes a moment
+        windows.update_start_with_windows()
+        windows.set_watch_task()
+    threading.Thread(target=tasks, daemon=True).start()
     problems: list[str] = []
 
     ctl = capture_controller.Controller(cfg)
@@ -104,7 +107,14 @@ def main():
         settings.check_or_install()
     tm.addAction(language.tr("Check for updates"), check_updates)
     tm.addSeparator()
-    tm.addAction(language.tr("Quit"), app.quit)
+    def quit_app():
+        try:
+            ctl.obs.stop_buffer()    # nothing would delete the old minutes OBS goes on recording
+        except Exception:
+            runtime.log.exception("couldn't stop OBS's recording")
+        runtime.ALIVE.unlink(missing_ok=True)     # closed on purpose: the watch task leaves it closed
+        app.quit()
+    tm.addAction(language.tr("Quit"), quit_app)
     tray.setContextMenu(tm)
     tray.activated.connect(lambda r: menu.show_menu()
                            if r == QtWidgets.QSystemTrayIcon.Trigger else None)

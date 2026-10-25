@@ -9,7 +9,7 @@ import os
 import re
 import tempfile
 
-from . import version, windows
+from . import runtime, version, windows
 
 
 def version_tuple(v: str) -> tuple[int, ...]:
@@ -84,4 +84,5 @@ def run_update_installer(exe: Path, *, size: int, digest: str):
     """Recheck immediately before launch; leave Capture Menu running if launch fails."""
     verify_update(exe, size, digest)
     windows.launch_outside([str(exe), "/SILENT", "/SUPPRESSMSGBOXES", "/NORESTART"], flags=0x00000008)
+    runtime.ALIVE.unlink(missing_ok=True)     # the watch task mustn't start it mid-install; Setup starts it after
     QtWidgets.QApplication.quit()

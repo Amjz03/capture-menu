@@ -25,6 +25,7 @@ Write-Host "  Your captures, OBS Studio and FFmpeg are kept." -ForegroundColor G
 $answer = Read-Host "  Type Y and press Enter to remove it"
 if ($answer -notmatch '^[yY]') { Write-Host "  Nothing was removed."; exit 0 }
 
+Remove-Item "$env:LOCALAPPDATA\CaptureMenu\alive" -Force -ErrorAction SilentlyContinue
 Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
     Where-Object { $_.Name -eq "CaptureMenu.exe" -or
                    ($_.Name -like "python*.exe" -and $_.CommandLine -like "*capture_menu.py*") } |
@@ -32,6 +33,11 @@ Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
 foreach ($lnk in $shortcuts) { Remove-Item $lnk -Force -ErrorAction SilentlyContinue }
 Remove-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run" -Name "Capture Menu" -ErrorAction SilentlyContinue
 Unregister-ScheduledTask -TaskName "Capture Menu ($env:USERNAME)" -Confirm:$false -ErrorAction SilentlyContinue
+Unregister-ScheduledTask -TaskName "Capture Menu watch ($env:USERNAME)" -Confirm:$false -ErrorAction SilentlyContinue
+# OBS records the last minutes into AppData\CaptureMenu for Capture Menu: stop it, then remove them
+Stop-Process -Name obs64 -Force -ErrorAction SilentlyContinue
+Start-Sleep -Seconds 1
+Remove-Item "$env:LOCALAPPDATA\CaptureMenu" -Recurse -Force -ErrorAction SilentlyContinue
 Write-Host "  Stopped it and removed the shortcuts." -ForegroundColor Green
 
 # This window may be running from that folder, so a hidden helper deletes it a few seconds later

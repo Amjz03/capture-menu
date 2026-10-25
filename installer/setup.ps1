@@ -86,6 +86,8 @@ function Find-OBS {
 }
 
 function Stop-CaptureMenu {
+    # stopped on purpose: the watch task (every 3 minutes) mustn't start it again mid-install
+    Remove-Item "$env:LOCALAPPDATA\CaptureMenu\alive" -Force -ErrorAction SilentlyContinue
     Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
         Where-Object { $_.Name -eq "CaptureMenu.exe" -or
                        ($_.Name -like "python*.exe" -and $_.CommandLine -like "*capture_menu.py*") } |

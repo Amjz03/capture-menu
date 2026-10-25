@@ -409,20 +409,39 @@ def logon_task_name() -> str:
 
 def set_logon_task(on: bool):
     """Adds or removes the sign-in task. Returns quietly if Task Scheduler refuses."""
-    name = logon_task_name()
     if not on:
-        subprocess.run(["schtasks", "/Delete", "/TN", name, "/F"], capture_output=True,
+        subprocess.run(["schtasks", "/Delete", "/TN", logon_task_name(), "/F"], capture_output=True,
                        creationflags=0x08000000)
         return
+    _create_task(logon_task_name(), "Starts Capture Menu when you sign in",
+                 "<LogonTrigger><Enabled>true</Enabled><UserId>{user}</UserId></LogonTrigger>")
+
+
+def watch_task_name() -> str:
+    return f"Capture Menu watch ({os.environ.get('USERNAME', 'user')})"
+
+
+def set_watch_task():
+    """Every 3 minutes: Capture Menu again if it closed without Quit (see runtime.ALIVE). Only
+    the installed CaptureMenu.exe, like the sign-in task."""
+    if runtime.IS_WINDOWS and runtime.FROZEN:
+        _create_task(watch_task_name(), "Starts Capture Menu again if it closed without Quit",
+                     "<TimeTrigger><Repetition><Interval>PT3M</Interval><StopAtDurationEnd>false</StopAtDurationEnd>"
+                     "</Repetition><StartBoundary>2026-01-01T00:00:00</StartBoundary><Enabled>true</Enabled></TimeTrigger>",
+                     "--watch")
+
+
+def _create_task(name: str, description: str, trigger: str, arguments: str = ""):
     from xml.sax.saxutils import escape
     user = escape(f"{os.environ.get('USERDOMAIN', '')}\\{os.environ.get('USERNAME', '')}".lstrip("\\"))
     exe, args = ((sys.executable, "") if runtime.FROZEN else
                  (str(Path(sys.executable).with_name("pythonw.exe")), f'"{runtime.APP_DIR / "capture_menu.py"}"'))
+    args = f"{args} {arguments}".strip()
     # no time limit (the default stops a task after 3 days), runs on battery, normal priority (not 7)
     xml = f"""<?xml version="1.0" encoding="UTF-16"?>
 <Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
-  <RegistrationInfo><Description>Starts Capture Menu when you sign in</Description></RegistrationInfo>
-  <Triggers><LogonTrigger><Enabled>true</Enabled><UserId>{user}</UserId></LogonTrigger></Triggers>
+  <RegistrationInfo><Description>{description}</Description></RegistrationInfo>
+  <Triggers>{trigger.format(user=user)}</Triggers>
   <Principals><Principal id="Author"><UserId>{user}</UserId><LogonType>InteractiveToken</LogonType>
     <RunLevel>LeastPrivilege</RunLevel></Principal></Principals>
   <Settings><MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>
@@ -431,13 +450,13 @@ def set_logon_task(on: bool):
   <Actions Context="Author"><Exec><Command>{escape(exe)}</Command><Arguments>{escape(args)}</Arguments>
     <WorkingDirectory>{escape(str(runtime.APP_DIR))}</WorkingDirectory></Exec></Actions>
 </Task>"""
-    file = Path(tempfile.gettempdir()) / "capture-menu-task.xml"
+    file = Path(tempfile.gettempdir()) / f"capture-menu-task-{os.getpid()}.xml"
     try:
         file.write_text(xml, encoding="utf-16")
         done = subprocess.run(["schtasks", "/Create", "/TN", name, "/XML", str(file), "/F"],
                               capture_output=True, creationflags=0x08000000)
         if done.returncode:
-            runtime.log.warning("couldn't add the sign-in task: %s", done.stderr.decode(errors="replace").strip())
+            runtime.log.warning("couldn't add the task %s: %s", name, done.stderr.decode(errors="replace").strip())
     finally:
         file.unlink(missing_ok=True)
 

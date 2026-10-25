@@ -32,7 +32,7 @@
 
 ## Features
 
-- **Save recent gameplay** from a 30-minute replay buffer: the last 15 s, 30 s, 1, 3, 5, 15 or 30 minutes, or everything.
+- **Save recent gameplay** from the last 30 minutes, kept on your drive (not in RAM): the last 15 s, 30 s, 1, 3, 5, 15 or 30 minutes, or everything.
 - **Screenshot and record** from the same bar, with a small REC timer while you record.
 - **A folder per game**, detected automatically, like the PS5. Clips and screenshots can go to different drives or folders.
 - **Check it right away:** a viewer with play, skip and frame-exact trim.
@@ -87,7 +87,7 @@ Setup does the rest by itself:
 - adds Capture Menu to the Start menu and to Windows startup, and starts it
 - checks everything, and if something isn't ready, offers a log that says what to fix
 
-**First start.** Capture Menu sets up OBS for your PC and restarts it once: your main screen's resolution at 60 FPS, the best encoder for your graphics card (RTX 40/50: AV1, older NVIDIA: HEVC, AMD/Intel: their hardware encoder), a bitrate that suits the resolution, the 30-minute replay buffer, MP4 recordings and a Display Capture source. You'll see *Setting up OBS · 2560×1440 · 60 FPS · NVENC AV1 8000 Kbps*, then *OBS is ready*. It only runs again if your main monitor or graphics card changes.
+**First start.** Capture Menu sets up OBS for your PC and restarts it once: your main screen's resolution at 60 FPS, the best encoder for your graphics card (RTX 40/50: AV1, older NVIDIA: HEVC, AMD/Intel: their hardware encoder), a bitrate that suits the resolution, MP4 recordings and a Display Capture source. You'll see *Setting up OBS · 2560×1440 · 60 FPS · NVENC AV1 8000 Kbps*, then *OBS is ready*. It only runs again if your main monitor or graphics card changes.
 
 **Update:** Settings → General → **Updates** (or right-click the tray icon → Check for updates). It asks GitHub for a newer version; press again to download and install it, and Capture Menu restarts on its own. Nothing is downloaded or installed unless you press. Your settings and captures are kept.
 **Remove:** Windows **Settings → Apps → Installed apps → Capture Menu → Uninstall**. Your captures, OBS and FFmpeg stay.
@@ -221,7 +221,7 @@ Titles like "Boss down on the first try" show in the viewer, Recent row and gall
 
 - **Mic.** The Mic tile (or **M**) mutes your microphone in OBS; it turns red when off.
 - **Your voice on its own track.** Recordings carry 3 audio tracks: everything, game only and mic only. Players use the first, so clips sound normal; *Without my voice* uses the second.
-- **Monitors and TVs.** The bar, notifications and viewer open on the screen of the window in front. When a game fills a screen, OBS switches to record that screen within about 2 seconds, scaled to your recording resolution. Alt-tabbing to another screen doesn't move it. The replay buffer keeps what was captured at the time, so minutes before a move show the old screen. To always record one screen instead, pick it in Settings → Devices → Recording screen.
+- **Monitors and TVs.** The bar, notifications and viewer open on the screen of the window in front. When a game fills a screen, OBS switches to record that screen within about 2 seconds, scaled to your recording resolution. Alt-tabbing to another screen doesn't move it. The last minutes keep what was captured at the time, so minutes before a move show the old screen. To always record one screen instead, pick it in Settings → Devices → Recording screen.
 - **REC timer.** A manual recording shows a small red *REC 12:34* in a corner. Clicks go through it, and it never shows up in captures.
 - **Storage warning.** Past 200 GB of captures, or under 20 GB free on the drive, you get a notice. Nothing is ever deleted for you.
 - **Sounds and vibration.** A chime when a clip is saved, a shutter click for screenshots and a tone when recording starts; the controller buzzes too while you're using it. Replace the `.wav` files in `assets\sounds` with your own if you like.
@@ -232,13 +232,13 @@ Titles like "Boss down on the first try" show in the viewer, Recent row and gall
 
 Open it from the **Settings** tile at the end of the bar, **,** on the keyboard, or the tray icon. Move with ↑ ↓, change with ← →, **S** (△ / Y) saves, **Esc** (◯ / B) cancels. **Restore defaults** goes back to the original setup.
 
-- **Recording:** resolution (Native, 1440p, 1080p, 720p), frame rate (30, 60, 120), quality (Light, Balanced, High, Max), video format (Auto, AV1, HEVC, H.264), replay buffer (5 to 60 min), voice on its own track, HDR (Auto, Off), REC indicator (top left, top right, off).
+- **Recording:** resolution (Native, 1440p, 1080p, 720p), frame rate (30, 60, 120), quality (Light, Balanced, High, Max), video format (Auto, AV1, HEVC, H.264), how much to keep (5 to 60 min), voice on its own track, HDR (Auto, Off), REC indicator (top left, top right, off).
 - **Devices:** recording screen (follow the game, or one of your screens by name), microphone (the one Windows uses, or any microphone OBS can record).
 - **Controls:** keyboard shortcut, controller button, press or hold, double-press to save, rumble, sounds.
 - **Library:** clips folder, screenshots folder (the clips folder unless you pick another), storage warning.
 - **General:** start with Windows, language (same as Windows, English or العربية), updates.
 
-The page shows how much RAM the buffer will use. Saving restarts Capture Menu; a changed recording setting also updates OBS and restarts it once. The video format never asks for more than your graphics card can do (AV1 on an older card falls back to HEVC).
+The page shows how much drive space the last minutes take. Saving restarts Capture Menu; a changed recording setting also updates OBS and restarts it once. The video format never asks for more than your graphics card can do (AV1 on an older card falls back to HEVC).
 
 ### `config.json`
 
@@ -247,7 +247,7 @@ The Settings page writes to `config.json` in the install folder. You can also ed
 | Setting | What it does |
 |---|---|
 | `resolution` / `fps` / `quality` / `video_codec` | Recording settings, as on the Settings page |
-| `buffer_minutes` | Replay buffer length in minutes |
+| `buffer_minutes` | How many minutes it keeps |
 | `hotkey` | The shortcut, e.g. `alt+c`, `ctrl+shift+f8` or `f9` |
 | `durations_seconds` | The lengths shown in Save recent, in seconds |
 | `clips_dir` | Where clips and recordings go. Empty = `Videos\Clips` |
@@ -281,15 +281,17 @@ With **HDR** on **Auto** (the default), clips are recorded in HDR (10-bit, Rec.2
 
 ## Performance
 
-OBS keeps the replay buffer in RAM, roughly bitrate × length. At 1440p / 60 FPS:
+The last minutes are kept on your drive, not in RAM: OBS records all the time into a hidden folder (`%LOCALAPPDATA%\CaptureMenu\Buffer`), a new file every minute, and Capture Menu deletes what's older than you keep. Saving joins the files it needs without re-encoding, so clips are the same quality and save in about a second. The space it takes is roughly bitrate × length, and never grows past it. At 1440p / 60 FPS:
 
-| Buffer | AV1 8000 Kbps (default) | HEVC 12000 Kbps |
+| Kept | AV1 8000 Kbps (default) | HEVC 12000 Kbps |
 |---|---|---|
 | 10 min | ~0.6 GB | ~0.9 GB |
 | 20 min | ~1.2 GB | ~1.8 GB |
 | 30 min | ~1.8 GB | ~2.7 GB |
 
-With your voice on its own track (the default), OBS records at constant quality, so busy scenes can use more, up to about 2.9 GB for 30 minutes at 1440p. For less RAM pick a shorter buffer, a lower resolution or **Light** quality, or set `"voice_track": false`.
+With your voice on its own track (the default), OBS records at constant quality, so busy scenes can use more, up to about 2.9 GB for 30 minutes at 1440p.
+
+OBS records the whole time Capture Menu runs. Capture Menu checks every minute and starts it again if OBS was closed or crashed, restarts it if a graphics driver update or reset left it recording nothing, or if the recording stopped growing, and never while you stream. If Capture Menu itself closes without **Quit** (a crash), Windows starts it again within 3 minutes. **Quit** stops OBS's recording.
 
 Capture Menu itself uses about 75 MB while it waits. The video player loads only when you open a clip, and FFmpeg (thumbnails, trims, share copies) runs at below-normal priority so it never takes CPU from your game.
 
@@ -310,7 +312,7 @@ Clips are AV1 on recent cards. VLC, Chrome and Discord play them; the Windows Ph
 
 1. **Sources → + → Display Capture.**
 2. **Settings → Video:** Base and Output `2560x1440`, FPS `60`.
-3. **Settings → Output** (Simple): Video Encoder `Hardware (NVENC, AV1)`, Video Bitrate `8000`, Recording Quality `Same as stream`, Recording Format `MP4`, **Enable Replay Buffer**, Maximum Replay Time `1800`.
+3. **Settings → Output** (Simple): Video Encoder `Hardware (NVENC, AV1)`, Video Bitrate `8000`, Recording Quality `Same as stream`, Recording Format `MP4`. Leave the Replay Buffer off: Capture Menu starts OBS's recording itself.
 4. **Tools → WebSocket Server Settings:** enable it, and copy the password into `obs_password` in `config.json`.
 
 </details>

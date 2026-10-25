@@ -82,23 +82,27 @@ def media_duration(path: Path) -> float | None:
         return None
 
 
-def cut_tail(src: Path, seconds: int | None, out: Path) -> float | None:
-    """Writes the last `seconds` of src to out without re-encoding, then removes src.
-    None = keep the whole file. Returns the clip length in seconds."""
-    total = media_duration(src)
-    if seconds is None or (total is not None and seconds >= total - 0.5):
-        shutil.move(str(src), out)
-        return total
+def join(parts: list[Path], inpoint: float, out: Path):
+    """Joins the files OBS split its recording into, from `inpoint` seconds into the first, into
+    out without re-encoding (every track kept)."""
     ffmpeg = find_tool("ffmpeg")
     if not ffmpeg:
         raise FileNotFoundError("ffmpeg is not installed")
-    r = run_quiet([ffmpeg, "-y", "-hide_banner", "-loglevel", "error",
-                   "-sseof", f"-{seconds}", "-i", str(src),
-                   "-map", "0", "-c", "copy", "-avoid_negative_ts", "make_zero", str(out)])
+    listing = out.with_name(out.name + ".txt")
+    lines = []
+    for i, p in enumerate(parts):
+        lines.append("file '" + str(p).replace("\\", "/").replace("'", "'\\''") + "'")
+        if i == 0 and inpoint > 0:
+            lines.append(f"inpoint {inpoint:.3f}")
+    listing.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    try:
+        r = run_quiet([ffmpeg, "-y", "-hide_banner", "-loglevel", "error", "-f", "concat", "-safe", "0",
+                       "-i", str(listing), "-map", "0", "-c", "copy", "-avoid_negative_ts", "make_zero", str(out)])
+    finally:
+        listing.unlink(missing_ok=True)
     if r.returncode != 0 or not out.exists():
-        raise RuntimeError(r.stderr.strip() or "trimming failed")
-    src.unlink()
-    return float(seconds)
+        out.unlink(missing_ok=True)
+        raise RuntimeError(r.stderr.strip() or "joining failed")
 
 
 # ---------------------------------------------------------------- trimming and previews

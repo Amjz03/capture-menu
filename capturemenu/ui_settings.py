@@ -128,7 +128,7 @@ class Settings(QtWidgets.QWidget):
     def _build_rows(self):
         self._section("RECORDING")
         self.res_row = self._row("resolution", "Resolution", "choice", [("native", "Native")],
-                                 lambda v: "Lower uses less RAM and space; Native looks sharpest")
+                                 lambda v: "Lower uses less space; Native looks sharpest")
         self._row("fps", "Frame rate", "choice", [(30, "30 FPS"), (60, "60 FPS"), (120, "120 FPS")],
                   lambda v: "60 is smooth for every game; 120 for fast shooters on a high-refresh screen",
                   custom=lambda v: language.tr("{n} FPS", n=v))
@@ -291,7 +291,7 @@ class Settings(QtWidgets.QWidget):
     def _buffer_text(self, v) -> str:
         mb = obs_client.buffer_memory_mb(dict(self._plan_cfg(), buffer_minutes=v or 30), *self.screen_px,
                               obs_client.choose_encoder(self.encoder or "nvenc_av1", self._plan_cfg()["video_codec"]))
-        return language.tr("The longest clip you can save. Uses about {gb} GB of RAM", gb=f"{mb / 1024:.1f}")
+        return language.tr("The longest clip you can save. Takes up to {gb} GB on the drive, not RAM", gb=f"{mb / 1024:.1f}")
 
     def values(self) -> dict:
         return {r.key: r.value for r in self.rows if not r.key.startswith("_")}
@@ -393,7 +393,7 @@ class Settings(QtWidgets.QWidget):
         enc = obs_client.choose_encoder(self.encoder or "nvenc_av1", cfg["video_codec"])
         w, h = obs_client.output_size(*self.screen_px, cfg["resolution"])
         mb = obs_client.buffer_memory_mb(cfg, *self.screen_px, enc)
-        self.memory.setText(language.tr("Recording {w}×{h} at {fps} FPS  ·  replay buffer about {gb} GB of RAM",
+        self.memory.setText(language.tr("Recording {w}×{h} at {fps} FPS  ·  the last minutes take up to {gb} GB on the drive",
                                w=w, h=h, fps=cfg["fps"], gb=f"{mb / 1024:.1f}"))
         dirty = self.changes()
         self.info.setText((language.tr("1 unsaved change") if len(dirty) == 1 else
@@ -605,7 +605,7 @@ class Welcome(Settings):
         self._section("RECORDING")
         self._row("buffer_minutes", "How much should it keep?", "choice",
                   [(m, language.tr("The last {n} min", n=m)) for m in (5, 10, 15, 30, 60)],
-                  lambda v: self._later(language.tr("Uses about {gb} GB of RAM.", gb=f"{self._buffer_gb(v):.1f}")))
+                  lambda v: self._later(language.tr("Takes up to {gb} GB on the drive, not RAM.", gb=f"{self._buffer_gb(v):.1f}")))
         self._row("double_press_seconds", "What should a double press save?", "choice",
                   [(0, "Off"), (15, "15 sec"), (30, "30 sec"), (60, "1 min"), (120, "2 min")],
                   lambda v: self._later("Press twice quickly to save without opening the menu" if v else
@@ -615,7 +615,7 @@ class Welcome(Settings):
                   [("light", "Light"), ("balanced", "Balanced"), ("high", "High"), ("max", "Max")],
                   lambda v: self._later("Higher is sharper and makes bigger files."))
         self.res_row = self._row("resolution", "What resolution should it record?", "choice", [("native", "Native")],
-                                 lambda v: self._later("Lower uses less RAM and space."))
+                                 lambda v: self._later("Lower uses less space."))
         self._row("fps", "How many frames per second?", "choice", [(30, "30 FPS"), (60, "60 FPS"), (120, "120 FPS")],
                   lambda v: self._later("60 suits every game; 120 is for fast shooters."))
         if windows.windows_hdr():

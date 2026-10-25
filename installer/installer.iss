@@ -45,12 +45,16 @@ Filename: "powershell.exe"; Parameters: "-NoProfile -Command ""Get-CimInstance W
 ; setup.ps1 adds a sign-in task and a Run entry so Capture Menu starts with Windows
 Filename: "reg.exe"; Parameters: "delete ""HKCU\Software\Microsoft\Windows\CurrentVersion\Run"" /v ""Capture Menu"" /f"; Flags: runhidden; RunOnceId: "RemoveStartWithWindows"
 Filename: "schtasks.exe"; Parameters: "/Delete /TN ""Capture Menu ({username})"" /F"; Flags: runhidden; RunOnceId: "RemoveSignInTask"
+Filename: "schtasks.exe"; Parameters: "/Delete /TN ""Capture Menu watch ({username})"" /F"; Flags: runhidden; RunOnceId: "RemoveWatchTask"
+; OBS records the last minutes into {localappdata}\CaptureMenu for Capture Menu: stop it so they can go
+Filename: "taskkill.exe"; Parameters: "/F /IM obs64.exe"; Flags: runhidden; RunOnceId: "StopObsRecording"
 
 [UninstallDelete]
 ; setup.ps1 makes these; captures in Videos\Clips are never touched
 Type: files; Name: "{userprograms}\Capture Menu.lnk"
 Type: files; Name: "{userstartup}\Capture Menu.lnk"
 Type: filesandordirs; Name: "{app}"
+Type: filesandordirs; Name: "{localappdata}\CaptureMenu"
 
 [Code]
 function NoSetup: Boolean;

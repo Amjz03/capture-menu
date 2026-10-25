@@ -1,4 +1,5 @@
 import sys, time, tempfile, json
+from types import SimpleNamespace
 from pathlib import Path
 sys.path.insert(0, sys.argv[1])
 from capturemenu import capture_controller, input_devices, obs_client, preferences
@@ -14,7 +15,8 @@ assert obs_client.pick_bitrate("nvenc_av1", 1920, 1080) == 4500
 assert obs_client.pick_bitrate("nvenc_av1", 3840, 2160) == 18000
 plan = obs_client.obs_plan(dict(preferences.DEFAULTS), 2560, 1440, "nvenc_av1", "31.0.2")
 prof = {(c, n): v for c, n, v in plan["profile"]}
-assert prof[("SimpleOutput", "RecRBTime")] == "1800" and prof[("SimpleOutput", "RecFormat2")] == "hybrid_mp4"
+assert prof[("SimpleOutput", "RecRB")] == "false", "the last minutes go to disk, not RAM"
+assert prof[("SimpleOutput", "RecFormat2")] == "hybrid_mp4"
 assert {(c, n): v for c, n, v in obs_client.obs_plan(dict(preferences.DEFAULTS), 2560, 1440, "x264", "29.1.3")["profile"]}[("SimpleOutput", "RecFormat2")] == "mp4"
 print(plan["summary"]); print("plan PASS")
 
@@ -23,7 +25,7 @@ class FakeObs(obs_client.Obs):
         super().__init__(dict(preferences.DEFAULTS))
         self.video = {"baseWidth": 1920, "baseHeight": 1080, "outputWidth": 1280, "outputHeight": 720,
                       "fpsNumerator": 30, "fpsDenominator": 1}
-        self.params, self.inputs, self.buffer, self.log = {}, [], True, []
+        self.params, self.inputs, self.buffer, self.ram, self.log = {}, [], False, True, []
     def raw(self, req, d=None):
         self.log.append(req)
         if req == "GetVersion": return {"obsVersion": "31.0.2"}
@@ -39,11 +41,13 @@ class FakeObs(obs_client.Obs):
     def record_status(self): return False, 0
     def buffer_active(self): return self.buffer
     def call(self, name, *a):
-        if name == "stop_replay_buffer": self.buffer = False; return
-        if name == "start_replay_buffer": self.buffer = True; return
+        if name == "get_replay_buffer_status": return SimpleNamespace(output_active=self.ram)
+        if name == "stop_replay_buffer": self.ram = False; return
+        if name == "start_record": self.buffer = True; return
         return super().call(name, *a)
 
 app = QtWidgets.QApplication([])
+obs_client.BUFFER_DIR = Path(tempfile.mkdtemp()) / "Buffer"
 preferences.STATE_PATH = Path(tempfile.mkdtemp()) / "state.json"
 obs_client.gpu_names = lambda: ["NVIDIA GeForce RTX 4070 Ti SUPER"]
 ctl = capture_controller.Controller(dict(preferences.DEFAULTS, clips_dir=tempfile.mkdtemp())); ctl.obs = FakeObs()
@@ -52,7 +56,8 @@ toasts = []; ctl.toast.connect(lambda t, k: toasts.append(t))
 ctl.auto_setup(2560, 1440)
 o = ctl.obs
 assert o.video["baseWidth"] == 2560 and o.video["fpsNumerator"] == 60
-assert o.params[("SimpleOutput", "StreamEncoder")] == "nvenc_av1" and o.params[("SimpleOutput", "RecRB")] == "true"
+assert o.params[("SimpleOutput", "StreamEncoder")] == "nvenc_av1" and o.params[("SimpleOutput", "RecRB")] == "false"
+assert not o.ram and o.buffer, "the old RAM buffer stopped, the last minutes recorded to disk"
 assert o.inputs == ["Display Capture"] and "SetSceneItemTransform" in o.log
 assert json.loads(preferences.STATE_PATH.read_text())["obs_setup"].startswith("2560×1440")
 print(*toasts, sep="\n")

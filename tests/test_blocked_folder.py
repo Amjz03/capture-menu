@@ -46,18 +46,17 @@ class FakeObs:
     def record_status(self): return False, 0
     def buffer_active(self): return False
     def apply_plan(self, plan): self.applied = plan; return False
-    def ensure_buffer(self): pass
+    def stop_ram_buffer(self): pass
+    def set_colours(self, *a): pass
     def start_buffer(self): return True
 
 
 fine = capture_controller.Controller(dict(preferences.DEFAULTS, clips_dir=str(work / "Fine")))
 assert fine.blocked is None
-for c, expect in ((ctl, True), (fine, False)):
+for c in (ctl, fine):
     c.obs = FakeObs(); c.toast = type("T", (), {"emit": lambda *a: None})()
+    preferences.save_state({})       # not set up yet
     c.auto_setup(2560, 1440)
     paths = [v for cat, name, v in c.obs.applied["profile"] if name == "FilePath"]
-    if expect:
-        assert paths == [str(ctl.thumbs_dir / "incoming")] and Path(paths[0]).is_dir(), paths
-    else:
-        assert paths == [], paths    # the clips folder is fine: OBS keeps its own folder
-print("OBS saves next to the fallback folder only when the clips folder is blocked PASS")
+    assert paths == [], paths    # OBS records into AppData (obs_client.BUFFER_DIR), never a blocked folder
+print("OBS records into AppData whatever folder is blocked PASS")

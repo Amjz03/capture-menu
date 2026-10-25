@@ -19,8 +19,15 @@ class ObsOffline(Exception):
 
 
 class BufferDisabled(Exception):
-    """The replay buffer is switched off in OBS's own settings (error 604: a fresh OBS, or one
-    whose settings change hasn't been loaded yet because OBS wasn't restarted)."""
+    """OBS isn't in Simple output mode, so its recording can't be split into BUFFER_DIR."""
+
+
+# The last minutes are kept on disk, not in OBS's RAM replay buffer: OBS records all the time,
+# split into a new file every SPLIT_SECONDS, and Capture Menu deletes what's older than it keeps.
+# A hidden folder in AppData, away from the clips, so nobody deletes it by accident.
+BUFFER_DIR = Path(os.environ.get("LOCALAPPDATA", str(Path.home()))) / "CaptureMenu" / "Buffer"
+SPLIT_SECONDS = 60
+FILE_OUTPUT = "simple_file_output"
 
 
 def mic_name(name: str) -> str:
@@ -58,38 +65,76 @@ class Obs:
                         raise ObsOffline(str(e)) from e
 
     def buffer_active(self) -> bool:
+        """OBS is recording the last minutes: a recording split into BUFFER_DIR (a recording the
+        player started in OBS itself isn't, so it's restarted the way we need it)."""
+        if not self.record_status()[0]:
+            return False
         try:
-            return self.call("get_replay_buffer_status").output_active
-        except OBSSDKRequestError as e:
-            if e.code == 604:   # replay buffer not enabled in OBS yet (fresh install)
-                return False
-            raise
-
-    def ensure_buffer(self) -> bool:
-        """Starts the replay buffer if it is off. Returns True if it was already running."""
-        if self.buffer_active():
-            return True
-        self.call("start_replay_buffer")
-        return False
+            s = self.raw("GetOutputSettings", {"outputName": FILE_OUTPUT}).get("outputSettings", {})
+        except OBSSDKRequestError:
+            return False      # Advanced output mode: another output records
+        return bool(s.get("split_file")) and Path(s.get("directory", "")) == BUFFER_DIR
 
     def start_buffer(self, wait: float = 8.0) -> bool:
-        """Starts the replay buffer and waits until OBS reports it running. False: OBS took the
-        request but the output never started (most often an encoder this PC can't run).
-        Raises BufferDisabled when the buffer is switched off in OBS's settings."""
+        """Starts recording the last minutes to disk: OBS's own recording, split into a new file
+        every SPLIT_SECONDS in BUFFER_DIR (Simple output mode keeps every other setting: encoder,
+        quality, tracks), and waits until OBS reports it running. False: OBS took the request but
+        never started (most often an encoder this PC can't run). Raises BufferDisabled when OBS
+        isn't in Simple output mode."""
         if self.buffer_active():
             return True
-        try:
-            self.call("start_replay_buffer")
-        except OBSSDKRequestError as e:
-            if e.code == 604:
-                raise BufferDisabled() from e
-            raise
+        if self.profile_value("Output", "Mode") != "Simple":
+            raise BufferDisabled()
+        self.stop_buffer()          # a recording without the split (started in OBS itself)
+        BUFFER_DIR.mkdir(parents=True, exist_ok=True)
+        fmt = self.profile_value("SimpleOutput", "RecFormat2") or "mp4"
+        self.raw("SetRecordDirectory", {"recordDirectory": str(BUFFER_DIR)})
+        # OBS names the next files from directory/format/extension: without them it crashes at the split
+        self.raw("SetOutputSettings", {"outputName": FILE_OUTPUT, "outputSettings": {
+            "split_file": True, "max_time_sec": SPLIT_SECONDS, "max_size_mb": 0,
+            "directory": str(BUFFER_DIR), "format": "%CCYY-%MM-%DD %hh-%mm-%ss", "allow_spaces": True,
+            "extension": "mp4" if "mp4" in fmt else fmt}})
+        self.call("start_record")
         end = time.monotonic() + wait
         while not self.buffer_active():
             if time.monotonic() >= end:
                 return False
             time.sleep(0.25)
         return True
+
+    def stop_buffer(self, wait: float = 10.0):
+        if not self.record_status()[0]:
+            return
+        self.call("stop_record")
+        end = time.monotonic() + wait
+        while self.record_status()[0] and time.monotonic() < end:
+            time.sleep(0.25)
+
+    def stop_ram_buffer(self):
+        """Stops OBS's own replay buffer (until 0.0.34 the last minutes were kept in it, in RAM)."""
+        try:
+            if self.call("get_replay_buffer_status").output_active:
+                self.call("stop_replay_buffer")
+                end = time.monotonic() + 10        # or OBS asks whether to stop it before it closes
+                while self.call("get_replay_buffer_status").output_active and time.monotonic() < end:
+                    time.sleep(0.25)
+        except OBSSDKRequestError:
+            pass             # switched off in OBS's settings already
+
+    def recorded_bytes(self) -> int | None:
+        """How much the recording has written so far (None when it doesn't run)."""
+        r = self.raw("GetRecordStatus")
+        return int(r.get("outputBytes") or 0) if r.get("outputActive") else None
+
+    def streaming(self) -> bool:
+        try:
+            return bool(self.raw("GetStreamStatus").get("outputActive"))
+        except OBSSDKRequestError:
+            return False
+
+    def split(self):
+        """Closes the file being written and goes on in a new one (at the next keyframe)."""
+        self.raw("SplitRecordFile")
 
     def set_profile(self, params: list[tuple[str, str, str]]) -> bool:
         """Writes OBS profile settings; True if anything changed (OBS loads them on its next start)."""
@@ -106,20 +151,6 @@ class Obs:
     def profile_value(self, category: str, name: str) -> str | None:
         return self.raw("GetProfileParameter", {"parameterCategory": category,
                                                 "parameterName": name}).get("parameterValue")
-
-    def buffer_seconds(self) -> int:
-        try:
-            s = self.call("get_output_settings", "Replay Buffer").output_settings
-            return int(s.get("max_time_sec") or 0) or self.cfg["buffer_minutes"] * 60
-        except Exception:
-            return self.cfg["buffer_minutes"] * 60
-
-    def buffered_ms(self) -> int | None:
-        """How long the replay buffer has been filling (None if OBS can't say)."""
-        try:
-            return int(self.call("get_output_status", "Replay Buffer").output_duration or 0)
-        except Exception:
-            return None
 
     def raw(self, request: str, data: dict | None = None) -> dict:
         return self.call("send", request, data, True) or {}
@@ -269,34 +300,9 @@ class Obs:
         except Exception:
             runtime.log.exception("could not fit the capture to the canvas")
 
-    def last_replay(self) -> str | None:
-        try:
-            return self.call("get_last_replay_buffer_replay").saved_replay_path
-        except OBSSDKRequestError:
-            return None
-
-    def save_replay(self, timeout: float = 60) -> Path:
-        before = self.last_replay()
-        self.call("save_replay_buffer")
-        deadline = time.monotonic() + timeout
-        while time.monotonic() < deadline:
-            time.sleep(0.3)
-            path = self.last_replay()
-            if path and path != before and Path(path).exists():
-                if not media.wait_until_written(Path(path), timeout=max(5.0, deadline - time.monotonic())):
-                    raise TimeoutError(f"OBS is still writing {path}")
-                return Path(path)
-        raise TimeoutError("OBS did not report the saved replay")
-
     def record_status(self) -> tuple[bool, int]:
         r = self.call("get_record_status")
         return r.output_active, int(r.output_duration or 0)
-
-    def start_record(self):
-        self.call("start_record")
-
-    def stop_record(self) -> Path:
-        return Path(self.call("stop_record").output_path)
 
     def screenshot(self, path: Path):
         r = self.call("get_current_program_scene")
@@ -363,7 +369,7 @@ def output_size(width: int, height: int, resolution: str) -> tuple[int, int]:
 
 
 def buffer_memory_mb(cfg: dict, width: int, height: int, encoder: str) -> int:
-    """About how much RAM OBS's replay buffer takes with these settings."""
+    """About how much disk space the last minutes take with these settings."""
     ow, oh = output_size(width, height, cfg.get("resolution", "native"))
     bitrate = pick_bitrate(encoder, ow, oh, int(cfg.get("fps", 60)), cfg.get("quality", "balanced"))
     voice = bool(cfg.get("voice_track", True))
@@ -443,14 +449,7 @@ def obs_plan(cfg: dict, width: int, height: int, encoder: str, obs_version: str,
             ("SimpleOutput", "RecTracks", "7" if voice else "1"),
             ("SimpleOutput", "RecFormat2", fmt),
             ("SimpleOutput", "RecFormat", fmt),
-            ("SimpleOutput", "RecRB", "true"),
-            ("SimpleOutput", "RecRBTime", str(buffer_s)),
-            # OBS drops the oldest video once either limit is hit. With a quality preset (voice
-            # on) OBS records at constant quality, not at our bitrate, so busy scenes can run
-            # well above it: leave room so "Last 30m" really holds 30 minutes. The cap is only
-            # a ceiling; RAM in use is what the game actually produces.
-            ("SimpleOutput", "RecRBSize",
-             str(int(bitrate * buffer_s / 8 / 1000 * (2.5 if voice else 1.25)))),
+            ("SimpleOutput", "RecRB", "false"),     # the last minutes go to disk (BUFFER_DIR), not RAM
             ("Video", "ColorFormat", "P010" if hdr else "NV12"),
             ("Video", "ColorSpace", "2100PQ" if hdr else "709"),
             ("Video", "ColorRange", "Partial"),
@@ -492,7 +491,7 @@ def find_obs_exe() -> str | None:
 
 
 def launch_obs(exe: str | Path):
-    """Starts OBS hidden in the tray with the replay buffer on, without its "did not properly shut
+    """Starts OBS hidden in the tray, without its "did not properly shut
     down, run in Safe Mode?" question. That question waits on screen and nothing records meanwhile;
     it comes after Windows ends OBS while it's still closing (a restart with a long replay buffer).
     OBS 32 dropped --disable-shutdown-check and asks whenever it finds a run file left in .sentinel,
@@ -505,12 +504,12 @@ def launch_obs(exe: str | Path):
                 runtime.log.info("cleared OBS's unclean-shutdown mark: %s", f.name)
             except OSError:
                 pass
-    windows.launch_outside([str(exe), "--startreplaybuffer", "--minimize-to-tray", "--disable-shutdown-check"],
+    windows.launch_outside([str(exe), "--minimize-to-tray", "--disable-shutdown-check"],
                    cwd=str(Path(exe).parent), flags=0x00000008 | 0x00000200)  # DETACHED, NEW_PROCESS_GROUP
 
 
 def start_obs() -> bool:
-    """Starts OBS hidden in the tray with the replay buffer on."""
+    """Starts OBS hidden in the tray (Capture Menu starts its recording)."""
     exe = find_obs_exe()
     if not exe:
         runtime.log.warning("OBS not found")

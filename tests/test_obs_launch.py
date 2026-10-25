@@ -16,6 +16,6 @@ assert left.exists()
 obs_client.obs_running = lambda: False
 obs_client.launch_obs(r"C:\obs\bin\64bit\obs64.exe")
 assert not left.exists(), "a leftover from an unclean shutdown goes"
-assert launched[-1] == [r"C:\obs\bin\64bit\obs64.exe", "--startreplaybuffer", "--minimize-to-tray",
+assert launched[-1] == [r"C:\obs\bin\64bit\obs64.exe", "--minimize-to-tray",
                         "--disable-shutdown-check"], launched[-1]
 print("obs launch PASS")

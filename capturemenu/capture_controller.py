@@ -54,11 +54,13 @@ class Controller(QtCore.QObject):
         self._busy = threading.Lock()
         self._healing = threading.Lock()       # one replay-buffer repair at a time
         self._heal_failed_at = -1e9
-        self.record_game: str | None = None
+        self._gpu_restart_at = -1e9
+        obs_client.BUFFER_DIR.mkdir(parents=True, exist_ok=True)
         self.thumbs_dir = self.clips_dir / ".thumbs"
         self.thumbs_dir.mkdir(exist_ok=True)
         if runtime.IS_WINDOWS:
-            ctypes.windll.kernel32.SetFileAttributesW(str(self.thumbs_dir), 0x02)  # hidden
+            for hide in (self.thumbs_dir, obs_client.BUFFER_DIR.parent):
+                ctypes.windll.kernel32.SetFileAttributesW(str(hide), 0x02)  # hidden
         self.previews_dir = self.thumbs_dir / "previews"
         self.previews_dir.mkdir(exist_ok=True)
         self.recent: list[Path] = self._scan_recent()
@@ -388,11 +390,14 @@ class Controller(QtCore.QObject):
     def refresh_status(self):
         def run():
             try:
-                rec, ms = self.obs.record_status()
+                rec = self._recording()
                 active = self.obs.buffer_active()
-                st = {"online": True, "buffer": active, "buffer_seconds": self.obs.buffer_seconds(),
-                      "buffered_ms": self.obs.buffered_ms() if active else 0,
-                      "recording": rec, "record_ms": ms, "mic_muted": self.obs.mic_muted()}
+                keep = int(self.cfg["buffer_minutes"]) * 60
+                held = self._last_run(self._segments()) if active else []
+                st = {"online": True, "buffer": active, "buffer_seconds": keep,
+                      "buffered_ms": int(min(time.time() - held[0][1], keep) * 1000) if held else 0,
+                      "recording": bool(rec), "record_ms": int((time.time() - rec["since"]) * 1000) if rec else 0,
+                      "mic_muted": self.obs.mic_muted()}
             except Exception:
                 st = {"online": False}
             self.status.emit(st)
@@ -423,27 +428,16 @@ class Controller(QtCore.QObject):
         plan = obs_client.obs_plan(self.cfg, width, height, encoder, version, hdr,
                         windows.sdr_white() if windows.windows_hdr() else None)
         runtime.log.info("OBS plan: %s (Windows HDR %s)", plan["summary"], "on" if hdr else "off")
-        if self.blocked:
-            # OBS writes its replays to Videos by default, which Controlled folder access blocks for
-            # OBS too: let it write next to our captures (the files are moved into place afterwards)
-            incoming = self.thumbs_dir / "incoming"
-            incoming.mkdir(parents=True, exist_ok=True)
-            plan["profile"].append(("SimpleOutput", "FilePath", str(incoming)))
-            plan["summary"] += f" · {incoming}"
+        # (OBS records into BUFFER_DIR in AppData, which Controlled folder access doesn't block)
+        done = plan["summary"] + " · on disk"    # until 0.0.34 the last minutes were in RAM: set up again
         state = preferences.load_state()
-        if state.get("obs_setup") == plan["summary"]:
+        if state.get("obs_setup") == done:
             self.obs.set_colours(plan["force_sdr"], plan["vivid"])   # live: keeps the colours up to date
             return
-        recording, _ = self.obs.record_status()
-        if recording:
+        if self._recording():
             return   # never interrupt a recording; try again next start
         self.toast.emit(language.tr("Setting up OBS · {summary}", summary=plan["summary"]), "info")
-        if self.obs.buffer_active():
-            self.obs.call("stop_replay_buffer")
-            for _ in range(20):
-                time.sleep(0.25)
-                if not self.obs.buffer_active():
-                    break
+        self.obs.stop_ram_buffer()
         changed = self.obs.apply_plan(plan)
         if changed:
             self.restart_obs()     # OBS loads the new settings when it starts
@@ -452,7 +446,7 @@ class Controller(QtCore.QObject):
         if self.heal_buffer():
             self.toast.emit(language.tr("OBS is ready · {summary}", summary=plan["summary"]), "ok")
         state = preferences.load_state()       # heal_buffer may have noted a failed encoder
-        state["obs_setup"] = plan["summary"]
+        state["obs_setup"] = done
         preferences.save_state(state)
 
     def restart_obs(self) -> bool:
@@ -462,6 +456,10 @@ class Controller(QtCore.QObject):
         if not path:
             return False
         if obs_client.obs_running():
+            try:
+                self.obs.stop_buffer()    # or OBS asks whether to stop recording before it closes
+            except Exception:
+                pass
             media.run_quiet(["taskkill", "/IM", "obs64.exe"])
             for _ in range(80):
                 time.sleep(0.25)
@@ -474,47 +472,57 @@ class Controller(QtCore.QObject):
                 if obs_client.obs_running():
                     return False
         obs_client.launch_obs(path)
-        for _ in range(60):
-            time.sleep(0.5)
-            try:
-                self.obs.call("get_version")
-                break
-            except Exception:
-                continue
-        else:
+        if not self._wait_for_obs():
             return False
         try:
             return self.obs.start_buffer()
         except obs_client.BufferDisabled:
             return False
 
-    # ---- keeping the replay buffer running
-    HEAL_PAUSE = 600      # after a repair that didn't work, the background check waits this long
+    def _wait_for_obs(self) -> bool:
+        """OBS takes a few seconds to answer once started (longer at sign-in)."""
+        for _ in range(60):
+            time.sleep(0.5)
+            try:
+                self.obs.call("get_version")
+                return True
+            except Exception:
+                continue
+        return False
+
+    # ---- OBS records the whole time Capture Menu runs, whatever happens to it
+    HEAL_PAUSE = 120      # after a repair that didn't work, the background check waits this long
 
     def heal_buffer(self) -> bool:
-        """Gets OBS's replay buffer running, whatever it takes, so a new PC needs nothing done by hand:
-        1. start it; 2. if it's switched off in OBS's settings, switch it on and restart OBS;
-        3. if it still won't start, the encoder can't run on this PC: step down (the card's H.264,
-        then the CPU's x264) and remember it, so setup doesn't pick it again. Never while a manual
-        recording runs: restarting OBS would end it. True once the buffer runs."""
+        """Gets OBS recording the last minutes, whatever it takes, so a new PC needs nothing done by
+        hand: 1. start it; 2. if OBS isn't in Simple output mode, switch it and restart OBS;
+        3. restart OBS as it is (a graphics driver that was updated or reset under it);
+        4. if it still won't start, the encoder can't run on this PC: step down (the card's H.264,
+        then the CPU's x264) and remember it, so setup doesn't pick it again. Never restarts OBS
+        while it streams. A manual recording survives a restart (its files stay; the gap is a
+        moment). True once it runs. Says once when it can't, not at every try."""
         if not self._healing.acquire(blocking=False):
             return False                      # already being repaired
         try:
             try:
                 if self.obs.start_buffer():
+                    self._heal_failed_at = -1e9
                     return True
                 disabled = False
             except obs_client.BufferDisabled:
                 disabled = True
-            if self.obs.record_status()[0]:
-                return False
-            runtime.log.warning("replay buffer won't start: %s", "off in OBS's settings" if disabled else "the output didn't start")
+            if self.obs.streaming():
+                runtime.log.warning("the last minutes won't record, but OBS is streaming: not restarting it")
+                return self._heal_failed()
+            runtime.log.warning("the last minutes won't record: %s", "OBS isn't in Simple output mode" if disabled
+                                else "the recording didn't start")
             if disabled:
-                self.obs.set_profile([("Output", "Mode", "Simple"), ("SimpleOutput", "RecRB", "true"),
-                                      ("SimpleOutput", "RecRBTime", str(int(self.cfg["buffer_minutes"]) * 60))])
-                if self.restart_obs():
+                self.obs.set_profile([("Output", "Mode", "Simple"), ("SimpleOutput", "RecRB", "false")])
+            if self.restart_obs():
+                self._heal_failed_at = -1e9
+                if disabled:
                     self.toast.emit(language.tr("Turned on the OBS replay buffer"), "ok")
-                    return True
+                return True
             encoder = self.obs.profile_value("SimpleOutput", "RecEncoder") or self.best_encoder or "x264"
             for fallback in obs_client.fallback_encoders(encoder):
                 self._note_failed_encoder(encoder)
@@ -526,15 +534,20 @@ class Controller(QtCore.QObject):
                                       ("SimpleOutput", "VBitrate", str(bitrate))])
                 if self.restart_obs():
                     self.best_encoder = fallback
+                    self._heal_failed_at = -1e9
                     self.toast.emit(language.tr("Your graphics card couldn't record, so OBS now uses {encoder}",
                                                 encoder=fallback.replace("_", " ").upper()), "ok")
                     return True
                 encoder = fallback
-            self._heal_failed_at = time.monotonic()
-            self.toast.emit(language.tr("OBS can't start recording · open OBS to see why"), "error")
-            return False
+            return self._heal_failed()
         finally:
             self._healing.release()
+
+    def _heal_failed(self) -> bool:
+        if self._heal_failed_at < 0:          # the first try that failed: say it once
+            self.toast.emit(language.tr("OBS can't start recording · open OBS to see why"), "error")
+        self._heal_failed_at = time.monotonic()
+        return False
 
     def _note_failed_encoder(self, encoder: str):
         state = preferences.load_state()
@@ -544,13 +557,27 @@ class Controller(QtCore.QObject):
             preferences.save_state(state)
 
     def _watch_buffer(self):
-        """Every minute: if the buffer stopped (OBS restarted on its own, someone stopped it), start
-        it again, in the background. After a repair that failed, wait HEAL_PAUSE before trying again."""
-        if time.monotonic() - self._heal_failed_at < self.HEAL_PAUSE or self._healing.locked():
+        """Every minute, in the background, while Capture Menu runs: OBS is running (started again
+        if it was closed or crashed), really recording (restarted if the graphics driver reset under
+        it or the recording stopped growing) and recording the last minutes (heal_buffer). Old
+        minutes are deleted, and a drive running out of room is said once. After a repair that
+        failed, HEAL_PAUSE goes by before the next."""
+        runtime.touch_alive()
+        if self._healing.locked():
             return
 
         def run():
             try:
+                self._prune()
+                self._check_buffer_drive()
+                if time.monotonic() - self._heal_failed_at < self.HEAL_PAUSE:
+                    return
+                if runtime.IS_WINDOWS and not obs_client.obs_running():
+                    runtime.log.warning("OBS isn't running; starting it")
+                    if not obs_client.start_obs() or not self._wait_for_obs():
+                        return
+                if why := self._obs_stuck():
+                    self._restart_stuck(why)
                 if not self.obs.buffer_active():
                     self.heal_buffer()
             except obs_client.ObsOffline:
@@ -558,6 +585,123 @@ class Controller(QtCore.QObject):
             except Exception:
                 runtime.log.exception("replay buffer check failed")
         threading.Thread(target=run, daemon=True).start()
+
+    def _obs_stuck(self) -> str | None:
+        """Why OBS records nothing though it says it records: the graphics driver reset under it, or
+        the recording stopped growing (an encoder that hung). None when it's fine."""
+        if self._obs_lost_gpu():
+            return "gpu"
+        written = self.obs.recorded_bytes()
+        before, self._last_written = getattr(self, "_last_written", None), written
+        return "frozen" if written is not None and written == before else None
+
+    def _restart_stuck(self, why: str):
+        if self.obs.streaming():
+            runtime.log.warning("OBS records nothing (%s), but it's streaming: not restarting it", why)
+            return
+        if time.monotonic() - self._gpu_restart_at < self.HEAL_PAUSE or not self._healing.acquire(blocking=False):
+            return
+        try:
+            self._gpu_restart_at = time.monotonic()
+            self._last_written = None
+            runtime.log.warning("OBS records nothing (%s); restarting it", why)
+            if self.restart_obs():
+                self.toast.emit(language.tr("OBS stopped recording after a graphics driver reset, so I restarted it")
+                                if why == "gpu" else
+                                language.tr("OBS stopped recording, so I restarted it"), "info")
+        finally:
+            self._healing.release()
+
+    # DXGI device removed / hung / reset: OBS logs one of these every few seconds once the graphics
+    # driver reset under it (a driver crash or update), and records nothing until it restarts
+    GPU_LOST = (b"0x887A0005", b"0x887A0006", b"0x887A0007")
+
+    @classmethod
+    def _obs_lost_gpu(cls) -> bool:
+        logs = Path(os.environ.get("APPDATA", str(Path.home()))) / "obs-studio" / "logs"
+        try:
+            log = max(logs.glob("*.txt"), key=lambda p: p.stat().st_mtime)
+            with open(log, "rb") as f:
+                f.seek(max(0, log.stat().st_size - 4096))
+                tail = f.read()
+        except (OSError, ValueError):
+            return False
+        return any(code in tail for code in cls.GPU_LOST)
+
+    BUFFER_FREE_GB = 5        # OBS stops recording when the drive is full
+
+    def _check_buffer_drive(self):
+        try:
+            free = shutil.disk_usage(obs_client.BUFFER_DIR).free / 1024 ** 3
+        except OSError:
+            return
+        if free < self.BUFFER_FREE_GB and "buffer_drive" not in self._warned:
+            self._warned.add("buffer_drive")
+            self.toast.emit(language.tr("Only {free} GB free on {drive} · Capture Menu needs room there for the "
+                                        "last minutes", free=f"{free:.0f}", drive=obs_client.BUFFER_DIR.drive), "error")
+        elif free >= self.BUFFER_FREE_GB:
+            self._warned.discard("buffer_drive")
+
+    # ---- the last minutes, on disk: the files OBS splits its recording into (obs_client.BUFFER_DIR)
+    SEGMENT_EXTS = {".mp4", ".mkv", ".mov", ".flv", ".ts"}
+    GAP = 5      # seconds between two files: OBS stopped in between (a restart), so they don't join on
+
+    @classmethod
+    def _segments(cls) -> list[tuple[Path, float, float]]:
+        """(file, started, ended) in wall-clock time, oldest first; the last one may be in progress."""
+        segs = []
+        try:
+            for p in obs_client.BUFFER_DIR.iterdir():
+                if p.suffix.lower() in cls.SEGMENT_EXTS:
+                    st = p.stat()
+                    segs.append((p, getattr(st, "st_birthtime", st.st_ctime), st.st_mtime))
+        except OSError:
+            pass
+        return sorted(segs, key=lambda s: s[1])
+
+    @classmethod
+    def _last_run(cls, segs: list) -> list:
+        """The files since OBS last started recording."""
+        for i in range(len(segs) - 1, 0, -1):
+            if segs[i][1] - segs[i - 1][2] > cls.GAP:
+                return segs[i:]
+        return segs
+
+    @staticmethod
+    def _since(segs: list, since: float | None) -> tuple[list[Path], float]:
+        """The files that hold everything after `since` (None: all), and how far into the first that is."""
+        keep = [s for s in segs if since is None or s[2] > since]
+        return [s[0] for s in keep], max(0.0, since - keep[0][1]) if keep and since else 0.0
+
+    def _finished_segments(self) -> list:
+        """Has OBS close the file it's writing (it goes on in a new one at the next keyframe), so
+        everything up to now can be read. Returns the finished files."""
+        asked = time.time()
+        self.obs.split()
+        deadline = time.monotonic() + 10
+        while time.monotonic() < deadline:
+            segs = self._segments()
+            if len(segs) > 1 and segs[-1][1] >= asked - 0.5:
+                return segs[:-1]
+            time.sleep(0.2)
+        raise TimeoutError("OBS didn't start a new file")
+
+    def _prune(self):
+        """Deletes the files older than the longest clip (and than a recording that's running)."""
+        keep_from = time.time() - int(self.cfg["buffer_minutes"]) * 60
+        if rec := self._recording():
+            keep_from = min(keep_from, rec["since"])
+        for p, _, ended in self._segments()[:-1]:
+            if ended < keep_from:
+                try:
+                    p.unlink()
+                except OSError:
+                    pass
+
+    @staticmethod
+    def _recording() -> dict | None:
+        """The manual recording running: {"since": wall-clock time, "game"} (kept across restarts)."""
+        return preferences.load_state().get("recording")
 
     def start_following(self):
         """Every 2 s: make sure OBS records the screen picked in Settings, or else the monitor a
@@ -606,14 +750,9 @@ class Controller(QtCore.QObject):
         self.screen_px = screen_size
 
         def run():
+            runtime.touch_alive()
             if runtime.IS_WINDOWS and not obs_client.obs_running() and obs_client.start_obs():
-                for _ in range(60):    # OBS takes a few seconds at sign-in
-                    time.sleep(0.5)
-                    try:
-                        self.obs.call("get_version")
-                        break
-                    except Exception:
-                        continue
+                self._wait_for_obs()
             self.check_storage()
             for p in self.recent[:8]:  # thumbnails and lengths for the Recent row
                 media.make_thumb(p, self.thumbs_dir)
@@ -637,8 +776,9 @@ class Controller(QtCore.QObject):
                     self.toast.emit(language.tr("Couldn't set up OBS automatically · see README for the manual steps"),
                                     "error")
             try:
-                if not self.obs.buffer_active() and self.heal_buffer():
-                    self.toast.emit(language.tr("Turned on the OBS replay buffer"), "ok")
+                self._prune()
+                if not self.obs.buffer_active():
+                    self.heal_buffer()      # started at every start: it says so only when it can't
             except obs_client.ObsOffline:
                 self.toast.emit(language.tr("OBS isn't running. Start it to use Capture Menu"), "error")
             except Exception:
@@ -661,10 +801,12 @@ class Controller(QtCore.QObject):
                                    "Clips are collected from now on"), "error")
             return      # heal_buffer said why when it couldn't
         self.toast.emit(language.tr("Saving…"), "info")
-        saved = self.obs.save_replay()
+        segs = self._last_run(self._finished_segments())
+        files, inpoint = self._since(segs, None if seconds is None else segs[-1][2] - seconds)
         suffix = "all" if seconds is None else f"{seconds}s"
-        out = self.folder_for(game) / f"Clip_{self._stamp()}_{suffix}{saved.suffix}"
-        length = media.cut_tail(saved, seconds, out) or float(seconds or 0)
+        out = self.folder_for(game) / f"Clip_{self._stamp()}_{suffix}{files[0].suffix}"
+        media.join(files, inpoint, out)
+        length = media.media_duration(out) or float(seconds or 0)
         detail = (language.tr("Everything · {length}", length=language.clock(int(length * 1000)))
                   if seconds is None or length < seconds - 1
                   else language.tr("Last {length}", length=language.duration_label(seconds)))
@@ -675,22 +817,24 @@ class Controller(QtCore.QObject):
         self._bg(self._toggle_record, game, exclusive=False)
 
     def _toggle_record(self, game: str):
-        recording, _ = self.obs.record_status()
-        if not recording:
-            self.obs.start_record()
-            self.record_game = game  # the recording goes to the game it started in
+        """Recording uses the same files as the last minutes: Start notes the time, Stop joins
+        everything since then (kept until then)."""
+        rec = self._recording()
+        if not rec:
+            if not self.obs.buffer_active() and not self.heal_buffer():
+                return      # heal_buffer said why
+            preferences.save_state(preferences.load_state() | {"recording": {"since": time.time(), "game": game}})
             self.recording.emit(True)
             self.toast.emit(language.tr("Recording started · open the menu and choose Stop to finish"), "rec")
             return
-        path = self.obs.stop_record()
+        segs = self._finished_segments()
+        files, inpoint = self._since(segs, rec["since"])
+        dest = self.folder_for(rec.get("game") or game) / f"Recording_{self._stamp()}{files[0].suffix}"
+        media.join(files, inpoint, dest)
+        state = preferences.load_state()
+        state.pop("recording", None)
+        preferences.save_state(state)
         self.recording.emit(False)
-        if not media.wait_until_written(path, timeout=120):   # never move (copy) a file OBS is still writing
-            raise RuntimeError(language.tr("OBS is still writing the recording · it's safe in {folder}",
-                                           folder=path.parent))
-        game = self.record_game or game
-        self.record_game = None
-        dest = self.folder_for(game) / f"Recording_{self._stamp()}{path.suffix}"
-        shutil.move(str(path), dest)
         length = media.media_duration(dest) or 0
         self._done(language.tr("Length {length}", length=language.clock(int(length * 1000))), dest)
 
