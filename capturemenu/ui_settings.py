@@ -568,11 +568,14 @@ class Settings(QtWidgets.QWidget):
 
 
 class Welcome(Settings):
-    """The first start: four choices before anything is recorded (how much to keep, quality, the
-    microphone, frame rate), each saying it can be changed later in Settings. Same page and rows as
-    Settings; Start saves them and setup goes on (OBS is set up with them, no restart)."""
+    """The first start: the choices worth making before anything is recorded, each saying it can be
+    changed later in Settings. The language comes first, so the rest are read in it. Same page and
+    rows as Settings; Start saves them and setup goes on, OBS set up with them. Choices the app only
+    reads as it starts (keys, controller button, double press, folder) restart it once on Start.
+    Which screen and HDR are only asked when there's a choice (two screens, Windows HDR on)."""
 
     LATER = "You can change it later in Settings."
+    READ_AT_START = ("hotkey", "controller_button", "double_press_seconds", "clips_dir")
 
     def __init__(self, ctl: capture_controller.Controller, done):
         self.done = done
@@ -590,23 +593,57 @@ class Welcome(Settings):
         return f"{first} {language.tr(self.LATER)}"
 
     def _build_rows(self):
-        self.card = ui_widgets.SettingsCard()
-        self.rows_layout.addWidget(self.card)
+        self._section("GENERAL")
         lang = self._row("language", "Which language?", "choice",
                          [("auto", "Same as Windows"), *language.LANGUAGES.items()],
                          lambda v: self._later("The page switches to it right away."))
         lang.changed.connect(self._switch_language)
+        self._row("start_with_windows", "Start with Windows?", "bool",
+                  describe=lambda v: self._later("Capture Menu and OBS start when you sign in" if v else
+                                                 "Start it yourself from the Start menu"))
+
+        self._section("RECORDING")
         self._row("buffer_minutes", "How much should it keep?", "choice",
                   [(m, language.tr("The last {n} min", n=m)) for m in (5, 10, 15, 30, 60)],
                   lambda v: self._later(language.tr("Uses about {gb} GB of RAM.", gb=f"{self._buffer_gb(v):.1f}")))
+        self._row("double_press_seconds", "What should a double press save?", "choice",
+                  [(0, "Off"), (15, "15 sec"), (30, "30 sec"), (60, "1 min"), (120, "2 min")],
+                  lambda v: self._later("Press twice quickly to save without opening the menu" if v else
+                                        "Double-pressing does nothing extra"),
+                  custom=lambda v: language.tr("{n} sec", n=v))
         self._row("quality", "What quality?", "choice",
                   [("light", "Light"), ("balanced", "Balanced"), ("high", "High"), ("max", "Max")],
                   lambda v: self._later("Higher is sharper and makes bigger files."))
+        self.res_row = self._row("resolution", "What resolution should it record?", "choice", [("native", "Native")],
+                                 lambda v: self._later("Lower uses less RAM and space."))
+        self._row("fps", "How many frames per second?", "choice", [(30, "30 FPS"), (60, "60 FPS"), (120, "120 FPS")],
+                  lambda v: self._later("60 suits every game; 120 is for fast shooters."))
+        if windows.windows_hdr():
+            self._row("hdr", "Record in HDR?", "choice", [("auto", "Auto"), ("off", "Off")],
+                      lambda v: self._later("HDR clips while Windows HDR is on." if v == "auto" else
+                                            "Always normal colours (SDR)"))
+        if len(QtGui.QGuiApplication.screens()) > 1:
+            self.screen_row = self._row("capture_screen", "Which screen should it record?", "choice",
+                                        [("follow", "Follow the game")], lambda v: self._later(self._screen_text(v)))
+
+        self._section("DEVICES")
         self._row("mic_on", "Record your microphone?", "bool",
                   describe=lambda v: self._later("Your voice goes into your clips." if v else
                                                  "Clips have the game's sound only."))
-        self._row("fps", "How many frames per second?", "choice", [(30, "30 FPS"), (60, "60 FPS"), (120, "120 FPS")],
-                  lambda v: self._later("60 suits every game; 120 is for fast shooters."))
+
+        self._section("CONTROLS")
+        hk = self._row("hotkey", "Which keys open the menu?", "action",
+                       describe=lambda v: self._later("Press Enter, then the new keys."))
+        hk.on_activate = self._listen_hotkey
+        self._row("controller_button", "Which controller button opens it?", "choice",
+                  [("create", "Create / View"), ("ps", "PS / Xbox button"), ("touchpad", "Touchpad"),
+                   ("mute", "Mute / Share"), ("l3+r3", "L3 + R3")],
+                  lambda v: self._later("Like Create on the PS5."))
+
+        self._section("LIBRARY")
+        folder = self._row("clips_dir", "Where should your clips go?", "action",
+                           describe=lambda v: self._later("A folder per game. 30 minutes can take a few GB."))
+        folder.on_activate = self._pick_folder
         self.rows_layout.addStretch()
 
     def _switch_language(self, *_):
@@ -632,8 +669,14 @@ class Welcome(Settings):
     def open(self, screen_px: tuple[int, int] | None = None):
         if screen_px:
             self.screen_px = screen_px
+        w, h = self.screen_px
+        self.res_row.choices = [("native", language.tr("Native  {w}×{h}", w=w, h=h))] + [
+            (k, k) for k, v in obs_client.RESOLUTIONS.items() if v < h]
+        cfg = self._saved()
+        if hasattr(self, "screen_row"):
+            self._fill_screens(cfg["capture_screen"])
         for r in self.rows:
-            r.set_value(self.ctl.cfg.get(r.key, preferences.DEFAULTS.get(r.key)))
+            r.set_value(cfg.get(r.key, preferences.DEFAULTS.get(r.key)))
         if self.encoder is None:     # the quality line's bitrate follows the graphics card, found in the background
             threading.Thread(target=lambda: runtime.safe_emit(self.encoder_ready, obs_client.pick_encoder(
                 obs_client.gpu_names(), preferences.load_state().get("failed_encoders", []))), daemon=True).start()
@@ -646,12 +689,18 @@ class Welcome(Settings):
 
     def save(self):
         chosen = self.values()
-        preferences.save_config(chosen)
+        before = self._saved()
+        preferences.save_config({k: v for k, v in chosen.items() if k != "start_with_windows"})
+        if runtime.IS_WINDOWS and chosen.get("start_with_windows") != before.get("start_with_windows"):
+            windows.set_start_with_windows(bool(chosen["start_with_windows"]))
         self.ctl.cfg.update(chosen)
         preferences.save_state(preferences.load_state() | {"welcomed": True})
         runtime.log.info("first start: %s", ", ".join(f"{k}={v}" for k, v in chosen.items()))
         self.hide()
-        self.done()
+        if any(chosen.get(k) != before.get(k) for k in self.READ_AT_START):
+            self.restart()     # comes back already welcomed, with the new keys, button and folder
+        else:
+            self.done()
 
     def go_back(self):
         self.save()        # Esc / B: start with what's picked (the recommended choices if nothing changed)
@@ -659,5 +708,6 @@ class Welcome(Settings):
     def update_hints(self):
         pad = input_devices.input_mode().mode != "keyboard"
         self.hints.set_items(
-            [("DPAD_UD", "Move"), ("DPAD_LR", "Change"), ("Y", "Start")] if pad
-            else [("k:↑ ↓", "Move"), ("k:← →", "Change"), ("k:S", "Start")], input_devices.input_mode().mode)
+            [("DPAD_UD", "Move"), ("DPAD_LR", "Change"), ("A", "Select"), ("Y", "Start")] if pad
+            else [("k:↑ ↓", "Move"), ("k:← →", "Change"), ("k:Enter", "Select"), ("k:S", "Start")],
+            input_devices.input_mode().mode)

@@ -383,5 +383,19 @@
   "You can change it later in Settings.": "يمكنك تغيير ذلك لاحقًا من الإعدادات.",
   "Uses about {gb} GB of RAM.": "يستهلك نحو {gb} جيجابايت من الذاكرة.",
   "Higher is sharper and makes bigger files.": "الأعلى أوضح وملفاته أكبر.",
-  "60 suits every game; 120 is for fast shooters.": "60 تناسب كل الألعاب، و120 لألعاب التصويب السريعة."
+  "60 suits every game; 120 is for fast shooters.": "60 تناسب كل الألعاب، و120 لألعاب التصويب السريعة.",
+  "Start with Windows?": "هل يبدأ مع ويندوز؟",
+  "Start it yourself from the Start menu": "شغّله بنفسك من قائمة ابدأ",
+  "What should a double press save?": "ماذا يحفظ الضغط مرتين؟",
+  "What resolution should it record?": "ما دقة التسجيل؟",
+  "Record in HDR?": "هل يسجّل بتقنية HDR؟",
+  "HDR clips while Windows HDR is on.": "مقاطع HDR عندما يكون HDR مفعّلًا في ويندوز.",
+  "Which screen should it record?": "أي شاشة يسجّل؟",
+  "Which keys open the menu?": "ما الأزرار التي تفتح القائمة؟",
+  "Press Enter, then the new keys.": "اضغط Enter ثم الأزرار الجديدة.",
+  "Which controller button opens it?": "أي زر في الكنترولر يفتحها؟",
+  "Like Create on the PS5.": "مثل Create في PS5.",
+  "Where should your clips go?": "أين تُحفظ مقاطعك؟",
+  "A folder per game. 30 minutes can take a few GB.": "مجلد لكل لعبة، وقد يأخذ مقطع 30 دقيقة بضعة جيجابايت.",
+  "Lower uses less RAM and space.": "الأقل يستهلك ذاكرة ومساحة أقل."
 }
