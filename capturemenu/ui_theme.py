@@ -61,10 +61,14 @@ def bring_to_front(w: QtWidgets.QWidget, keyboard: bool = False):
         user32.keybd_event(0x12, 0, 2, 0)            # and up (KEYEVENTF_KEYUP)
 
 
-def hide_from_capture(w: QtWidgets.QWidget):
-    """Keeps the window out of recordings and screenshots (Windows 10 2004+)."""
-    if runtime.IS_WINDOWS:
-        ctypes.windll.user32.SetWindowDisplayAffinity(int(w.winId()), 0x11)  # WDA_EXCLUDEFROMCAPTURE
+def out_of_capture(on: bool):
+    """The app's windows show in clips and screen shares (it shows itself off), but not in its own
+    screenshots: on for the moment a screenshot is taken. Windows 10 2004+."""
+    if not runtime.IS_WINDOWS:
+        return
+    for w in QtWidgets.QApplication.topLevelWidgets():
+        if w.testAttribute(Qt.WA_WState_Created):
+            ctypes.windll.user32.SetWindowDisplayAffinity(int(w.winId()), 0x11 if on else 0)  # WDA_EXCLUDEFROMCAPTURE / WDA_NONE
 
 
 def set_on_top(w: QtWidgets.QWidget, on: bool):
@@ -123,11 +127,10 @@ def sheet_color(w: QtWidgets.QWidget) -> QtGui.QColor:
 
 
 def dress(w: QtWidgets.QWidget, frosted: bool = True):
-    """What lives on a page's native window: kept out of captures, glass behind it. Done when the page
+    """What lives on a page's native window: glass behind it. Done when the page
     is made, and again on opening it after release_window() let the window go."""
     if getattr(w, "dressed", False):
         return
-    hide_from_capture(w)
     if frosted:
         w.glassy = glass(w)
     w.dressed = True

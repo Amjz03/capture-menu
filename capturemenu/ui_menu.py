@@ -205,7 +205,10 @@ class Menu(QtWidgets.QWidget):
     def _screenshot(self):
         self.hide_menu()
         game = self.game
+        ui_theme.out_of_capture(True)      # the app shows in clips and shares, never in its own screenshots
         QtCore.QTimer.singleShot(250, lambda: self.ctl.screenshot(game))  # bar gone first
+        # ponytail: fixed wait, OBS saves the shot well within it; restore on the saved signal if it ever doesn't
+        QtCore.QTimer.singleShot(1500, lambda: ui_theme.out_of_capture(False))
 
     # ---- Save recent gameplay row
     def _set_picking(self, on: bool):

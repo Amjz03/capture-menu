@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.0.37 · 2026-10-26
+
+- **Capture Menu shows when you share your screen.** The menu, notices and viewer now show in Discord and other screen shares, so you can show someone how it works, and they show in your clips and recordings too. Screenshots still leave Capture Menu out.
+
 ## 0.0.36 · 2026-10-25
 
 - The first button in the menu is now called **حفظ آخر لقطة** in Arabic.

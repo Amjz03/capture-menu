@@ -152,7 +152,7 @@ class Settings(QtWidgets.QWidget):
                   else "More colour and contrast when an HDR screen is recorded in normal colours")
         self._row("record_indicator", "Recording indicator", "choice",
                   [("top-left", "Top left"), ("top-right", "Top right"), ("off", "Off")],
-                  lambda v: "A small REC timer while you record by hand. It never shows up in captures"
+                  lambda v: "A small REC timer while you record by hand"
                   if v != "off" else "Nothing on screen while recording")
         self._section("DEVICES")
         # the screens and microphones are filled in by open(): they change while the app runs

@@ -19,7 +19,6 @@ class RecIndicator(QtWidgets.QWidget):
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setAttribute(Qt.WA_ShowWithoutActivating)
         self.setAttribute(Qt.WA_TransparentForMouseEvents)
-        ui_theme.hide_from_capture(self)
         self.corner = corner
         self.started: float | None = None      # time.monotonic() when the recording began
         self.blink = True
@@ -114,7 +113,6 @@ class Toast(QtWidgets.QWidget):
                          | Qt.WindowDoesNotAcceptFocus)
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setAttribute(Qt.WA_ShowWithoutActivating)
-        ui_theme.hide_from_capture(self)
         self.path: str | None = None
         outer = QtWidgets.QHBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)

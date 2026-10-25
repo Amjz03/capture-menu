@@ -40,7 +40,7 @@
 - **Share in one step:** copies for phones and Discord (10 / 50 / 500 MB) go straight to the clipboard, with or without your voice.
 - **Gallery** with favorites, titles, notes, sizes, sorting and multi-delete.
 - **Works with a controller:** DualSense, Xbox and most others, with on-screen hints that match.
-- **Follows your game** across monitors and TVs, or always records the screen you pick, and never shows up in your recordings.
+- **Follows your game** across monitors and TVs, or always records the screen you pick. The menu shows in your clips and screen shares, but never in its own screenshots.
 - **English and Arabic:** the whole interface, mirrored right to left in Arabic, like the PS5.
 - **One-click install:** OBS Studio and FFmpeg are installed and set up for your PC automatically.
 
@@ -222,7 +222,7 @@ Titles like "Boss down on the first try" show in the viewer, Recent row and gall
 - **Mic.** The Mic tile (or **M**) mutes your microphone in OBS; it turns red when off.
 - **Your voice on its own track.** Recordings carry 3 audio tracks: everything, game only and mic only. Players use the first, so clips sound normal; *Without my voice* uses the second.
 - **Monitors and TVs.** The bar, notifications and viewer open on the screen of the window in front. When a game fills a screen, OBS switches to record that screen within about 2 seconds, scaled to your recording resolution. Alt-tabbing to another screen doesn't move it. The last minutes keep what was captured at the time, so minutes before a move show the old screen. To always record one screen instead, pick it in Settings → Devices → Recording screen.
-- **REC timer.** A manual recording shows a small red *REC 12:34* in a corner. Clicks go through it, and it never shows up in captures.
+- **REC timer.** A manual recording shows a small red *REC 12:34* in a corner. Clicks go through it.
 - **Storage warning.** Past 200 GB of captures, or under 20 GB free on the drive, you get a notice. Nothing is ever deleted for you.
 - **Sounds and vibration.** A chime when a clip is saved, a shutter click for screenshots and a tone when recording starts; the controller buzzes too while you're using it. Replace the `.wav` files in `assets\sounds` with your own if you like.
 
