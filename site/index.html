@@ -19,7 +19,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&family=IBM+Plex+Sans+Arabic:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=22">
+  <link rel="stylesheet" href="style.css?v=23">
 </head>
 <body>
   <a class="skip" href="#main" data-i18n="skip">Skip to content</a>
@@ -42,6 +42,8 @@
     <section class="hero" id="main">
       <div class="hero-bg" aria-hidden="true">
         <video id="hero-bg" autoplay muted loop playsinline preload="auto" poster="assets/hero-bg.jpg">
+          <source src="assets/hero-bg-sm.av1.mp4" type='video/mp4; codecs="av01.0.05M.10"' media="(max-width: 700px)">
+          <source src="assets/hero-bg.av1.mp4" type='video/mp4; codecs="av01.0.08M.10"'>
           <source src="assets/hero-bg-sm.mp4" type="video/mp4" media="(max-width: 700px)">
           <source src="assets/hero-bg.mp4" type="video/mp4">
         </video>
@@ -174,7 +176,7 @@
     <span data-i18n="tm">PlayStation and Xbox are trademarks of their owners. Capture Menu is not affiliated with Sony or Microsoft.</span>
   </footer>
 
-  <script src="demo.js?v=22"></script>
-  <script src="app.js?v=22"></script>
+  <script src="demo.js?v=23"></script>
+  <script src="app.js?v=23"></script>
 </body>
 </html>
