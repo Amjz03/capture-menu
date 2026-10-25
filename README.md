@@ -45,7 +45,7 @@
 - **One-click install:** OBS Studio and FFmpeg are installed and set up for your PC automatically.
 
 <p align="center">
-  <img src="docs/poster.jpg" alt="Capture Menu over Call of Duty, Red Dead Redemption 2 and Overwatch">
+  <img src="docs/poster.jpg" alt="Capture Menu over Call of Duty and Red Dead Redemption 2">
 </p>
 
 | | | |

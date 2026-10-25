@@ -1,4 +1,4 @@
-"""Renders the README poster: three games side by side with the real Create bar and notice over them.
+"""Renders the README poster: games side by side with the real Create bar and notice over them.
 
     set QT_QPA_PLATFORM=offscreen
     set CAPTURE_MENU_SHOTS=<folder of game screenshots>   (optional, see scene.py)
@@ -28,8 +28,7 @@ preferences.STATE_PATH = Path(tempfile.mkdtemp()) / "state.json"
 W, H = 1920, 960                    # 2:1, so it also works as GitHub's social preview
 GAME = game_name("Neon Highway")
 # (mockup game, palette, seed, where the picture's subject is (0..1 across, down), zoom)
-PANELS = [("Neon Highway", "dusk", 7, 0.50, 0.5, 1.0), ("Ridge Racer X", "desert", 4, 0.40, 0.62, 1.45),
-          ("Frostfall", "snow", 2, 0.60, 0.5, 1.0)]
+PANELS = [("Frostfall", "snow", 2, 0.55, 0.5, 1.0), ("Neon Highway", "dusk", 7, 0.45, 0.5, 1.0)]
 root = Path(tempfile.mkdtemp()); work = Path(tempfile.mkdtemp()); now = time.time()
 for i, (game, pal, seed, *_) in enumerate(PANELS * 2):
     d = root / game_name(game); d.mkdir(exist_ok=True)
@@ -58,9 +57,10 @@ p = QtGui.QPainter(img)
 for hint in (QtGui.QPainter.Antialiasing, QtGui.QPainter.SmoothPixmapTransform, QtGui.QPainter.TextAntialiasing):
     p.setRenderHint(hint)
 SKEW, GAP = 150, 14
-edges = [-SKEW, W / 3, 2 * W / 3, W + SKEW]          # where the slices meet, at mid height
+n = len(PANELS)
+edges = [-SKEW] + [W * k / n for k in range(1, n)] + [W + SKEW]   # where the slices meet, at mid height
 for i, (game, pal, seed, fx, fy, zoom) in enumerate(PANELS):
-    a, b = edges[i] + (GAP / 2 if i else 0), edges[i + 1] - (GAP / 2 if i < 2 else 0)
+    a, b = edges[i] + (GAP / 2 if i else 0), edges[i + 1] - (GAP / 2 if i < n - 1 else 0)
     slice_ = QtGui.QPolygonF([QPointF(a + SKEW / 2, 0), QPointF(b + SKEW / 2, 0), QPointF(b - SKEW / 2, H), QPointF(a - SKEW / 2, H)])
     shot = draw_scene(int(H * zoom * 16 / 9), int(H * zoom), pal, seed, hud=False)
     box = slice_.boundingRect()
