@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.0.33 · 2026-10-25
+
+- **A first-start setup.** The first time Capture Menu starts, it asks what's worth choosing before anything is recorded: the language (first, so the rest are read in it), start with Windows, how much to keep, what a double press saves, quality, resolution, frame rate, the microphone, the keys and controller button that open the menu, and where clips go. Which screen and HDR are only asked when there's a choice. Each question says it can be changed later in Settings, the recommended choices come picked, and OBS is set up with what you chose. It's never asked again, and nothing changes for people who already use Capture Menu.
+- **Recording works on any PC, with nothing to do by hand.** If OBS's replay buffer won't start, Capture Menu now repairs it itself: it switches the buffer on in OBS's settings and restarts OBS, and if the graphics card can't record (a laptop's GeForce MX, Intel graphics without Quick Sync), it steps down to the card's H.264 and then to the CPU, and remembers it. It checks every minute that the buffer is still running, never restarts OBS during a recording, and says plainly when nothing worked instead of "OBS isn't running".
+- **Record your microphone** is now a switch in Settings, applied every time OBS starts (the menu's Mic button still turns it off for now).
+- **Arabic in clear Modern Standard Arabic.** Every Arabic text in the app was rewritten: short and direct, with the words players use (كمبيوتر، فريم، الكيبورد، الكنترولر، المايك) and one word for each thing across the app.
+
 ## 0.0.32 · 2026-10-24
 
 - **Recordings are saved whole.** Stopping a recording could move it while OBS was still finishing the file, so the clip in your library came out a few seconds short (or broken) and the full one stayed behind in OBS's folder with an error. Capture Menu now waits until OBS has completely let go of the file before moving it, for recordings, saved clips and screenshots. If OBS takes unusually long, the recording stays safely where OBS wrote it and a notice says where.
