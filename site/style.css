@@ -86,7 +86,7 @@ html[dir="rtl"] .link:hover .arrow { transform: scaleX(-1) translateX(3px); }
 /* ------------------------------------------------------------- hero */
 main > section.hero {
   position: relative; isolation: isolate; width: 100%; min-height: min(calc(100svh - 58px), 900px);
-  display: flex; align-items: flex-end; padding: 150px 0 72px; overflow: hidden;
+  display: flex; align-items: flex-end; padding: 150px 0 72px; overflow: clip;   /* clip: focusing the link field can't scroll it sideways */
 }
 /* a misty ride in Red Dead behind it all, slow and quiet */
 .hero-bg { position: absolute; inset: 0; z-index: -2; background: #0d0e13 url("assets/hero-bg.jpg") center / cover; }
@@ -337,6 +337,36 @@ html[dir="rtl"] .cm-toast { padding: 12px 12px 12px 20px; }
 .pad-status { margin: 0; margin-inline-start: auto; color: var(--muted); font-size: 14px; }
 .pad-status.on { color: #6fd39b; }
 
+/* ------------------------------------------------------------- save it, trim it, share it */
+.journey { padding: 120px 0 24px; }
+.journey h2 { font-size: clamp(30px, 3.2vw, 42px); line-height: 1.1; margin-bottom: 40px; }
+.journey-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px; }
+.journey-step { position: relative; display: flex; flex-direction: column; gap: 18px; }
+.journey-step img { width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 10px; border: 1px solid var(--line); background: var(--bg-2); }
+.journey-step > div { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; align-items: baseline; }
+.journey-num {
+  grid-row: span 2; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%;
+  border: 1px solid var(--line-2); font: 500 13px var(--mono); color: var(--ink); align-self: start; margin-top: 1px;
+}
+.journey-step h3 { font-size: 20px; }
+.journey-step p { color: var(--muted); margin: 0; font-size: 16px; max-width: 30em; }
+/* ------------------------------------------------------------- on a phone */
+.on-phone { display: none; margin-top: 22px; padding: 16px; border-radius: 12px; border: 1px solid var(--line-2); background: rgba(15, 17, 24, 0.72); backdrop-filter: blur(12px); max-width: 30em; }
+html.phone .on-phone { display: block; }   /* set in app.js: a phone or tablet that isn't Windows */
+.on-phone-text { margin: 0 0 14px; font-size: 15px; color: #d2d5dd; }
+.on-phone-text a { color: var(--ink); text-underline-offset: 3px; white-space: nowrap; }
+.on-phone-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.on-phone-actions .btn { height: 40px; }
+.on-phone-actions .btn[hidden] { display: none; }
+.on-phone-status { margin: 10px 0 0; font-size: 14px; color: #6fd39b; min-height: 0; }
+.on-phone-status:empty { display: none; }
+.on-phone-manual { display: grid; gap: 6px; margin-top: 10px; font-size: 14px; color: var(--muted); }
+.on-phone-manual[hidden] { display: none; }
+.on-phone-manual input {
+  width: 100%; height: 40px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--line-2); background: var(--bg-2);
+  color: var(--ink); font: 14px var(--mono);
+}
+
 /* ------------------------------------------------------------- how it works */
 .steps { display: grid; grid-template-columns: 5fr 7fr; gap: 64px; padding: 120px 0 24px; align-items: start; }
 .steps h2 { font-size: clamp(30px, 3.2vw, 42px); line-height: 1.1; position: sticky; top: 110px; }
@@ -448,6 +478,7 @@ html[dir="rtl"] .final::after { background: linear-gradient(270deg, var(--bg-2) 
   .row, .row.flip { grid-template-columns: 1fr; gap: 20px; }
   .row.flip img { order: 0; }
   .pad-status { margin-inline-start: 0; width: 100%; }
+  .journey-list { grid-template-columns: 1fr; gap: 40px; max-width: 560px; }
 }
 @media (max-width: 640px) {
   main > section { width: calc(100% - 32px); }

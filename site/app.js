@@ -55,7 +55,14 @@ const T = {
     press_once: "Press once", press_twice: "Press twice",
     pad_none: "No controller found. Plug one in and press any button.",
     pad_on: "Controller found: {name}. Press Create / View.",
-    alt_picker: "The Save recent gameplay row over Red Dead Redemption 2, with Last 30m picked", alt_library: "The Captures page: a sidebar of games and a grid of clips and screenshots", alt_viewer: "The viewer playing a Red Dead Redemption 2 clip, with Trim, Share and Favorite", alt_trim: "Trimming a clip on a timeline of frames", alt_settings: "The Settings page: resolution, frame rate, quality and replay length", alt_rec: "Red Dead Redemption 2 at night with a small REC 12:34 timer in the corner", alt_game: "Call of Duty on a snowy rooftop, the game the menu opens over",
+    j_h: "Save it. Trim it. Share it.",
+    j1_h: "Save the moment", j1_p: "Press twice, or pick how much to keep from the last 30 minutes.", j1_alt: "The Save recent gameplay row, with Last 30m picked",
+    j2_h: "Trim it", j2_p: "Cut it to the frame. The original stays.", j2_alt: "Trimming a clip on a timeline of frames",
+    j3_h: "Share it", j3_p: "Press Share / Export, pick Phone or Discord, and a copy that fits is ready to paste.", j3_alt: "The clip viewer, with the Share / Export button selected",
+    phone_p: "Capture Menu is for Windows PCs. Try the demo here, and open this link on your computer to install it.", phone_try: "Try the demo",
+    phone_copy: "Copy site link", phone_share: "Share link", phone_copied: "Link copied. Open it on your computer.",
+    phone_manual: "Copy this link:", phone_failed: "Couldn't copy it. Select the link below and copy it.", phone_share_failed: "Couldn't share it. Select the link below and copy it.",
+    alt_picker: "The Save recent gameplay row over Red Dead Redemption 2, with Last 30m picked", alt_library: "The Captures page: a sidebar of games and a grid of clips and screenshots", alt_settings: "The Settings page: resolution, frame rate, quality and replay length", alt_rec: "Red Dead Redemption 2 at night with a small REC 12:34 timer in the corner", alt_game: "Call of Duty on a snowy rooftop, the game the menu opens over",
     whats_new: "What's new", released: "Version {v} · {date}",
     rec_note: "Keeping the last 30 min", anywhere: "Press it anywhere on this page",
     how_h: "How it works", privacy: "Privacy",
@@ -67,8 +74,6 @@ const T = {
     t2_h: "Press twice, it's saved", t2_p: "The last 30 seconds, without opening anything.",
     t8_h: "Set up for your PC", t8_p: "Resolution, frame rate, quality and how much to keep, on one page.",
     t4_h: "A folder for every game", t4_p: "Found automatically. Favorites, titles, notes, sizes, sorting.",
-    t5_h: "Watch it right away", t5_p: "A viewer with your voice and the game on their own tracks.",
-    t6_h: "Trim to the frame", t6_p: "Then share a copy sized for Discord or your phone, straight to the clipboard.",
     t7_h: "Record for hours", t7_p: "A small REC timer while you record. Screenshots in full resolution.",
     
     
@@ -130,7 +135,14 @@ const T = {
     press_once: "اضغط مرة", press_twice: "اضغط مرتين",
     pad_none: "لا يوجد كنترولر. وصّل واحدًا واضغط أي زر.",
     pad_on: "الكنترولر جاهز: {name}. اضغط Create / View.",
-    alt_picker: "صف حفظ اللعب الأخير فوق Red Dead Redemption 2، والمختار آخر 30 دقيقة", alt_library: "صفحة المعرض: الألعاب على الجانب وشبكة من المقاطع ولقطات الشاشة", alt_viewer: "العارض يشغّل مقطعًا من Red Dead Redemption 2، وفيه القص والمشاركة والمفضلة", alt_trim: "قص مقطع على شريط من الفريمات", alt_settings: "صفحة الإعدادات: الدقة وعدد الفريمات والجودة ومدة الفيديو", alt_rec: "Red Dead Redemption 2 ليلًا، وفي الزاوية مؤقت REC 12:34 صغير", alt_game: "Call of Duty فوق سطح عليه ثلج، وهي اللعبة التي تفتح القائمة فوقها",
+    j_h: "احفظها. قصّها. شاركها.",
+    j1_h: "احفظ اللقطة", j1_p: "اضغط مرتين، أو اختر كم تحفظ من آخر 30 دقيقة.", j1_alt: "صف حفظ اللعب الأخير، والمختار آخر 30 دقيقة",
+    j2_h: "قصّها", j2_p: "قص الفيديو بدقة، والأصلي يبقى كما هو.", j2_alt: "قص مقطع على شريط من الفريمات",
+    j3_h: "شاركها", j3_p: "اضغط «مشاركة وتصدير»، واختر الجوال أو Discord، فتجهز نسخة بالحجم المناسب جاهزة للصق.", j3_alt: "عارض المقاطع، وزر «مشاركة وتصدير» محدد",
+    phone_p: "Capture Menu برنامج لكمبيوترات ويندوز. جرّب العرض هنا، وافتح الرابط على الكمبيوتر للتثبيت.", phone_try: "جرّب العرض",
+    phone_copy: "انسخ رابط الموقع", phone_share: "مشاركة الرابط", phone_copied: "تم نسخ الرابط. افتحه على الكمبيوتر.",
+    phone_manual: "انسخ هذا الرابط:", phone_failed: "لم ينجح النسخ. حدّد الرابط في الأسفل وانسخه.", phone_share_failed: "لم تنجح المشاركة. حدّد الرابط في الأسفل وانسخه.",
+    alt_picker: "صف حفظ اللعب الأخير فوق Red Dead Redemption 2، والمختار آخر 30 دقيقة", alt_library: "صفحة المعرض: الألعاب على الجانب وشبكة من المقاطع ولقطات الشاشة", alt_settings: "صفحة الإعدادات: الدقة وعدد الفريمات والجودة ومدة الفيديو", alt_rec: "Red Dead Redemption 2 ليلًا، وفي الزاوية مؤقت REC 12:34 صغير", alt_game: "Call of Duty فوق سطح عليه ثلج، وهي اللعبة التي تفتح القائمة فوقها",
     whats_new: "ما الجديد", released: "الإصدار {v} · {date}",
     rec_note: "يحتفظ بآخر 30 دقيقة", anywhere: "اضغطه في أي مكان من الصفحة",
     how_h: "كيف يعمل", privacy: "الخصوصية",
@@ -142,8 +154,6 @@ const T = {
     t2_h: "اضغط مرتين ليُحفظ", t2_p: "آخر 30 ثانية، بدون فتح أي شيء.",
     t8_h: "مضبوط على جهازك", t8_p: "الدقة وعدد الفريمات والجودة ومدة الفيديو، كلها في صفحة واحدة.",
     t4_h: "مجلد لكل لعبة", t4_p: "يعرفها تلقائيًا، مع المفضلة والعناوين والملاحظات والأحجام والترتيب.",
-    t5_h: "شاهده مباشرة", t5_p: "عارض يضع صوتك وصوت اللعبة كلًّا في مساره.",
-    t6_h: "قص الفيديو بدقة", t6_p: "وبعدها شارك نسخة بحجم يناسب Discord أو جوالك، جاهزة للصق بـ Ctrl + V.",
     t7_h: "سجّل لساعات", t7_p: "مؤقت REC صغير وقت التسجيل، ولقطات شاشة بدقة كاملة.",
     
     
@@ -194,6 +204,9 @@ function applyLang() {
   });
   renderRelease();
   document.getElementById("lang").textContent = lang === "ar" ? "English" : "العربية";
+  const manual = document.getElementById("manual-input");
+  if (manual && manual.value) manual.value = siteLink();
+  if (copyStatus) copyStatus.textContent = "";
   updatePadStatus();
 }
 document.getElementById("lang").addEventListener("click", () => {
@@ -324,6 +337,48 @@ if (!store.get("seen")) {
 }
 document.addEventListener("click", (e) => {
   if (e.target.closest('a[href$="CaptureMenu-Setup.exe"]')) count("download", "Download Setup.exe");
+});
+
+// ---------------------------------------------------------------- on a phone: the link, for the computer
+// The site's own address (never the .exe), in the visitor's language. Copy says so when it worked;
+// when it can't, the link shows in a field to copy by hand. Share only where the browser has it.
+const SITE = "https://amjz03.github.io/capture-menu/";
+// A phone or tablet, and never Windows: a touch screen on a Windows PC (or a Surface in tablet mode)
+// can install Capture Menu, so it gets the normal download. iPadOS says "Macintosh", so a Mac
+// with touch points counts as a tablet.
+function isPhoneVisitor({ ua, platform, touchPoints }) {
+  if (/windows/i.test(platform) || /Windows/.test(ua)) return false;
+  if (/Android|iPhone|iPad|iPod/.test(ua)) return true;
+  return /Macintosh/.test(ua) && touchPoints > 0;     // an iPad asking for the desktop site (Macs have no touch)
+}
+document.documentElement.classList.toggle("phone", isPhoneVisitor({
+  ua: navigator.userAgent, platform: (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || "",
+  touchPoints: navigator.maxTouchPoints || 0,
+}));
+const siteLink = () => SITE + (lang === "ar" ? "?lang=ar" : "");
+const copyStatus = document.getElementById("copy-status");
+function showManual() {
+  const input = document.getElementById("manual-input");
+  input.value = siteLink();
+  document.getElementById("manual-link").hidden = false;
+  input.focus({ preventScroll: true }); input.select();
+}
+document.getElementById("copy-link").addEventListener("click", async () => {
+  document.getElementById("manual-link").hidden = true;
+  try {
+    if (!navigator.clipboard || !window.isSecureContext) throw new Error("no clipboard");
+    await navigator.clipboard.writeText(siteLink());
+    copyStatus.textContent = T[lang].phone_copied;
+  } catch {
+    copyStatus.textContent = T[lang].phone_failed;
+    showManual();
+  }
+});
+const shareBtn = document.getElementById("share-link");
+shareBtn.hidden = !navigator.share;
+shareBtn.addEventListener("click", async () => {
+  try { await navigator.share({ title: "Capture Menu", text: T[lang].phone_p, url: siteLink() }); }
+  catch (e) { if (e.name !== "AbortError") { copyStatus.textContent = T[lang].phone_share_failed; showManual(); } }   // closing the share sheet isn't a failure
 });
 
 // a link to a question (the footer's Privacy) opens it
