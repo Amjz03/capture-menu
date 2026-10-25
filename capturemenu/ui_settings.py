@@ -577,6 +577,7 @@ class Welcome(Settings):
     def __init__(self, ctl: capture_controller.Controller, done):
         self.done = done
         super().__init__(ctl)
+        self.setProperty("captureMenuPage", "welcome")
         self.title.setText(language.tr("Welcome to Capture Menu"))
         self.save_btn.setText(language.tr("Start"))
         for b in (self.back_btn, self.defaults_btn, self.cancel_btn):

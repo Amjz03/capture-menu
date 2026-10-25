@@ -86,7 +86,9 @@ def inspect_app():
     app = QtWidgets.QApplication.instance()
     assert app.layoutDirection() == QtCore.Qt.RightToLeft
     pages = {w.property("captureMenuPage"): w for w in app.topLevelWidgets() if w.property("captureMenuPage")}
-    assert set(pages) == {"menu", "viewer", "gallery", "settings"}, pages
+    # a first start (no OBS setup yet) also opens the Welcome questions
+    assert set(pages) == {"menu", "viewer", "gallery", "settings", "welcome"}, pages
+    assert pages["welcome"].isVisible() and not pages["settings"].isVisible()
     assert pages["menu"].gallery is pages["gallery"]
     assert pages["menu"].settings is pages["settings"]
     assert input_devices.input_mode() is input_devices.input_mode()
