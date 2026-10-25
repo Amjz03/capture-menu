@@ -27,11 +27,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/ride.gif" width="560" alt="Riding through the mist in Red Dead Redemption 2">
-</p>
-
-<p align="center">
-  <img src="docs/demo.webp" width="960" alt="In Red Dead Redemption 2: Alt + C opens the bar, the mouse picks Last 1 min and the clip is saved; then Alt + C twice saves the last 30 seconds without the bar">
+  <img src="docs/demo.webp" width="960" alt="Riding through the mist in Red Dead Redemption 2: Alt + C opens the bar, the mouse picks Last 1 min and the clip is saved; then Alt + C twice saves the last 30 seconds without the bar">
 </p>
 
 ## Features
