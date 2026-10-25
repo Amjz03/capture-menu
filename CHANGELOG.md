@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.0.35 · 2026-10-25
+
+- **Simpler Arabic.** Messages in the app use everyday words (بدون، عندك، حوالي، لا يمكن) and say what Capture Menu does ("نسجّل صوتك") instead of long passive forms, still in clear Arabic everyone reads.
+
 ## 0.0.34 · 2026-10-25
 
 - **Your PC feels lighter: the last minutes are on the drive, not in RAM.** Until now OBS kept the last 30 minutes in memory, several GB while you play. Now OBS records into a hidden folder (`%LOCALAPPDATA%\CaptureMenu\Buffer`), a new file every minute, and Capture Menu deletes what's older than you keep, so it never grows past that. Saving joins the files it needs without re-encoding: the same quality, saved in about a second. A manual recording is the same files from Start to Stop. Settings shows the drive space it takes. Nothing to do: OBS is set up again once when you update.
