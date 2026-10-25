@@ -47,6 +47,7 @@ class FakeObs:
     def buffer_active(self): return False
     def apply_plan(self, plan): self.applied = plan; return False
     def ensure_buffer(self): pass
+    def start_buffer(self): return True
 
 
 fine = capture_controller.Controller(dict(preferences.DEFAULTS, clips_dir=str(work / "Fine")))

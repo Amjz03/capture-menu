@@ -17,6 +17,7 @@ subprocess.run(["ffmpeg","-v","error","-f","lavfi","-i","testsrc=size=320x180:ra
 class FakeObs:
     n = 0; rec = False
     def ensure_buffer(self): return True
+    def buffer_active(self): return True
     def save_replay(self):
         self.n += 1; p = src/f"Replay {self.n}.mp4"; shutil.copy(master, p); return p
     def record_status(self): return self.rec, 0

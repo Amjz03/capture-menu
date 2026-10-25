@@ -425,7 +425,7 @@ class Settings(QtWidgets.QWidget):
         if self.encoder is None:
             self.encoder = getattr(self.ctl, "best_encoder", None)
         if self.encoder is None:
-            threading.Thread(target=lambda: runtime.safe_emit(self.encoder_ready, obs_client.pick_encoder(obs_client.gpu_names())),
+            threading.Thread(target=lambda: runtime.safe_emit(self.encoder_ready, obs_client.pick_encoder(obs_client.gpu_names(), preferences.load_state().get("failed_encoders", []))),
                              daemon=True).start()
         self._refresh()
         ui_theme.dress(self)

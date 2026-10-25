@@ -52,6 +52,8 @@ class Controller(QtCore.QObject):
         self.roots = [self.clips_dir] + ([self.shots_dir] if self.clips_dir not in
                                          (self.shots_dir, *self.shots_dir.parents) else [])
         self._busy = threading.Lock()
+        self._healing = threading.Lock()       # one replay-buffer repair at a time
+        self._heal_failed_at = -1e9
         self.record_game: str | None = None
         self.thumbs_dir = self.clips_dir / ".thumbs"
         self.thumbs_dir.mkdir(exist_ok=True)
@@ -412,7 +414,7 @@ class Controller(QtCore.QObject):
 
     def auto_setup(self, width: int, height: int):
         """First run (or a new monitor/GPU): configure OBS for this PC, then restart it once."""
-        encoder = obs_client.pick_encoder(obs_client.gpu_names())
+        encoder = obs_client.pick_encoder(obs_client.gpu_names(), preferences.load_state().get("failed_encoders", []))
         self.best_encoder = encoder
         version = self.obs.raw("GetVersion").get("obsVersion", "0")
         # OBS records at the main screen's size, so that screen's HDR decides (a game on another
@@ -443,36 +445,119 @@ class Controller(QtCore.QObject):
                 if not self.obs.buffer_active():
                     break
         changed = self.obs.apply_plan(plan)
-        if changed and not self.restart_obs():
-            self.obs.ensure_buffer()   # keep capturing with the old settings until OBS restarts
-            self.toast.emit(language.tr("OBS is set up · restart OBS once to apply it"), "info")
-        else:
-            self.obs.ensure_buffer()
+        if changed:
+            self.restart_obs()     # OBS loads the new settings when it starts
+        # heal_buffer gets the buffer running whatever went wrong (a restart that didn't happen, an
+        # encoder this PC can't run) and says so itself when it can't
+        if self.heal_buffer():
             self.toast.emit(language.tr("OBS is ready · {summary}", summary=plan["summary"]), "ok")
+        state = preferences.load_state()       # heal_buffer may have noted a failed encoder
         state["obs_setup"] = plan["summary"]
         preferences.save_state(state)
 
     def restart_obs(self) -> bool:
-        """Closes OBS the polite way (like clicking ✕) and starts it again with the buffer on."""
-        path = obs_client.obs_exe_path()
+        """Closes OBS the polite way (like clicking ✕) and starts it again with the buffer on.
+        True once the buffer runs. If OBS won't close (an error box it's waiting on), it's ended."""
+        path = obs_client.obs_exe_path() or obs_client.find_obs_exe()
         if not path:
             return False
-        media.run_quiet(["taskkill", "/IM", "obs64.exe"])
-        for _ in range(80):
-            time.sleep(0.25)
-            if not obs_client.obs_running():
-                break
-        else:
-            return False
+        if obs_client.obs_running():
+            media.run_quiet(["taskkill", "/IM", "obs64.exe"])
+            for _ in range(80):
+                time.sleep(0.25)
+                if not obs_client.obs_running():
+                    break
+            else:
+                runtime.log.warning("OBS didn't close; ending it")
+                media.run_quiet(["taskkill", "/F", "/IM", "obs64.exe"])
+                time.sleep(2)
+                if obs_client.obs_running():
+                    return False
         obs_client.launch_obs(path)
         for _ in range(60):
             time.sleep(0.5)
             try:
-                self.obs.ensure_buffer()
-                return True
+                self.obs.call("get_version")
+                break
             except Exception:
                 continue
-        return False
+        else:
+            return False
+        try:
+            return self.obs.start_buffer()
+        except obs_client.BufferDisabled:
+            return False
+
+    # ---- keeping the replay buffer running
+    HEAL_PAUSE = 600      # after a repair that didn't work, the background check waits this long
+
+    def heal_buffer(self) -> bool:
+        """Gets OBS's replay buffer running, whatever it takes, so a new PC needs nothing done by hand:
+        1. start it; 2. if it's switched off in OBS's settings, switch it on and restart OBS;
+        3. if it still won't start, the encoder can't run on this PC: step down (the card's H.264,
+        then the CPU's x264) and remember it, so setup doesn't pick it again. Never while a manual
+        recording runs: restarting OBS would end it. True once the buffer runs."""
+        if not self._healing.acquire(blocking=False):
+            return False                      # already being repaired
+        try:
+            try:
+                if self.obs.start_buffer():
+                    return True
+                disabled = False
+            except obs_client.BufferDisabled:
+                disabled = True
+            if self.obs.record_status()[0]:
+                return False
+            runtime.log.warning("replay buffer won't start: %s", "off in OBS's settings" if disabled else "the output didn't start")
+            if disabled:
+                self.obs.set_profile([("Output", "Mode", "Simple"), ("SimpleOutput", "RecRB", "true"),
+                                      ("SimpleOutput", "RecRBTime", str(int(self.cfg["buffer_minutes"]) * 60))])
+                if self.restart_obs():
+                    self.toast.emit(language.tr("Turned on the OBS replay buffer"), "ok")
+                    return True
+            encoder = self.obs.profile_value("SimpleOutput", "RecEncoder") or self.best_encoder or "x264"
+            for fallback in obs_client.fallback_encoders(encoder):
+                self._note_failed_encoder(encoder)
+                runtime.log.warning("encoder %s didn't start; trying %s", encoder, fallback)
+                video = self.obs.raw("GetVideoSettings")
+                bitrate = obs_client.pick_bitrate(fallback, video.get("outputWidth", 1920), video.get("outputHeight", 1080),
+                                                  video.get("fpsNumerator", 60), self.cfg.get("quality", "balanced"))
+                self.obs.set_profile([("SimpleOutput", "StreamEncoder", fallback), ("SimpleOutput", "RecEncoder", fallback),
+                                      ("SimpleOutput", "VBitrate", str(bitrate))])
+                if self.restart_obs():
+                    self.best_encoder = fallback
+                    self.toast.emit(language.tr("Your graphics card couldn't record, so OBS now uses {encoder}",
+                                                encoder=fallback.replace("_", " ").upper()), "ok")
+                    return True
+                encoder = fallback
+            self._heal_failed_at = time.monotonic()
+            self.toast.emit(language.tr("OBS can't start recording · open OBS to see why"), "error")
+            return False
+        finally:
+            self._healing.release()
+
+    def _note_failed_encoder(self, encoder: str):
+        state = preferences.load_state()
+        failed = state.get("failed_encoders", [])
+        if encoder not in failed and encoder != "x264":
+            state["failed_encoders"] = failed + [encoder]
+            preferences.save_state(state)
+
+    def _watch_buffer(self):
+        """Every minute: if the buffer stopped (OBS restarted on its own, someone stopped it), start
+        it again, in the background. After a repair that failed, wait HEAL_PAUSE before trying again."""
+        if time.monotonic() - self._heal_failed_at < self.HEAL_PAUSE or self._healing.locked():
+            return
+
+        def run():
+            try:
+                if not self.obs.buffer_active():
+                    self.heal_buffer()
+            except obs_client.ObsOffline:
+                pass
+            except Exception:
+                runtime.log.exception("replay buffer check failed")
+        threading.Thread(target=run, daemon=True).start()
 
     def start_following(self):
         """Every 2 s: make sure OBS records the screen picked in Settings, or else the monitor a
@@ -551,23 +636,29 @@ class Controller(QtCore.QObject):
                     self.toast.emit(language.tr("Couldn't set up OBS automatically · see README for the manual steps"),
                                     "error")
             try:
-                if not self.obs.ensure_buffer():
+                if not self.obs.buffer_active() and self.heal_buffer():
                     self.toast.emit(language.tr("Turned on the OBS replay buffer"), "ok")
-            except Exception:
+            except obs_client.ObsOffline:
                 self.toast.emit(language.tr("OBS isn't running. Start it to use Capture Menu"), "error")
+            except Exception:
+                runtime.log.exception("couldn't start the replay buffer")
+                self.toast.emit(language.tr("OBS can't start recording · open OBS to see why"), "error")
             self.refresh_status()   # e.g. a recording still running after a restart
             runtime.log.info("start-up done")
         threading.Thread(target=run, daemon=True).start()
+        self._buffer_watch = QtCore.QTimer(self, interval=60_000, timeout=self._watch_buffer)
+        self._buffer_watch.start()
 
     # ---- save what just happened
     def save_clip(self, seconds: int | None, game: str = windows.DESKTOP):
         self._bg(self._save_clip, seconds, game)
 
     def _save_clip(self, seconds: int | None, game: str):
-        if not self.obs.ensure_buffer():
-            self.toast.emit(language.tr("The replay buffer was off, so I turned it on. "
-                               "Clips are collected from now on"), "error")
-            return
+        if not self.obs.buffer_active():
+            if self.heal_buffer():
+                self.toast.emit(language.tr("The replay buffer was off, so I turned it on. "
+                                   "Clips are collected from now on"), "error")
+            return      # heal_buffer said why when it couldn't
         self.toast.emit(language.tr("Saving…"), "info")
         saved = self.obs.save_replay()
         suffix = "all" if seconds is None else f"{seconds}s"

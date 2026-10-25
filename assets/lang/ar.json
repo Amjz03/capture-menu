@@ -363,5 +363,7 @@
   "Moved {n} of {total} captures to the Recycle Bin; {failed} could not be moved": "تم نقل {n} من أصل {total} ملفات إلى سلة المحذوفات؛ تعذر نقل {failed} ملفات",
   "No captures were moved to the Recycle Bin": "لم يتم نقل أي ملفات إلى سلة المحذوفات",
   "Update failed · nothing was installed. Press Enter to try again": "فشل التحديث · لم يتم تثبيت شيء. اضغط Enter للمحاولة مجددًا",
-  "OBS is still writing the recording · it's safe in {folder}": "OBS لسا يكتب التسجيل · محفوظ في {folder}"
+  "OBS is still writing the recording · it's safe in {folder}": "OBS لسا يكتب التسجيل · محفوظ في {folder}",
+  "Your graphics card couldn't record, so OBS now uses {encoder}": "كرت الشاشة ما قدر يسجّل، فصار OBS يستخدم {encoder}",
+  "OBS can't start recording · open OBS to see why": "OBS ما قدر يبدأ التسجيل · افتح OBS وشوف وش السبب"
 }

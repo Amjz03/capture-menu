@@ -18,6 +18,11 @@ class ObsOffline(Exception):
     pass
 
 
+class BufferDisabled(Exception):
+    """The replay buffer is switched off in OBS's own settings (error 604: a fresh OBS, or one
+    whose settings change hasn't been loaded yet because OBS wasn't restarted)."""
+
+
 def mic_name(name: str) -> str:
     """Windows names microphones "Headset Microphone (3- A50 X Mic)": the device is in the brackets
     (after the number Windows adds), and it's what tells two microphones apart."""
@@ -67,6 +72,41 @@ class Obs:
         self.call("start_replay_buffer")
         return False
 
+    def start_buffer(self, wait: float = 8.0) -> bool:
+        """Starts the replay buffer and waits until OBS reports it running. False: OBS took the
+        request but the output never started (most often an encoder this PC can't run).
+        Raises BufferDisabled when the buffer is switched off in OBS's settings."""
+        if self.buffer_active():
+            return True
+        try:
+            self.call("start_replay_buffer")
+        except OBSSDKRequestError as e:
+            if e.code == 604:
+                raise BufferDisabled() from e
+            raise
+        end = time.monotonic() + wait
+        while not self.buffer_active():
+            if time.monotonic() >= end:
+                return False
+            time.sleep(0.25)
+        return True
+
+    def set_profile(self, params: list[tuple[str, str, str]]) -> bool:
+        """Writes OBS profile settings; True if anything changed (OBS loads them on its next start)."""
+        changed = False
+        for category, name, value in params:
+            current = self.raw("GetProfileParameter", {"parameterCategory": category,
+                                                       "parameterName": name}).get("parameterValue")
+            if current != value:
+                self.raw("SetProfileParameter", {"parameterCategory": category,
+                                                 "parameterName": name, "parameterValue": value})
+                changed = True
+        return changed
+
+    def profile_value(self, category: str, name: str) -> str | None:
+        return self.raw("GetProfileParameter", {"parameterCategory": category,
+                                                "parameterName": name}).get("parameterValue")
+
     def buffer_seconds(self) -> int:
         try:
             s = self.call("get_output_settings", "Replay Buffer").output_settings
@@ -91,13 +131,7 @@ class Obs:
         if any(video.get(k) != v for k, v in plan["video"].items()):
             self.raw("SetVideoSettings", plan["video"])
             changed = True
-        for category, name, value in plan["profile"]:
-            current = self.raw("GetProfileParameter", {"parameterCategory": category,
-                                                       "parameterName": name}).get("parameterValue")
-            if current != value:
-                self.raw("SetProfileParameter", {"parameterCategory": category,
-                                                 "parameterName": name, "parameterValue": value})
-                changed = True
+        changed |= self.set_profile(plan["profile"])
         if plan.get("voice_track"):
             changed |= self.split_voice_track()
         if not self.display_source():
@@ -344,13 +378,21 @@ def gpu_names() -> list[str]:
     return [line.strip() for line in r.stdout.splitlines() if line.strip()]
 
 
-def pick_encoder(names: list[str]) -> str:
-    """Best encoder across all GPUs, so a discrete card wins over the CPU's built-in graphics."""
+def pick_encoder(names: list[str], failed: list[str] | tuple = ()) -> str:
+    """Best encoder across all GPUs, so a discrete card wins over the CPU's built-in graphics.
+    failed: encoders that wouldn't start on this PC before; the next one down is used instead."""
     lows = [n.lower() for n in names]
-    for fragment, encoder in GPU_ENCODERS:
-        if any(fragment in low for low in lows):
-            return encoder
-    return "x264"
+    best = next((encoder for fragment, encoder in GPU_ENCODERS if any(fragment in low for low in lows)), "x264")
+    return next((e for e in [best, *fallback_encoders(best)] if e not in failed), "x264")
+
+
+def fallback_encoders(encoder: str) -> list[str]:
+    """What to try when an encoder won't start: the same maker's H.264 (every card that encodes at
+    all has it), then the CPU. A card's name doesn't say it can encode: a laptop's GeForce MX has no
+    encoder, and Quick Sync can be missing from Intel graphics; x264 runs on any PC."""
+    maker = encoder.split("_")[0]
+    h264 = CODEC_ENCODERS.get(maker, {}).get("h264")
+    return ([h264] if h264 and h264 != encoder else []) + (["x264"] if encoder != "x264" else [])
 
 
 def pick_bitrate(encoder: str, width: int, height: int, fps: int = 60, quality: str = "balanced") -> int:
