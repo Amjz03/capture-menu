@@ -194,6 +194,18 @@ def main():
             toast.show_message(moved_notice, "info")
             preferences.save_state(preferences.load_state() | {"fallback_told": str(ctl.blocked)})
         QtCore.QTimer.singleShot(7000, tell_moved)   # after the notice above has been read
+    told = set()      # each new version is announced once while the app runs; a click opens Settings on it
+    def update_found(rel: dict):
+        if rel["version"] not in told:
+            told.add(rel["version"])
+            toast.show_update(rel["version"], settings.show_update)
+            menu.set_update(rel["version"])
+            tray.setToolTip(language.tr("Update available · {version}", version=rel["version"]))
+            tm.insertAction(tm.actions()[0], QtGui.QAction(language.tr("Install update {version}", version=rel["version"]),
+                                                           tm, triggered=settings.show_update))
+    settings.update_found.connect(update_found)
+    QtCore.QTimer.singleShot(60_000, settings.check_quietly)     # well after the start-up notices
+    QtCore.QTimer(app, interval=12 * 3600_000, timeout=settings.check_quietly).start()
     # once everything has been closed for a while, give memory back (once per idle stretch): a page
     # that has been open since holds a native window again, so even a quick look counts
     pages = (menu, viewer, gallery, settings)

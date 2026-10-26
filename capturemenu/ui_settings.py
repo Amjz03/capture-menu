@@ -30,6 +30,7 @@ class Settings(QtWidgets.QWidget):
     encoder_ready = QtCore.Signal(str)
     mics_ready = QtCore.Signal(object)       # Obs.mic_devices(), or None
     update_event = QtCore.Signal(dict)       # what the update check / download is doing
+    update_found = QtCore.Signal(dict)       # the background check saw a newer release
 
     def __init__(self, ctl: capture_controller.Controller):
         super().__init__(None, Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool)
@@ -46,7 +47,7 @@ class Settings(QtWidgets.QWidget):
         ui_theme.dress(self)
 
         lay = QtWidgets.QVBoxLayout(self)
-        lay.setContentsMargins(64, 40, 64, 32)
+        lay.setContentsMargins(48, 36, 48, 28)
         lay.setSpacing(18)
         head = QtWidgets.QHBoxLayout()
         head.setSpacing(6)
@@ -97,6 +98,8 @@ class Settings(QtWidgets.QWidget):
         foot.addWidget(self.hints)
         foot.addStretch()
         self.memory = QtWidgets.QLabel(objectName="vSub")
+        self.memory.setWordWrap(True)        # the panel is narrow: two lines rather than a wider page
+        self.memory.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         foot.addWidget(self.memory)
         lay.addLayout(foot)
 
@@ -106,6 +109,7 @@ class Settings(QtWidgets.QWidget):
         self.install = updates.run_update_installer     # tests swap this out
         self._build_rows()
         self.update_event.connect(self._on_update_event)
+        self.update_found.connect(self._on_update_found)
         self.encoder_ready.connect(self._on_encoder)
         self.mics_ready.connect(self._on_mics)
         input_devices.input_mode().changed.connect(lambda _: self.update_hints())
@@ -296,7 +300,30 @@ class Settings(QtWidgets.QWidget):
     def values(self) -> dict:
         return {r.key: r.value for r in self.rows if not r.key.startswith("_")}
 
-    # ---- updates: checked and installed only when the player asks
+    # ---- updates: looked for at start and twice a day, installed only when the player says so
+    def check_quietly(self):
+        """The background look for a new version: it only says so, never installs."""
+        def run():
+            try:
+                rel = updates.latest_release()
+            except Exception:
+                runtime.log.info("background update check failed (offline?)")
+                return
+            if updates.version_tuple(rel["version"]) > updates.version_tuple(version.APP_VERSION):
+                runtime.safe_emit(self.update_found, rel)
+        threading.Thread(target=run, daemon=True).start()
+
+    def _on_update_found(self, rel: dict):
+        if self.update["state"] in ("idle", "latest", "error"):   # Settings shows it too, ready for Enter
+            self.update = dict(rel, state="available")
+            if self.isVisible():       # the rows have no values before Settings is first opened
+                self._refresh()
+
+    def show_update(self):
+        """Opened from the update notice: Settings on the Updates line, Enter installs."""
+        self.open(self.ctl.screen_px, fresh=True)
+        self.update_row.setFocus()
+
     def _update_value(self) -> str:
         u, state = self.update, self.update["state"]
         if state == "checking":
@@ -433,10 +460,19 @@ class Settings(QtWidgets.QWidget):
                              daemon=True).start()
         self._refresh()
         ui_theme.dress(self)
-        self.setGeometry(windows.ui_screen(fresh).geometry())
+        self.place(windows.ui_screen(fresh))
         self.show()
         ui_theme.bring_to_front(self)
         self.rows[0].setFocus()
+
+    PANEL_W = 1000
+
+    def place(self, screen: QtGui.QScreen):
+        """A panel along the side of the screen (the right; the left in Arabic), above the taskbar: the
+        rest of the screen stays visible and usable, the game or desktop keeps running beside it."""
+        g = screen.availableGeometry()
+        w = min(self.PANEL_W, g.width())
+        self.setGeometry(g.left() if language.is_rtl() else g.right() - w + 1, g.top(), w, g.height())
 
     def _on_encoder(self, enc: str):
         self.encoder = enc
@@ -455,6 +491,9 @@ class Settings(QtWidgets.QWidget):
     def paintEvent(self, _):
         p = QtGui.QPainter(self)
         p.fillRect(self.rect(), ui_theme.sheet_color(self))
+        p.setPen(QtGui.QColor(255, 255, 255, 26))      # the panel's edge toward the rest of the screen
+        x = self.width() - 1 if language.is_rtl() else 0
+        p.drawLine(x, 0, x, self.height())
 
     # ---- actions
     def restore_defaults(self):
@@ -535,7 +574,8 @@ class Settings(QtWidgets.QWidget):
         if k == Qt.Key_Up and row is not None and self.rows and row is self.rows[0]:   # up to the buttons
             self._row_before_head = row
             self.scroll.ensureWidgetVisible(row, 0, 40)   # so the buttons are above it on screen
-            nxt = ui_theme.toward(row, [b for b in self._head() if b.isVisible()], k)
+            # Back first, as it always was; the narrow panel would otherwise land on the nearest button
+            nxt = self.back_btn if self.back_btn.isVisible() else ui_theme.toward(row, [b for b in self._head() if b.isVisible()], k)
             if nxt is not None:
                 nxt.setFocus()
             return
@@ -682,7 +722,7 @@ class Welcome(Settings):
                 obs_client.gpu_names(), preferences.load_state().get("failed_encoders", []))), daemon=True).start()
         self._refresh()
         ui_theme.dress(self)
-        self.setGeometry(windows.ui_screen(True).geometry())
+        self.place(windows.ui_screen(True))
         self.show()
         ui_theme.bring_to_front(self)
         self.rows[0].setFocus()

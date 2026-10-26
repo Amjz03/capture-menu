@@ -183,6 +183,7 @@ class ActionCard(Card):
         self.icon_name, self.label, self.hint = icon, label, hint
         self.icon_color = ui_theme.INK
         self.tint: QtGui.QColor | None = None
+        self.badge = False      # a blue dot on the tile and a blue second line: something new waits there
 
     def tile(self) -> QtCore.QRectF:
         return QtCore.QRectF((self.width() - self.SIZE) / 2, self.PAD, self.SIZE, self.SIZE)
@@ -215,9 +216,13 @@ class ActionCard(Card):
         p.drawText(text_r, Qt.AlignHCenter | Qt.AlignVCenter,
                    p.fontMetrics().elidedText(language.tr(self.label), Qt.ElideRight, self.width()))
         if self.hint:
-            p.setPen(QtGui.QColor(236, 240, 250, 150))
-            p.setFont(ui_theme.font(13))
+            p.setPen(QtGui.QColor(ui_theme.BLUE) if self.badge else QtGui.QColor(236, 240, 250, 150))
+            p.setFont(ui_theme.font(13, QtGui.QFont.DemiBold if self.badge else QtGui.QFont.Normal))
             p.drawText(text_r.translated(0, 17), Qt.AlignHCenter | Qt.AlignVCenter, language.tr(self.hint))
+        if self.badge:
+            p.setPen(QtGui.QPen(QtGui.QColor(ui_theme.DARK), 2))
+            p.setBrush(QtGui.QColor(ui_theme.BLUE))
+            p.drawEllipse(QtCore.QPointF(r.right() - 12, r.top() + 12), 7, 7)
 
 
 def draw_capture_tile(p: QtGui.QPainter, r: QtCore.QRectF, pixmap: QtGui.QPixmap, path: Path | None,

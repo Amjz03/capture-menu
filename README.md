@@ -89,7 +89,7 @@ Setup does the rest by itself:
 
 **First start.** Capture Menu sets up OBS for your PC and restarts it once: your main screen's resolution at 60 FPS, the best encoder for your graphics card (RTX 40/50: AV1, older NVIDIA: HEVC, AMD/Intel: their hardware encoder), a bitrate that suits the resolution, MP4 recordings and a Display Capture source. You'll see *Setting up OBS · 2560×1440 · 60 FPS · NVENC AV1 8000 Kbps*, then *OBS is ready*. It only runs again if your main monitor or graphics card changes.
 
-**Update:** Settings → General → **Updates** (or right-click the tray icon → Check for updates). It asks GitHub for a newer version; press again to download and install it, and Capture Menu restarts on its own. Nothing is downloaded or installed unless you press. Your settings and captures are kept.
+**Update:** Capture Menu looks for a new version a minute after it starts and twice a day, and shows a notice when there is one; click it, or open Settings → General → **Updates** (or right-click the tray icon → Check for updates). Press Enter there to download and install it, and Capture Menu restarts on its own. Nothing is downloaded or installed unless you press. Your settings and captures are kept.
 **Remove:** Windows **Settings → Apps → Installed apps → Capture Menu → Uninstall**. Your captures, OBS and FFmpeg stay.
 
 **Always on, out of the way.** Capture Menu starts with Windows and runs in the background with no window or taskbar button. A notice says *Capture Menu is running* when the PC starts, and its icon sits next to the clock: click it to open the bar, right-click for the gallery, Settings or Quit. OBS starts minimized to the tray too. Only one copy runs at a time.
@@ -375,7 +375,7 @@ Release files are built only by the [release workflow](.github/workflows/release
 - Committers and reviewers: [Amjz03](https://github.com/Amjz03)
 - Approvers (who decide what is released): [Amjz03](https://github.com/Amjz03)
 
-**Privacy:** Capture Menu doesn't send any information to other computers unless you ask it to. It talks to OBS on your own PC, and it contacts GitHub only when you click **Check for updates** (to see the latest version, and to download it if you choose to install it). Your clips and screenshots stay on your PC.
+**Privacy:** Capture Menu doesn't send any information to other computers unless you ask it to. It talks to OBS on your own PC, and it asks GitHub for the latest version number when it starts and twice a day (nothing about you or your PC is sent), and downloads an update only if you choose to install it. Your clips and screenshots stay on your PC.
 
 ## Credits and license
 

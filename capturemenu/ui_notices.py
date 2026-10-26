@@ -95,7 +95,7 @@ class Toast(QtWidgets.QWidget):
 
     def show_shared(self, detail: str, path: str):
         """The share copy is ready (and on the clipboard)."""
-        self.path = None
+        self.path = self.action = None
         self.trim_btn.hide()
         self.unsetCursor()
         self.thumb.setPixmap(ui_theme.rounded_pixmap(media.make_thumb(Path(path), self.thumbs_dir or Path(path).parent),
@@ -114,6 +114,7 @@ class Toast(QtWidgets.QWidget):
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setAttribute(Qt.WA_ShowWithoutActivating)
         self.path: str | None = None
+        self.action = None             # what a click on a notice without a capture does
         outer = QtWidgets.QHBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
         self.box = QtWidgets.QFrame(objectName="toastBox")
@@ -172,14 +173,17 @@ class Toast(QtWidgets.QWidget):
             self.open_capture.emit(self.path, trim)
 
     def mousePressEvent(self, e):
+        action, self.action = self.action, None
         if self.path:
             self._open(trim=False)    # click the notice: open it in the viewer
         else:
             self.hide()
+            if action:
+                action()
 
     def show_capture(self, detail: str, path: str):
         capture = Path(path)
-        self.path = path
+        self.path, self.action = path, None
         self.setCursor(Qt.PointingHandCursor)
         self.trim_btn.setVisible(capture.suffix.lower() != ".png")
         kind = capture.stem.split("_")[0]
@@ -209,7 +213,7 @@ class Toast(QtWidgets.QWidget):
 
     def show_running(self, title: str, detail: str):
         """The start-up notice: app icon, "running", and how to open it."""
-        self.path = None
+        self.path = self.action = None
         self.trim_btn.hide()
         self.unsetCursor()
         self.thumb.setPixmap(ui_theme.tray_icon().pixmap(44, 44))
@@ -220,8 +224,17 @@ class Toast(QtWidgets.QWidget):
         self.hint.hide()
         self._present(5000)
 
+    def show_update(self, version: str, on_click):
+        """A new version is out: app icon, the version, and a click opens Settings to install it."""
+        self.show_running(language.tr("Update available"), language.tr("Version {version} is available", version=version))
+        self.action = on_click
+        self.setCursor(Qt.PointingHandCursor)
+        self.hint.setText(language.tr("Click to install it from Settings"))
+        self.hint.show()
+        self._present(9000)
+
     def show_message(self, text: str, kind: str = "info"):
-        self.path = None
+        self.path = self.action = None
         self.trim_btn.hide()
         self.unsetCursor()
         self.thumb.hide()
@@ -250,6 +263,10 @@ class Toast(QtWidgets.QWidget):
                         if w.property("captureMenuPage"))
         g = (windows.ui_screen() if page_open else windows.game_screen()).geometry()   # beside the page in use
         x, y = g.right() - self.width() - 28, g.top() + 28
+        side = next((w.geometry() for w in QtWidgets.QApplication.topLevelWidgets() if w.isVisible()
+                     and w.property("captureMenuPage") in ("settings", "welcome")), None)
+        if side is not None and side.intersects(QtCore.QRect(x, y, self.width(), self.height())):
+            x = side.left() - self.width() - 28      # beside the Settings panel, not over its buttons
         self._fade.stop()
         if self.isVisible() or not ui_theme.MOTION_MS:
             self._slide.stop()

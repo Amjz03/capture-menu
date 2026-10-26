@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.0.38 · 2026-10-26
+
+- **You'll know when there's an update.** Capture Menu looks for a new version a minute after it starts and twice a day. When there is one, a notice says so, the menu shows *Update available* beside the game's name, and Settings gets a blue dot. Clicking any of them opens Settings on the Updates line; nothing is installed until you press Enter there. Only the latest version number is asked from GitHub.
+- **Settings and the first-start questions open on the side** (the right; the left in Arabic) instead of covering the whole screen, so the game or the desktop stays visible and usable next to them.
+
 ## 0.0.37 · 2026-10-26
 
 - **Capture Menu shows when you share your screen.** The menu, notices and viewer now show in Discord and other screen shares, so you can show someone how it works, and they show in your clips and recordings too. Screenshots still leave Capture Menu out.

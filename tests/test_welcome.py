@@ -88,3 +88,28 @@ print("HDR when it applies PASS")
 s = ui_settings.Settings(ctl)
 assert {"mic_on", "buffer_minutes", "double_press_seconds", "hotkey", "clips_dir"} <= {r.key for r in s.rows}
 print("in Settings PASS")
+
+# a new version found in the background: Settings shows it, the notice opens Settings on it
+from capturemenu import ui_notices
+s._on_update_found({"version": "9.9.9", "page": "", "url": None, "size": 0, "digest": None})
+assert s.update["state"] == "available" and "9.9.9" in s._update_value()
+toast, clicked = ui_notices.Toast(), []
+toast.show_update("9.9.9", lambda: clicked.append(True))
+toast.mousePressEvent(None)
+assert clicked == [True]
+toast.show_message("Saved")
+toast.mousePressEvent(None)
+assert clicked == [True], "a later notice doesn't keep the update's click"
+print("update notice PASS")
+
+# ...and the menu says it where the player looks, until it's installed: a header line and a dot on Settings
+from capturemenu import ui_menu
+menu = ui_menu.Menu(ctl, None)
+menu.settings = s
+assert menu.update_btn.isHidden() and not menu.settings_card.badge
+menu.set_update("9.9.9")
+assert not menu.update_btn.isHidden() and "9.9.9" in menu.update_btn.text() and menu.settings_card.badge
+menu.open_settings()
+assert s.isVisible() and s.focusWidget() is s.update_row, "Settings opens on the Updates line"
+s.hide()
+print("update in the menu PASS")

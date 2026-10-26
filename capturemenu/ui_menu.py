@@ -53,6 +53,13 @@ class Menu(QtWidgets.QWidget):
         self.storage_label = QtWidgets.QLabel(objectName="storage")
         self.storage_label.hide()
         head.addWidget(self.storage_label, 0, Qt.AlignBaseline)
+        # a new version: said here, where the player looks, until it's installed (the notice can be missed)
+        self.update_btn = QtWidgets.QPushButton(objectName="update")
+        self.update_btn.setFocusPolicy(Qt.NoFocus)
+        self.update_btn.setCursor(Qt.PointingHandCursor)
+        self.update_btn.clicked.connect(lambda: self.open_settings(update=True))
+        self.update_btn.hide()
+        head.addWidget(self.update_btn, 0, Qt.AlignBaseline)
         head.addStretch()
         lay.addLayout(head)
 
@@ -286,12 +293,22 @@ class Menu(QtWidgets.QWidget):
         self.hide_menu()
         self.gallery.open(game, back_to=lambda: self.show_menu(game, fresh=False))
 
-    def open_settings(self):
+    def open_settings(self, update: bool = False):
         if self.settings is None:
             return
         game = self.game
         self.hide_menu()
         self.settings.open(self.ctl.screen_px, back_to=lambda: self.show_menu(game, fresh=False))
+        if update or self.settings_card.badge:      # straight to the Updates line: Enter installs
+            self.settings.update_row.setFocus()
+
+    def set_update(self, version: str | None):
+        """A newer version is out (None: nothing new): a line in the header and a dot on Settings."""
+        self.update_btn.setText(language.tr("Update available · {version}", version=version or ""))
+        self.update_btn.setVisible(bool(version))
+        self.settings_card.badge = bool(version)
+        self.settings_card.hint = "New update" if version else ""
+        self.settings_card.update()
 
     def _view(self, index: int, trim: bool = False):
         items = self.ctl.recent_items()

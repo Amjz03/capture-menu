@@ -416,6 +416,8 @@ QLabel {{ color: {INK}; background: transparent; }}
 #caption {{ color: {INK}; font-size: 17px; font-weight: 600; }}
 #focusInfo {{ color: {FAINT}; font-size: 15px; }}
 #storage {{ color: {AMBER}; font-size: 15px; }}
+QPushButton#update {{ color: {BLUE}; font-size: 15px; font-weight: 600; border: none; background: transparent; padding: 0; }}
+QPushButton#update:hover {{ text-decoration: underline; }}
 QPushButton#back {{
     color: {INK}; font-size: 14px; font-weight: 600; border: none; border-radius: 20px;
     background: rgba(255,255,255,16); padding: 0 18px 0 12px; min-height: 40px;
