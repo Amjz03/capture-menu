@@ -127,6 +127,9 @@ class PhoneLink:
 
             def do_GET(self):
                 route, _, query = self.path.partition("?")
+                if link.server is None:          # the panel closed (or 30 minutes): an open connection gets nothing
+                    self.send_error(410)
+                    return
                 if route == f"/{link.token}":
                     body = link.page().encode("utf-8")
                     self.send_response(200)
@@ -206,6 +209,9 @@ background:#fff;color:#0b0d12;font-weight:800;font-size:19px;text-decoration:non
     def send_file(self, h: BaseHTTPRequestHandler, download: bool = False):
         """The file as it is, with byte ranges (the phone's player reads it in pieces); as a download when asked."""
         self.ready.wait(300)
+        if self.server is None:                  # ended while the copy was made
+            h.send_error(410)
+            return
         size = self.path.stat().st_size
         start, end = 0, size - 1
         rng = h.headers.get("Range", "")

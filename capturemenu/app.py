@@ -14,6 +14,7 @@ from . import (
     diagnostics,
     input_devices,
     language,
+    obs_client,
     preferences,
     runtime,
     ui_gallery,
@@ -109,9 +110,18 @@ def main():
     tm.addSeparator()
     def quit_app():
         try:
-            ctl.obs.stop_buffer()    # nothing would delete the old minutes OBS goes on recording
+            stopped = ctl.obs.stop_buffer()    # nothing would delete the old minutes OBS goes on recording
+        except obs_client.ObsOffline:
+            stopped = True                     # OBS is closed: it records nothing
         except Exception:
             runtime.log.exception("couldn't stop OBS's recording")
+            stopped = False
+        if not stopped and QtWidgets.QMessageBox.warning(
+                None, "Capture Menu",
+                language.tr("OBS is still recording the last minutes, and nothing deletes the old ones while "
+                            "Capture Menu is closed. Quit anyway?"),
+                QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No, QtWidgets.QMessageBox.No) != QtWidgets.QMessageBox.Yes:
+            return                             # keep running: it goes on looking after the files
         runtime.ALIVE.unlink(missing_ok=True)     # closed on purpose: the watch task leaves it closed
         app.quit()
     tm.addAction(language.tr("Quit"), quit_app)
@@ -135,8 +145,9 @@ def main():
             menu.show_menu(game)
 
     quick = int(cfg.get("double_press_seconds") or 0)
+    # with "A hold" each press only counts once held, so the second one comes that much later
     presses = input_devices.PressSequencer(
-        350 if quick else 0, open_or_close,
+        350 + int(cfg.get("controller_hold_ms") or 0) if quick else 0, open_or_close,
         lambda game: ctl.save_clip(quick, game),
         lambda: menu.isVisible() or viewer.isVisible() or gallery.isVisible() or settings.isVisible())
 

@@ -83,6 +83,7 @@ def download_update(url: str, size: int, out: Path, on_progress=None, *, digest:
 def run_update_installer(exe: Path, *, size: int, digest: str):
     """Recheck immediately before launch; leave Capture Menu running if launch fails."""
     verify_update(exe, size, digest)
+    # before Setup starts, so nothing after it can fail: the watch task mustn't start it mid-install
+    runtime.ALIVE.unlink(missing_ok=True)     # (it comes back with the next heartbeat if the launch fails)
     windows.launch_outside([str(exe), "/SILENT", "/SUPPRESSMSGBOXES", "/NORESTART"], flags=0x00000008)
-    runtime.ALIVE.unlink(missing_ok=True)     # the watch task mustn't start it mid-install; Setup starts it after
     QtWidgets.QApplication.quit()

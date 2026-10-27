@@ -165,6 +165,7 @@ class Gallery(ui_widgets.Grow, QtWidgets.QWidget):
         self.cats: list[tuple[str, list[Path]]] = []
         self.items: list[Path] = []
         self.marked: set[Path] = set()
+        self._making: set[Path] = set()            # thumbnails being made now (one job per file)
         self.by_size = False
         self.select_mode = False      # Select pressed: a click (or ✕ / Enter) picks instead of opening
 
@@ -367,17 +368,22 @@ class Gallery(ui_widgets.Grow, QtWidgets.QWidget):
             item.setData(Qt.UserRole, str(p))
             item.setTextAlignment(Qt.AlignHCenter | Qt.AlignTop)
             self.grid.addItem(item)
-            if self.ctl.thumb(p) is None or (p.suffix.lower() != ".png" and self.ctl.length_of(p) is None):
+            if (self.ctl.thumb(p) is None or (p.suffix.lower() != ".png" and self.ctl.length_of(p) is None)) \
+                    and p not in self._making:
                 missing.append(p)
         if self.items:
             self.grid.setCurrentRow(max(0, min(select_row, len(self.items) - 1)))
         self._update_info()
         if missing:
+            self._making |= set(missing)       # a refresh meanwhile doesn't start them again
             def run():   # thumbnails and lengths for captures not seen yet
                 for p in missing:
-                    media.make_thumb(p, self.ctl.thumbs_dir)
-                    if p.suffix.lower() != ".png" and p not in self.ctl.lengths:
-                        self.ctl.lengths[p] = media.media_duration(p)
+                    try:
+                        media.make_thumb(p, self.ctl.thumbs_dir)
+                        if p.suffix.lower() != ".png" and p not in self.ctl.lengths:
+                            self.ctl.lengths[p] = media.media_duration(p)
+                    finally:
+                        self._making.discard(p)
                     runtime.safe_emit(self.thumb_ready, str(p))
                 self.ctl.save_lengths()
             threading.Thread(target=run, daemon=True).start()

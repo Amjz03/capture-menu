@@ -346,7 +346,8 @@ def export_for_share(src: Path, out: Path, size_mb: int | None, without_voice: b
         if size_mb is None or size <= size_mb:
             return size
         video_kbps = int(video_kbps * size_mb / size * 0.93)
-    return size
+    out.unlink(missing_ok=True)       # never "ready" with a file Discord would turn away
+    raise RuntimeError(language.tr("it stayed over {mb} MB · trim the clip or pick a bigger size", mb=size_mb))
 
 
 # ---------------------------------------------------------------- sound levels

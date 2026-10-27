@@ -127,3 +127,100 @@ done.clear()
 ctl._screenshot("Game")
 assert not done and toasts[-1][1] == "error", toasts[-1]
 print("screenshot not written PASS")
+
+# ---- QA08-001: three tries still over the limit: an error, no "ready to share" with a file too big
+src = tmp / "Clips" / "Game" / "Clip_2026-10-27_10-00-00_30s.mp4"; src.parent.mkdir(parents=True, exist_ok=True)
+src.write_bytes(b"v")
+over = tmp / "over.mp4"
+real = (media.run_ffmpeg, media.media_duration, media.video_height, media.audio_tracks, media.has_encoder, media.sdr_filter)
+media.run_ffmpeg = lambda cmd, *a, **k: (Path(cmd[-1]).write_bytes(b"\0" * (11 * 1024 * 1024)), 0)[1]
+media.media_duration, media.video_height, media.audio_tracks = (lambda p: 30.0), (lambda p: 1080), (lambda p: 1)
+media.has_encoder, media.sdr_filter = (lambda n: False), (lambda s, vf: vf)
+try:
+    media.export_for_share(src, over, 10, False)
+    raise AssertionError("11 MB for a 10 MB limit isn't a success")
+except RuntimeError as e:
+    assert "10 MB" in str(e) and not over.exists(), e
+(media.run_ffmpeg, media.media_duration, media.video_height, media.audio_tracks, media.has_encoder, media.sdr_filter) = real
+print("over the size limit fails PASS")
+
+# ---- QA08-003: two clips with one title make two share copies
+other = src.with_name("Clip_2026-10-27_11-00-00_30s.mp4"); other.write_bytes(b"w")
+ctl.set_meta(src, "Boss fight", ""); ctl.set_meta(other, "Boss fight", "")
+outs = []
+real_export, media.export_for_share = media.export_for_share, lambda s, o, *a, **k: (outs.append(o), o.write_bytes(s.read_bytes()), 1.0)[-1]
+real_thumb, media.make_thumb = media.make_thumb, lambda *a: None
+ctl._share(src, "discord10", False); ctl._share(other, "discord10", False); ctl._share(src, "discord10", False)
+assert outs[0] != outs[1] and outs[2] == outs[0] and outs[0].name.startswith("Boss fight_"), outs
+media.export_for_share, media.make_thumb = real_export, real_thumb
+print("same title, own share copy PASS")
+
+# ---- QA01-001: Stop that OBS doesn't carry out is reported, so Quit can ask instead of leaving it recording
+o = obs_client.Obs.__new__(obs_client.Obs)
+o.record_status = lambda: (True, 0)
+o.call = lambda *a, **k: None
+assert o.stop_buffer(wait=0.3) is False
+o.record_status = lambda: (False, 0)
+assert o.stop_buffer() is True
+print("stop result reported PASS")
+
+# ---- QA16-01: the screen switched but fitting it failed: the next check (same screen) fits it again
+o = obs_client.Obs.__new__(obs_client.Obs)
+o.cfg = {"obs_display_source": "Display Capture"}
+fits = []
+def raw(req, data=None):
+    if req == "GetInputPropertiesListPropertyItems":
+        return {"propertyItems": [{"itemValue": "m1", "itemName": "Screen 1: 0,0"}]}
+    if req == "GetInputSettings":
+        return {"inputSettings": {"monitor_id": o_current[0]}}
+    if req == "SetInputSettings":
+        o_current[0] = data["inputSettings"]["monitor_id"]; return {}
+    if req == "GetVideoSettings":
+        fits.append(1)
+        if len(fits) == 1:
+            raise RuntimeError("OBS busy")
+        return {"baseWidth": 1920, "baseHeight": 1080}
+    return {"sceneName": "S", "sceneItemId": 1}
+o_current = ["m0"]
+o.raw = raw
+from capturemenu import windows as win
+real_pick, win.pick_monitor_item = win.pick_monitor_item, lambda items, rect: items[0]
+assert o.capture_monitor((0, 0, 1920, 1080)) and "Display Capture" in o.unfitted
+o.capture_monitor((0, 0, 1920, 1080))
+assert len(fits) == 2 and "Display Capture" not in o.unfitted, fits
+win.pick_monitor_item = real_pick
+print("failed fit tried again PASS")
+
+# ---- QA14-001: with an L3+R3 combo, L3 alone still does what L3 does (on release); the combo isn't a press
+from capturemenu import input_devices
+st = input_devices.PadState(frozenset({7, 8}), 0)
+assert st.step({7}, 0.0) == (False, []) and st.step(set(), 0.1) == (False, [7]), "L3 alone"
+assert st.step({7}, 1.0) == (False, []) and st.step({7, 8}, 1.05)[0] and st.step(set(), 1.2) == (False, []), "the combo"
+one = input_devices.PadState(frozenset({4}), 0)
+assert one.step({4}, 0.0)[0] and one.step(set(), 0.1) == (False, []), "a one-button combo is never a press too"
+print("combo buttons alone PASS")
+
+# ---- QA20-03: a length measured before the file changed is dropped, and never saved under the new time
+import os as _os
+clip = tmp / "Clips" / "Game" / "Clip_2026-10-27_12-00-00_30s.mp4"; clip.write_bytes(b"c")
+_os.utime(clip, (1000, 1000))
+ctl._lengths_file.write_text(json.dumps({str(clip): [1000, 3.0]}), encoding="utf-8")
+with patch.object(C, "_remake_hdr_thumbs"):
+    c2 = C(dict(preferences.DEFAULTS, clips_dir=str(tmp / "Clips"), buffer_minutes=5))
+assert c2.length_of(clip) == 3.0
+_os.utime(clip, (2000, 2000))                      # changed in place
+c2.save_lengths()
+with patch.object(C, "_remake_hdr_thumbs"):
+    c3 = C(dict(preferences.DEFAULTS, clips_dir=str(tmp / "Clips"), buffer_minutes=5))
+assert c3.length_of(clip) is None and c2.length_of(clip) is None, "measured again, not the old 3 s"
+print("stale length dropped PASS")
+
+# ---- QA20-01: reading favorites and titles doesn't copy the whole state each time
+calls = []
+real_read = preferences._read_state
+preferences._read_state = lambda: (calls.append(1), real_read())[1]
+for _ in range(50):
+    ctl.is_favorite(clip); ctl.title_of(clip)
+preferences._read_state = real_read
+assert len(calls) <= 1, len(calls)
+print("tile reads don't copy the state PASS")

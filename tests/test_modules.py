@@ -50,6 +50,9 @@ with patch.object(QtCore.QProcess, "startDetached", return_value=True) as start,
     assert start.call_args.args[1][0] == str(root / "capture_menu.py")
     assert start.call_args.args[2] == str(root)
 print("source restart targets the thin entry point PASS")
+with patch.object(QtCore.QProcess, "startDetached", return_value=(False, 0)),      patch.object(QtWidgets.QApplication, "quit") as quit_:
+    assert windows.restart_app() is False and not quit_.called, "a copy that didn't start: this one goes on"
+print("failed restart keeps running PASS")
 
 # Import fresh copies in a simulated installed layout; never build or launch an installer.
 with tempfile.TemporaryDirectory() as folder:

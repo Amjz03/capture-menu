@@ -6,6 +6,7 @@ from PySide6.QtCore import Qt
 from pathlib import Path
 import hashlib
 import threading
+import time
 
 from . import (
     capture_controller,
@@ -27,7 +28,7 @@ class Viewer(QtWidgets.QWidget):
     preview_ready = QtCore.Signal(str, str)   # original, preview path ("" = failed)
     preview_progress = QtCore.Signal(str, int)
     frame_ready = QtCore.Signal(str, int, str)
-    sound_ready = QtCore.Signal(str, str)    # clip, short remixed piece to listen to ("" = failed)
+    sound_ready = QtCore.Signal(str, str, bool)   # clip, the short remixed piece this request writes, made
     closed = QtCore.Signal()
     away = QtCore.Signal()      # handed the screen to another app (the folder, a video player)
 
@@ -41,7 +42,10 @@ class Viewer(QtWidgets.QWidget):
         self.sharing = False
         self.editing = False
         self.sounding = False                    # the Sound panel: voice and game levels of this clip
-        self._previewing_sound = False
+        self._previewing_sound = False           # the player shows a sound preview (or waits for one), not the clip
+        self._sound_piece: Path | None = None    # the preview piece the latest request writes
+        self._sound_start = 0.0                  # where in the clip the piece playing starts (s)
+        self._awaiting: str | None = None        # the clip a trim / sound change was saved for, while on it
         self._pending_trim = False
         self._tried_preview: set[Path] = set()
         self.setObjectName("viewer")
@@ -330,6 +334,7 @@ class Viewer(QtWidgets.QWidget):
         self.sound_ready.connect(self._on_sound_ready)
         ctl.trimmed.connect(self._on_trimmed)
         ctl.remixed.connect(self._on_remixed)
+        ctl.job_failed.connect(self._on_job_failed)
         self._sync()
 
     def paintEvent(self, _):
@@ -430,6 +435,7 @@ class Viewer(QtWidgets.QWidget):
 
     # ---- showing a capture
     def show_item(self):
+        self._awaiting = None                    # a result that comes later doesn't move away from this
         self._release()
         self._reset_delete()
         self._set_trimming(False)
@@ -484,10 +490,14 @@ class Viewer(QtWidgets.QWidget):
             self._on_error()
 
     def _fit_image(self):
+        if not self.items or self.stage.currentWidget() is not self.image:
+            return                               # a fit asked for earlier, but a video shows now
         pm = QtGui.QPixmap(str(self.current))
-        if not pm.isNull():
-            self.image.setPixmap(pm.scaled(self.stage.size(), Qt.KeepAspectRatio,
-                                           Qt.SmoothTransformation))
+        if pm.isNull():                          # missing or damaged: never the last picture under this title
+            self.image.clear()
+            self._show_msg("This picture can't be shown here. Use “Show in folder” to find it.")
+            return
+        self.image.setPixmap(pm.scaled(self.stage.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation))
 
     def _show_msg(self, text: str):
         self.controls.hide()
@@ -512,8 +522,12 @@ class Viewer(QtWidgets.QWidget):
         self._show_msg("Preparing preview…")
 
         def run():
-            ok = media.make_preview(path, self.ctl.preview_path(path),
-                              lambda pct: runtime.safe_emit(self.preview_progress, str(path), pct))
+            try:
+                ok = media.make_preview(path, self.ctl.preview_path(path),
+                                  lambda pct: runtime.safe_emit(self.preview_progress, str(path), pct))
+            except Exception:                    # always an answer, so "Preparing preview…" never stays
+                runtime.log.exception("preview failed")
+                ok = False
             runtime.safe_emit(self.preview_ready, str(path), str(self.ctl.preview_path(path)) if ok else "")
         threading.Thread(target=run, daemon=True).start()
 
@@ -696,33 +710,48 @@ class Viewer(QtWidgets.QWidget):
         """Plays 12 seconds from here with the levels picked, before anything is saved."""
         if not self.sounding or self.player is None:
             return
-        src, start = self.current, self.player.position() / 1000
+        src = self.current
+        # where in the clip: a preview piece playing starts at _sound_start, not at the clip's start
+        start = (self._sound_start if self._previewing_sound else 0.0) + self.player.position() / 1000
         voice, game = self.voice_row.value, self.game_row.value
         showing = Path(self.player.source().toLocalFile() or src)
         picture = showing if showing != src and showing.exists() and showing.parent == self.ctl.previews_dir \
             else None   # the 720p copy, when the clip itself doesn't play here
-        out = self.ctl.thumbs_dir / "sound_preview.mp4"
         self._release()          # the last preview may still be open
+        if self._sound_piece is not None:
+            self._drop_file(self._sound_piece)
+        out = self._sound_piece = self.ctl.thumbs_dir / f"sound_preview_{time.monotonic_ns()}.mp4"   # this request's own
+        self._sound_start = start
+        self._previewing_sound = True            # the clip is let go: Cancel brings it back, ready or not
         self._show_msg("Preparing preview…")
 
         def run():
             try:
                 media.remix_audio(src, voice, game, out, seconds=12, start=start, picture=picture)
-                runtime.safe_emit(self.sound_ready, str(src), str(out))
+                runtime.safe_emit(self.sound_ready, str(src), str(out), True)
             except Exception:
                 runtime.log.exception("sound preview failed")
-                runtime.safe_emit(self.sound_ready, str(src), "")
+                runtime.safe_emit(self.sound_ready, str(src), str(out), False)
         threading.Thread(target=run, daemon=True).start()
 
-    def _on_sound_ready(self, src: str, piece: str):
+    def _on_sound_ready(self, src: str, piece: str, made: bool):
+        if Path(piece) != self._sound_piece:     # an older request finished after a newer one: not this
+            self._drop_file(Path(piece))
+            return
         if not (self.isVisible() and self.sounding and self.items and str(self.current) == src):
             return
-        if not piece:
+        if not made:
             self._show_msg("Couldn't make a preview of this clip.")
             return
-        self._previewing_sound = True
         self._play(Path(piece))
         self.player.play()
+
+    @staticmethod
+    def _drop_file(path: Path):
+        try:
+            path.unlink(missing_ok=True)
+        except OSError:          # the player lets go a moment later on Windows: it's cleaned up next start
+            pass
 
     def save_sound(self):
         if not self.sounding:
@@ -736,6 +765,7 @@ class Viewer(QtWidgets.QWidget):
             return
         self._release()          # the file is rewritten, so let go of it
         self._show_msg("Changing the sound…")
+        self._awaiting = str(src)
         self.ctl.set_mix(src, voice, game)
 
     def _on_remixed(self, path: str):
@@ -953,15 +983,26 @@ class Viewer(QtWidgets.QWidget):
         self._release()
         self._set_trimming(False)
         self._show_msg("Saving trimmed clip…")
+        self._awaiting = str(src)
         self.ctl.trim(src, t.start, t.end, replace)
 
     def _on_trimmed(self, path: str):
         if not self.isVisible():
             return
+        here = self.current if self.items else None
         self.items = self.ctl.recent_items()
         new = Path(path)
+        if self._awaiting is None:               # you moved on since: the new clip joins the list, you stay
+            self.index = self.items.index(here) if here in self.items else min(self.index, len(self.items) - 1)
+            self.counter.setText(language.tr("{n} of {total}", n=self.index + 1, total=len(self.items)))
+            return
         self.index = self.items.index(new) if new in self.items else 0
         self.show_item()
+
+    def _on_job_failed(self, path: str):
+        """The trim or sound change didn't happen (busy, or it failed and said why): back to the clip."""
+        if self.isVisible() and self._awaiting == path and self.items and str(self.current) == path:
+            self.show_item()
 
     # ---- navigation and actions
     def step(self, delta: int):

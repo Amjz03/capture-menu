@@ -215,7 +215,11 @@ class Menu(QtWidgets.QWidget):
         ui_theme.out_of_capture(True)      # the app shows in clips and shares, never in its own screenshots
         QtCore.QTimer.singleShot(250, lambda: self.ctl.screenshot(game))  # bar gone first
         # ponytail: fixed wait, OBS saves the shot well within it; restore on the saved signal if it ever doesn't
-        QtCore.QTimer.singleShot(1500, lambda: ui_theme.out_of_capture(False))
+        # one timer for all: a second screenshot within 1.5 s pushes the end back instead of ending it early
+        if not hasattr(self, "_shown_again"):
+            self._shown_again = QtCore.QTimer(self, singleShot=True, interval=1500,
+                                              timeout=lambda: ui_theme.out_of_capture(False))
+        self._shown_again.start()
 
     # ---- Save recent gameplay row
     def _set_picking(self, on: bool):
@@ -248,7 +252,9 @@ class Menu(QtWidgets.QWidget):
 
     def _refresh_picker(self):
         b = self._buffer
-        if not b["active"]:
+        if b.get("offline"):
+            held = language.tr("OBS isn't running")
+        elif not b["active"]:
             held = language.tr("replay buffer is off")
         elif b["held_ms"] is None:
             held = language.tr("up to {length}", length=language.clock(b["max_ms"]))
@@ -320,6 +326,12 @@ class Menu(QtWidgets.QWidget):
 
     def _view(self, index: int, trim: bool = False):
         items = self.ctl.recent_items()
+        shown = self.thumbs[index].path if index < len(self.thumbs) else None
+        if shown is not None and shown != (items[index] if index < len(items) else None):
+            if shown not in items:              # gone since the bar was drawn (deleted outside): show what's there
+                self.refresh_recent()
+                return
+            index = items.index(shown)          # the card opens the capture it shows, not whatever is n-th now
         if index < len(items):
             game = self.game
             self.hide_menu()
@@ -349,6 +361,9 @@ class Menu(QtWidgets.QWidget):
         else:
             text = f'<span style="color:{ui_theme.AMBER}">{language.tr("Replay buffer is off")}</span>'
         self.status.setText(text)
+        if not st.get("online"):                 # nothing known now: no last-known minutes or mic state
+            self._buffer = dict(self._buffer, offline=True)
+            self.mic_card.setVisible(False)
         if st.get("online"):
             self._buffer = {"active": st["buffer"], "max_ms": st["buffer_seconds"] * 1000,
                             "held_ms": st.get("buffered_ms")}

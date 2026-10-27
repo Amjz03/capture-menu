@@ -111,6 +111,7 @@ class PadState:
         self.combo_since: float | None = None
         self.combo_fired = False
         self.next_repeat: dict[int, float] = {}
+        self.solo: set[int] = set()     # buttons of a two-button combo pressed alone (so far)
 
     def step(self, held: set[int], now: float) -> tuple[bool, list[int]]:
         """Returns (open button triggered, buttons pressed this step)."""
@@ -124,7 +125,9 @@ class PadState:
             self.combo_since = None
         presses = []
         for b in sorted(held - self.prev):
-            if b not in self.combo:
+            if b in self.combo and len(self.combo) > 1:
+                self.solo.add(b)
+            elif b not in self.combo:
                 presses.append(b)
                 if b in DIRECTIONS:
                     self.next_repeat[b] = now + self.REPEAT_DELAY
@@ -134,6 +137,12 @@ class PadState:
             elif now >= self.next_repeat[b]:
                 presses.append(b)
                 self.next_repeat[b] = now + self.REPEAT_EVERY
+        if self.combo <= held:
+            self.solo.clear()           # it became the combo: not a press of its own
+        for b in sorted(self.prev - held):
+            if b in self.solo:          # L3 alone with an L3+R3 combo: still L3, on release
+                self.solo.discard(b)
+                presses.append(b)
         self.prev = set(held)
         return triggered, presses
 

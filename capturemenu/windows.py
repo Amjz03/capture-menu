@@ -529,12 +529,17 @@ def registered_command() -> str:
         return ""
 
 
-def restart_app():
-    """Starts a fresh copy (it picks up config.json) and quits this one."""
+def restart_app() -> bool:
+    """Starts a fresh copy (it picks up config.json) and quits this one. False (and this one goes on) if the
+    new copy didn't start."""
     args = sys.argv[1:] if runtime.FROZEN else [str(runtime.APP_DIR / "capture_menu.py"), *sys.argv[1:]]
     args = [a for a in args if a != "--restarted"] + ["--restarted"]
-    QtCore.QProcess.startDetached(sys.executable, args, str(runtime.APP_DIR))
+    started = QtCore.QProcess.startDetached(sys.executable, args, str(runtime.APP_DIR))
+    if not (started[0] if isinstance(started, tuple) else started):
+        runtime.log.error("restart: the new copy didn't start")
+        return False
     QtWidgets.QApplication.quit()
+    return True
 
 
 def promote_tray_icon():

@@ -107,6 +107,18 @@ def load_state() -> dict:
         return _read_state()
 
 
+def peek_state() -> dict:
+    """The state as it is now, not copied: only to read (a gallery paint asks for it per tile)."""
+    with _state_lock:
+        try:
+            mtime = STATE_PATH.stat().st_mtime
+        except OSError:
+            return {}
+        if _state_cache is None or _state_cache[0] != mtime:
+            _read_state()                  # loads the file into the cache
+        return _state_cache[1] if _state_cache else {}
+
+
 def update_state(change):
     """Reads, changes (change(state) edits the dict) and writes state.json with nothing in between, so two
     changes at once both stay (a favorite and a recording, say)."""

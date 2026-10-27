@@ -23,6 +23,7 @@ class Controller(QtCore.QObject):
     captured = QtCore.Signal(str, str)     # detail line, path of the new capture
     trimmed = QtCore.Signal(str)           # path of a freshly trimmed clip
     remixed = QtCore.Signal(str)           # path of a clip whose voice / game levels changed
+    job_failed = QtCore.Signal(str)        # a trim / sound change of this clip didn't start or didn't finish
     recording = QtCore.Signal(bool)        # manual recording started / stopped
     shared = QtCore.Signal(str, str)       # detail line, path of the share-ready copy
     copy_file = QtCore.Signal(str)         # put this file on the clipboard (main thread)
@@ -61,6 +62,11 @@ class Controller(QtCore.QObject):
         obs_client.BUFFER_DIR.mkdir(parents=True, exist_ok=True)
         self.thumbs_dir = self.clips_dir / ".thumbs"
         self.thumbs_dir.mkdir(exist_ok=True)
+        for old in self.thumbs_dir.glob("sound_preview*.mp4"):   # pieces the last run's player still held
+            try:
+                old.unlink()
+            except OSError:
+                pass
         if runtime.IS_WINDOWS:
             for hide in (self.thumbs_dir, obs_client.BUFFER_DIR.parent):
                 ctypes.windll.kernel32.SetFileAttributesW(str(hide), 0x02)  # hidden
@@ -69,6 +75,7 @@ class Controller(QtCore.QObject):
         self.recent: list[Path] = self._scan_recent()
         self._lengths_file = self.thumbs_dir / "lengths.json"
         self._lengths_lock = threading.Lock()
+        self._measured: dict[Path, float] = {}   # the file time a length loaded from disk was measured at
         self.lengths: dict[Path, float | None] = self._load_lengths()
         self._warned: set[str] = set()
         self.last_storage: dict = {}
@@ -113,14 +120,14 @@ class Controller(QtCore.QObject):
             return str(path)
 
     def favorites(self) -> set[str]:
-        return set(preferences.load_state().get("favorites", []))
+        return set(preferences.peek_state().get("favorites", []))
 
     def is_favorite(self, path: Path) -> bool:
         return self._fav_key(path) in self.favorites()
 
     # ---- titles and notes (also in state.json; the file name never changes)
     def meta(self, path: Path) -> dict:
-        return preferences.load_state().get("meta", {}).get(self._fav_key(path), {})
+        return dict(preferences.peek_state().get("meta", {}).get(self._fav_key(path), {}))
 
     def title_of(self, path: Path) -> str | None:
         return self.meta(path).get("title")
@@ -163,7 +170,7 @@ class Controller(QtCore.QObject):
         return 100, 100
 
     def set_mix(self, path: Path, voice: int, game: int):
-        self._bg(self._set_mix, path, voice, game)
+        self._bg(self._set_mix, path, voice, game, source=path)
 
     def _set_mix(self, path: Path, voice: int, game: int):
         tmp = path.with_name(path.name + ".part")   # not a capture, so the gallery never lists it
@@ -218,7 +225,9 @@ class Controller(QtCore.QObject):
         info = media.SHARE_PRESETS[preset]
         folder = src.parent / "Shared"
         folder.mkdir(exist_ok=True)
-        name = catalog.safe_filename(self.title_of(src) or "") or src.stem
+        title = catalog.safe_filename(self.title_of(src) or "")
+        # two clips with the same title in one game get their own copies (a re-share of a clip replaces its own)
+        name = f"{title}_{hashlib.md5(src.name.encode()).hexdigest()[:4]}" if title else src.stem
         out = folder / f"{name}_{preset}{'_novoice' if without_voice else ''}.mp4"
         last = [-10]
 
@@ -273,6 +282,7 @@ class Controller(QtCore.QObject):
             try:
                 if p.stat().st_mtime == mtime:
                     lengths[p] = seconds
+                    self._measured[p] = mtime
             except OSError:
                 pass
         return lengths
@@ -281,14 +291,22 @@ class Controller(QtCore.QObject):
         with self._lengths_lock:
             data = {}
             for p, secs in list(self.lengths.items()):
-                try:
-                    data[str(p)] = [p.stat().st_mtime, secs]
+                try:   # the file's time when it was measured (now, for one measured this run)
+                    data[str(p)] = [self._measured.get(p) or p.stat().st_mtime, secs]
                 except OSError:
                     pass
             self._lengths_file.write_text(json.dumps(data), encoding="utf-8")
 
     def length_of(self, path: Path) -> float | None:
-        """Cached clip length in seconds (None until known)."""
+        """Cached clip length in seconds (None until known, or when the file changed since it was measured)."""
+        if path in self._measured:
+            try:
+                changed = path.stat().st_mtime != self._measured[path]
+            except OSError:
+                changed = True
+            if changed:
+                self.lengths.pop(path, None)
+                self._measured.pop(path, None)
         return self.lengths.get(path)
 
     def _done(self, text: str, path: Path):
@@ -339,7 +357,7 @@ class Controller(QtCore.QObject):
         return done, freed
 
     def trim(self, src: Path, start_ms: int, end_ms: int, replace: bool):
-        self._bg(self._trim, src, start_ms, end_ms, replace)
+        self._bg(self._trim, src, start_ms, end_ms, replace, source=src)
 
     def _trim(self, src: Path, start_ms: int, end_ms: int, replace: bool):
         out = self._new_path(src.parent, f"Clip_{self._stamp()}_trim", src.suffix)   # never the clip itself
@@ -372,10 +390,14 @@ class Controller(QtCore.QObject):
         return folder
 
     # OBS calls and trimming run in the background so the menu never freezes
-    def _bg(self, fn, *args, exclusive: bool = True):
+    def _bg(self, fn, *args, exclusive: bool = True, source: Path | None = None):
+        """source: the clip a trim or sound change is for; job_failed says so if it's turned away or fails,
+        so the viewer waiting on it goes back to the clip."""
         def run():
             if exclusive and not self._busy.acquire(blocking=False):
                 self.toast.emit(language.tr("Hang on, still saving the last clip…"), "info")
+                if source is not None:
+                    self.job_failed.emit(str(source))
                 return
             try:
                 fn(*args)
@@ -384,6 +406,8 @@ class Controller(QtCore.QObject):
             except Exception as e:
                 runtime.log.exception("action failed")
                 self.toast.emit(language.tr("Something went wrong: {error}", error=e), "error")
+                if source is not None:
+                    self.job_failed.emit(str(source))
             finally:
                 if exclusive:
                     self._busy.release()

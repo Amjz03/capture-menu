@@ -102,13 +102,15 @@ class Obs:
             time.sleep(0.25)
         return True
 
-    def stop_buffer(self, wait: float = 10.0):
+    def stop_buffer(self, wait: float = 10.0) -> bool:
+        """True once OBS has stopped recording (or wasn't); False if it still records after `wait`."""
         if not self.record_status()[0]:
-            return
+            return True
         self.call("stop_record")
         end = time.monotonic() + wait
         while self.record_status()[0] and time.monotonic() < end:
             time.sleep(0.25)
+        return not self.record_status()[0]
 
     def stop_ram_buffer(self):
         """Stops OBS's own replay buffer (until 0.0.34 the last minutes were kept in it, in RAM)."""
@@ -281,13 +283,17 @@ class Obs:
             return None   # the captured monitor still exists: leave it
         target = windows.pick_monitor_item(items, rect)
         if target is None or target.get("itemValue") == current:
+            if source in self.unfitted:          # the screen is right, but its last fit failed: again
+                self.fit_to_canvas(source)
             return None
         self.raw("SetInputSettings", {"inputName": source, "overlay": True,
                                       "inputSettings": {prop: target["itemValue"]}})
         self.fit_to_canvas(source)
         return target["itemName"].split(":")[0].strip()
 
-    def fit_to_canvas(self, source: str):
+    unfitted: set = set()      # sources whose last fit failed (tried again on the next screen check)
+
+    def fit_to_canvas(self, source: str) -> bool:
         """Scale the capture to fill the canvas (a 4K TV into a 1440p recording, etc.)."""
         try:
             video = self.raw("GetVideoSettings")
@@ -300,6 +306,10 @@ class Obs:
                 "boundsWidth": video["baseWidth"], "boundsHeight": video["baseHeight"]}})
         except Exception:
             runtime.log.exception("could not fit the capture to the canvas")
+            self.unfitted = self.unfitted | {source}
+            return False
+        self.unfitted = self.unfitted - {source}
+        return True
 
     def record_status(self) -> tuple[bool, int]:
         r = self.call("get_record_status")

@@ -93,6 +93,16 @@ print("in Settings PASS")
 from capturemenu import ui_notices
 s._on_update_found({"version": "9.9.9", "page": "", "url": None, "size": 0, "digest": None})
 assert s.update["state"] == "available" and "9.9.9" in s._update_value()
+s._on_update_found({"version": "9.9.10", "page": "", "url": None, "size": 0, "digest": None})
+assert s.update["version"] == "9.9.10", "a newer one found later is the one Enter installs (QA11-01)"
+s._on_update_found({"version": "9.9.9", "page": "", "url": None, "size": 0, "digest": None})
+assert s.update["version"] == "9.9.10", "never an older one"
+# the restart after Save didn't start a new copy: this one stays, and says so (QA01-002)
+said = []
+ctl.toast.connect(lambda t, k: said.append(t))
+s.restart = lambda: False
+s._restart(); app.processEvents()
+assert said and "restart Capture Menu" in said[-1], said
 toast, clicked = ui_notices.Toast(), []
 toast.show_update("9.9.9", lambda: clicked.append(True))
 toast.mousePressEvent(None)

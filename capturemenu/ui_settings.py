@@ -320,7 +320,9 @@ class Settings(QtWidgets.QWidget):
         threading.Thread(target=run, daemon=True).start()
 
     def _on_update_found(self, rel: dict):
-        if self.update["state"] in ("idle", "latest", "error"):   # Settings shows it too, ready for Enter
+        newer = (self.update["state"] == "available"            # a newer one came out since: that one
+                 and updates.version_tuple(rel["version"]) > updates.version_tuple(self.update["version"]))
+        if self.update["state"] in ("idle", "latest", "error") or newer:   # Settings shows it too, ready for Enter
             self.update = dict(rel, state="available")
             if self.isVisible():       # the rows have no values before Settings is first opened
                 self._refresh()
@@ -521,7 +523,11 @@ class Settings(QtWidgets.QWidget):
         self.ctl.cfg.update(changes)
         runtime.log.info("settings saved: %s", ", ".join(changes))
         self.hide()
-        self.restart()
+        self._restart()
+
+    def _restart(self):
+        if self.restart() is False:        # the new copy didn't start: this one goes on, saved settings and all
+            self.ctl.toast.emit(language.tr("Settings saved · restart Capture Menu to use them"), "error")
 
     def _listen_hotkey(self, row: ui_widgets.SettingRow):
         row.listening = True
@@ -700,7 +706,7 @@ class Welcome(Settings):
         preferences.save_config({"language": choice})
         runtime.log.info("first start: language %s", choice)
         self.hide()
-        self.restart()
+        self._restart()
 
     def _buffer_gb(self, minutes) -> float:
         return obs_client.buffer_memory_mb(dict(self._plan_cfg(), buffer_minutes=minutes or 30), *self.screen_px,
@@ -742,7 +748,7 @@ class Welcome(Settings):
         runtime.log.info("first start: %s", ", ".join(f"{k}={v}" for k, v in chosen.items()))
         self.hide()
         if any(chosen.get(k) != before.get(k) for k in self.READ_AT_START):
-            self.restart()     # comes back already welcomed, with the new keys, button and folder
+            self._restart()     # comes back already welcomed, with the new keys, button and folder
         else:
             self.done()
 

@@ -44,7 +44,17 @@ print("arabic name PASS")
 pm = QtGui.QPixmap(); assert pm.loadFromData(link.qr_png()) and pm.width() > 200, "a QR code"
 print("link PASS", link.url)
 
+# a connection the phone opened before the link ended gets nothing after it (QA18-02)
+import http.client
+conn = http.client.HTTPConnection(link.url.split("/")[2], timeout=5)
+conn.request("GET", "/" + link.token); conn.getresponse().read()      # kept open (HTTP/1.1)
 link.stop()
+try:
+    conn.request("GET", "/" + link.token + "/file"); r = conn.getresponse()
+    assert r.status == 410 and not r.read(), r.status
+except (ConnectionError, OSError, http.client.HTTPException):
+    pass                                 # or the connection is simply closed: also nothing
+conn.close()
 import time; time.sleep(0.5)
 try:
     get("", ); raise AssertionError("the link stops when the panel closes")
