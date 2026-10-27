@@ -169,7 +169,7 @@ class Settings(QtWidgets.QWidget):
         self.screen_row = self._row("capture_screen", "Recording screen", "choice",
                                     [("follow", "Follow the game")], self._screen_text)
         self.mic_row = self._row("mic_device", "Microphone", "choice",
-                                 [("default", "Same as Windows")], self._mic_text)
+                                 [("default", "Default")], self._mic_text)
         self._row("mic_on", "Record your microphone", "bool",
                   describe=lambda v: "Your voice goes into your clips. The menu's Mic button turns it off for now"
                   if v else "Clips have the game's sound only")
@@ -211,7 +211,7 @@ class Settings(QtWidgets.QWidget):
         self._row("start_with_windows", "Start with Windows", "bool",
                   describe=lambda v: "Capture Menu and OBS start when you sign in")
         self._row("language", "Language", "choice",
-                  [("auto", "Same as Windows"), *language.LANGUAGES.items()],
+                  [("auto", "Default"), *language.LANGUAGES.items()],
                   lambda v: "Capture Menu restarts in the new language when you save")
         # not a setting: "_" keeps it out of config.json
         self.update_row = self._row("_update", "Updates", "action", describe=lambda v: self._update_describe(),
@@ -270,7 +270,7 @@ class Settings(QtWidgets.QWidget):
         self.screen_row.choices = choices
 
     def _fill_mics(self, current: str):
-        choices = [("default", language.tr("Same as Windows"))]
+        choices = [("default", language.tr("Default"))]
         if isinstance(self.mics, tuple):
             choices += list(self.mics[1])
         if current not in dict(choices):
@@ -645,7 +645,7 @@ class Welcome(Settings):
     def _build_rows(self):
         self._section("GENERAL")
         lang = self._row("language", "Which language?", "choice",
-                         [("auto", "Same as Windows"), *language.LANGUAGES.items()],
+                         [("auto", "Default"), *language.LANGUAGES.items()],
                          lambda v: self._later("The page switches to it right away."))
         lang.changed.connect(self._switch_language)
         self._row("start_with_windows", "Start with Windows?", "bool",

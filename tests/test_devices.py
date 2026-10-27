@@ -95,7 +95,7 @@ for _ in range(50):
     app.processEvents(); time.sleep(0.02)
     if s.mics != "checking":
         break
-assert [c[1] for c in s.mic_row.choices] == ["Same as Windows", "Arctis Nova", "Webcam"], s.mic_row.choices
+assert [c[1] for c in s.mic_row.choices] == ["Default", "Arctis Nova", "Webcam"], s.mic_row.choices
 assert s.mic_row.value == "default" and not s.changes(), s.changes()
 s.mic_row.step(1); s.screen_row.step(-1)
 assert s.changes() == {"mic_device": "{0.0.1}.{a}", "capture_screen": "follow"}, s.changes()

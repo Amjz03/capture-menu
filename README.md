@@ -238,7 +238,7 @@ Open it from the **Settings** tile at the end of the bar, **,** on the keyboard,
 - **Devices:** recording screen (follow the game, or one of your screens by name), microphone (the one Windows uses, or any microphone OBS can record).
 - **Controls:** keyboard shortcut, controller button, press or hold, double-press to save, rumble, sounds.
 - **Library:** clips folder, screenshots folder (the clips folder unless you pick another), storage warning.
-- **General:** start with Windows, language (same as Windows, English or العربية), updates.
+- **General:** start with Windows, language (Default, which follows Windows, English or العربية), updates.
 
 The page shows how much drive space the last minutes take. Saving restarts Capture Menu; a changed recording setting also updates OBS and restarts it once. The video format never asks for more than your graphics card can do (AV1 on an older card falls back to HEVC).
 
