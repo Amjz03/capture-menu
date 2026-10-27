@@ -1185,7 +1185,7 @@ class PhonePanel(QtWidgets.QWidget):
         lay = QtWidgets.QVBoxLayout(self.card)
         lay.setContentsMargins(40, 32, 40, 30)
         lay.setSpacing(14)
-        self.title = QtWidgets.QLabel(language.tr("Send to your phone"), objectName="vTitle")
+        self.title = QtWidgets.QLabel(language.tr("To your phone"), objectName="vTitle")
         self.title.setAlignment(Qt.AlignCenter)
         lay.addWidget(self.title)
         self._blur: QtGui.QPixmap | None = None   # the blurred code shown while waiting
