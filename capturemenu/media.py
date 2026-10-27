@@ -88,6 +88,7 @@ def join(parts: list[Path], inpoint: float, out: Path):
     ffmpeg = find_tool("ffmpeg")
     if not ffmpeg:
         raise FileNotFoundError("ffmpeg is not installed")
+    part = out.with_name(out.name + ".part")   # this join's own file (not a capture, so the gallery skips it)
     listing = out.with_name(out.name + ".txt")
     lines = []
     for i, p in enumerate(parts):
@@ -97,12 +98,14 @@ def join(parts: list[Path], inpoint: float, out: Path):
     listing.write_text("\n".join(lines) + "\n", encoding="utf-8")
     try:
         r = run_quiet([ffmpeg, "-y", "-hide_banner", "-loglevel", "error", "-f", "concat", "-safe", "0",
-                       "-i", str(listing), "-map", "0", "-c", "copy", "-avoid_negative_ts", "make_zero", str(out)])
+                       "-i", str(listing), "-map", "0", "-c", "copy", "-avoid_negative_ts", "make_zero",
+                       "-f", {".mkv": "matroska", ".mov": "mov"}.get(out.suffix.lower(), "mp4"), str(part)])
     finally:
         listing.unlink(missing_ok=True)
-    if r.returncode != 0 or not out.exists():
-        out.unlink(missing_ok=True)
+    if r.returncode != 0 or not part.exists():
+        part.unlink(missing_ok=True)
         raise RuntimeError(r.stderr.strip() or "joining failed")
+    os.replace(part, out)
 
 
 # ---------------------------------------------------------------- trimming and previews

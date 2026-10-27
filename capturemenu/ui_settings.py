@@ -517,9 +517,7 @@ class Settings(QtWidgets.QWidget):
         if "start_with_windows" in changes:
             windows.set_start_with_windows(bool(changes["start_with_windows"]))
         if "mic_device" in changes:      # from now on the microphone is picked here (see apply_mic)
-            state = preferences.load_state()
-            state["mic_picked"] = True
-            preferences.save_state(state)
+            preferences.update_state(lambda s: s.update(mic_picked=True))
         self.ctl.cfg.update(changes)
         runtime.log.info("settings saved: %s", ", ".join(changes))
         self.hide()
@@ -740,7 +738,7 @@ class Welcome(Settings):
         if runtime.IS_WINDOWS and chosen.get("start_with_windows") != before.get("start_with_windows"):
             windows.set_start_with_windows(bool(chosen["start_with_windows"]))
         self.ctl.cfg.update(chosen)
-        preferences.save_state(preferences.load_state() | {"welcomed": True})
+        preferences.update_state(lambda s: s.update(welcomed=True))
         runtime.log.info("first start: %s", ", ".join(f"{k}={v}" for k, v in chosen.items()))
         self.hide()
         if any(chosen.get(k) != before.get(k) for k in self.READ_AT_START):

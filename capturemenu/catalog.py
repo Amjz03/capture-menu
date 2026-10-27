@@ -91,7 +91,7 @@ def capture_kind(path: Path) -> str:
         return language.tr("Recording")
     if parts[0] == "Clip" and len(parts) >= 4 and parts[3] == "trim":
         return language.tr("Trimmed clip")
-    if parts[0] == "Clip" and len(parts) >= 4 and parts[3].endswith("s"):
+    if parts[0] == "Clip" and len(parts) >= 4 and parts[3].endswith("s") and parts[3][:-1].isdigit():
         return language.tr("Clip · {length}", length=language.duration_label(int(parts[3][:-1]), short=True))
     return language.tr("Clip")
 

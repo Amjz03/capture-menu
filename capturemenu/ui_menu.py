@@ -35,7 +35,7 @@ class Menu(QtWidgets.QWidget):
         ui_theme.dress(self, frosted=False)
         # chip order follows the PS5: Full video first, then shortest to longest
         self.options: list[int | None] = [None] + sorted(ctl.cfg["durations_seconds"])[:8]
-        self.last_choice = self.options.index(60) if 60 in self.options else 1
+        self.last_choice = self.options.index(60) if 60 in self.options else min(1, len(self.options) - 1)
 
         self.bar = QtWidgets.QWidget(self)
         lay = QtWidgets.QVBoxLayout(self.bar)

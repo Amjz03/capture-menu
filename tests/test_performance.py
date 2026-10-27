@@ -51,6 +51,6 @@ viewer.close_viewer(); viewer._drop_player()
 ui_theme.trim_memory()
 assert (media.QUIET != 0) == runtime.IS_WINDOWS
 plan = obs_client.obs_plan(dict(preferences.DEFAULTS), 2560, 1440, "nvenc_av1", "31.0")
-cap = int({n: v for c, n, v in plan["profile"]}["RecRBSize"])
-assert cap >= 8000 * 1800 / 8 / 1000 * 2.5, cap
+profile = {n: v for c, n, v in plan["profile"]}
+assert profile["RecRB"] == "false", "the last minutes are files on the drive, not a RAM buffer (0.0.34)"
 print("perf2 PASS")

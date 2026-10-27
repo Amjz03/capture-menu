@@ -127,10 +127,11 @@ class Obs:
         return int(r.get("outputBytes") or 0) if r.get("outputActive") else None
 
     def streaming(self) -> bool:
+        """Is OBS live? When OBS answers but can't say, yes: nothing that closes OBS should cut a stream."""
         try:
             return bool(self.raw("GetStreamStatus").get("outputActive"))
         except OBSSDKRequestError:
-            return False
+            return True
 
     def split(self):
         """Closes the file being written and goes on in a new one (at the next keyframe)."""

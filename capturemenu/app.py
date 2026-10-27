@@ -192,7 +192,7 @@ def main():
     if moved_notice:
         def tell_moved():
             toast.show_message(moved_notice, "info")
-            preferences.save_state(preferences.load_state() | {"fallback_told": str(ctl.blocked)})
+            preferences.update_state(lambda s: s.update(fallback_told=str(ctl.blocked)))
         QtCore.QTimer.singleShot(7000, tell_moved)   # after the notice above has been read
     told = set()      # each new version is announced once while the app runs; a click opens Settings on it
     def update_found(rel: dict):

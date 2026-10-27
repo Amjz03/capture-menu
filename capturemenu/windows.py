@@ -561,6 +561,4 @@ def promote_tray_icon():
             except OSError:
                 continue
     if found:
-        state = preferences.load_state()
-        state["tray_promoted"] = True
-        preferences.save_state(state)
+        preferences.update_state(lambda s: s.update(tray_promoted=True))

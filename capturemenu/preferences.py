@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from pathlib import Path
 import json
+import os
 import threading
 
 from . import runtime
@@ -64,7 +65,14 @@ def save_config(changes: dict):
     if CONFIG_PATH.exists():
         user = json.loads(CONFIG_PATH.read_text(encoding="utf-8-sig"))
     user.update(changes)
-    CONFIG_PATH.write_text(json.dumps(user, indent=2, ensure_ascii=False), encoding="utf-8")
+    write_atomic(CONFIG_PATH, json.dumps(user, indent=2, ensure_ascii=False))
+
+
+def write_atomic(path: Path, text: str):
+    """A write that can't leave half a file: a full copy next to it, then swapped in one step."""
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text(text, encoding="utf-8")
+    os.replace(tmp, path)
 
 
 _state_cache: tuple[float, dict] | None = None
@@ -73,24 +81,42 @@ _state_cache: tuple[float, dict] | None = None
 _state_lock = threading.Lock()
 
 
+def _read_state() -> dict:
+    global _state_cache
+    try:
+        mtime = STATE_PATH.stat().st_mtime
+    except OSError:
+        return {}
+    if _state_cache is None or _state_cache[0] != mtime:
+        try:
+            _state_cache = (mtime, json.loads(STATE_PATH.read_text(encoding="utf-8")))
+        except Exception:
+            return {}
+    return json.loads(json.dumps(_state_cache[1]))   # a copy callers may change
+
+
+def _write_state(state: dict):
+    global _state_cache
+    write_atomic(STATE_PATH, json.dumps(state, indent=2))
+    _state_cache = (STATE_PATH.stat().st_mtime, json.loads(json.dumps(state)))
+
+
 def load_state() -> dict:
     """state.json, kept in memory until the file changes (it's read on every tile paint)."""
-    global _state_cache
     with _state_lock:
-        try:
-            mtime = STATE_PATH.stat().st_mtime
-        except OSError:
-            return {}
-        if _state_cache is None or _state_cache[0] != mtime:
-            try:
-                _state_cache = (mtime, json.loads(STATE_PATH.read_text(encoding="utf-8")))
-            except Exception:
-                return {}
-        return json.loads(json.dumps(_state_cache[1]))   # a copy callers may change
+        return _read_state()
+
+
+def update_state(change):
+    """Reads, changes (change(state) edits the dict) and writes state.json with nothing in between, so two
+    changes at once both stay (a favorite and a recording, say)."""
+    with _state_lock:
+        state = _read_state()
+        result = change(state)
+        _write_state(state)
+        return result
 
 
 def save_state(state: dict):
-    global _state_cache
     with _state_lock:
-        STATE_PATH.write_text(json.dumps(state, indent=2), encoding="utf-8")
-        _state_cache = (STATE_PATH.stat().st_mtime, json.loads(json.dumps(state)))
+        _write_state(state)

@@ -140,7 +140,7 @@ Press **Create** on a DualSense (the small button left of the touchpad), just li
 | ✕ / A | Select | Play / pause | Save as a new clip |
 | ◯ / B | Back / close | Close | Cancel |
 | ▢ / X | Screenshot | Trim | Set start |
-| △ / Y | View latest | Delete | Set end |
+| △ / Y | View latest | More | Set end |
 | L1 R1 / LB RB | | Newer / older | Preview |
 
 On-screen hints follow what you're holding: ✕ ◯ ▢ △ for PlayStation, A B X Y for Xbox, keys as soon as you touch the keyboard. Change the button in [Settings](#settings).
@@ -293,7 +293,7 @@ The last minutes are kept on your drive, not in RAM: OBS records all the time in
 
 With your voice on its own track (the default), OBS records at constant quality, so busy scenes can use more, up to about 2.9 GB for 30 minutes at 1440p.
 
-OBS records the whole time Capture Menu runs. Capture Menu checks every minute and starts it again if OBS was closed or crashed, restarts it if a graphics driver update or reset left it recording nothing, or if the recording stopped growing, and never while you stream. If Capture Menu itself closes without **Quit** (a crash), Windows starts it again within 3 minutes. **Quit** stops OBS's recording.
+OBS records the whole time Capture Menu runs. Capture Menu checks every minute and starts it again if OBS was closed or crashed, restarts it if a graphics driver update or reset left it recording nothing, or if the recording stopped growing, and never while you stream. If Capture Menu itself closes without **Quit** (a crash), Windows starts it again within about 5 minutes. **Quit** stops OBS's recording.
 
 Capture Menu itself uses about 75 MB while it waits. The video player loads only when you open a clip, and FFmpeg (thumbnails, trims, share copies) runs at below-normal priority so it never takes CPU from your game.
 
@@ -358,7 +358,7 @@ Tests and render tools import the module that owns a behavior; patch that module
 
 **Build:** `installer\build_exe.bat` makes `dist\CaptureMenu\CaptureMenu.exe`, and `Output\CaptureMenu-Setup.exe` when [Inno Setup 6](https://jrsoftware.org/isinfo.php) is installed.
 
-**Release:** change `VERSION` on `main` (e.g. to `v0.0.2`) and push. GitHub Actions builds `CaptureMenu-Setup.exe` and the Python `CaptureMenu.zip` on Windows and publishes them. Changes are listed in [CHANGELOG.md](CHANGELOG.md).
+**Release:** change `VERSION` (e.g. to `v0.0.2`) and `APP_VERSION` in `capturemenu/version.py` to match on `main`, and push (the release tests check they agree). GitHub Actions builds `CaptureMenu-Setup.exe` and the Python `CaptureMenu.zip` on Windows and publishes them. Changes are listed in [CHANGELOG.md](CHANGELOG.md).
 
 **winget:** `installer\winget` holds the manifests for `Amjz03.CaptureMenu`. For a new release, set the version, the installer URL and its SHA-256 (shown on the release's asset), run `winget validate --manifest installer\winget`, and submit them to [microsoft/winget-pkgs](https://github.com/microsoft/winget-pkgs) (for example with `wingetcreate update Amjz03.CaptureMenu`).
 
@@ -366,7 +366,7 @@ Tests and render tools import the module that owns a behavior; patch that module
 
 ## Code signing policy
 
-Before building or publishing, the release workflow must pass `python tests/run_release_tests.py` on Windows/Python 3.12. This gate runs 14 isolated scripts, including module imports/package paths, recycling and updater safety regressions, against disposable copies with OBS connections, external launches and startup-setting writes disabled. The runner lists the 16 remaining hardware, multimedia, desktop and OS-integration scripts as not run; it does not claim full integration coverage. Run the same command locally with the dependencies in `requirements.txt` installed.
+Before building or publishing, the release workflow must pass `python tests/run_release_tests.py` on Windows/Python 3.12. This gate runs the isolated scripts listed in `tests/run_release_tests.py`, including module imports/package paths, recycling and updater safety regressions, against disposable copies with OBS connections, external launches and startup-setting writes disabled. The runner lists the remaining hardware, multimedia, desktop and OS-integration scripts as not run; it does not claim full integration coverage. Run the same command locally with the dependencies in `requirements.txt` installed.
 
 Code signing is optional and is **not currently guaranteed**. The reviewed v0.0.30 release skipped the signing steps. The workflow has support for [SignPath.io](https://about.signpath.io), but signing requires an approved signing project/policy, a certificate and configured credentials. Those cannot be provisioned by changing this code. Check each downloaded executable's Windows signature properties rather than assuming it is signed.
 

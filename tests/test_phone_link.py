@@ -27,12 +27,20 @@ part = get("/file", Range="bytes=1000-1999")
 assert part.status == 206 and part.read() == data[1000:2000] and part.headers["Content-Range"] == f"bytes 1000-1999/{len(data)}"
 assert get("/file", Range="bytes=-10").read() == data[-10:]
 dl = get("/file?dl=1")
-assert dl.read() == data and dl.headers["Content-Disposition"] == 'attachment; filename="Clip_2026-10-27_09-00-00_30s.mp4"', "the button saves it"
+assert dl.read() == data and dl.headers["Content-Disposition"].startswith('attachment; filename="Clip_2026-10-27_09-00-00_30s.mp4"'), "the button saves it"
 try:
     urllib.request.urlopen(link.url.rsplit("/", 1)[0] + "/someone-elses-guess", timeout=5)
     raise AssertionError("only this capture's link is served")
 except urllib.error.HTTPError as e:
     assert e.code == 404
+# an Arabic file name: HTTP headers are Latin-1, so the name goes as filename* (UTF-8) with a plain fallback
+ar = tmp / "Red Dead Redemption 2" / "لقطة.mp4"
+ar.write_bytes(b"x" * 18)
+arl = phone_link.PhoneLink(ar, host="127.0.0.1")
+r = urllib.request.urlopen(arl.url + "/file?dl=1", timeout=5)
+assert r.read() == b"x" * 18 and "filename*=UTF-8''%D9%84%D9%82%D8%B7%D8%A9.mp4" in r.headers["Content-Disposition"], r.headers
+arl.stop()
+print("arabic name PASS")
 pm = QtGui.QPixmap(); assert pm.loadFromData(link.qr_png()) and pm.width() > 200, "a QR code"
 print("link PASS", link.url)
 
@@ -102,6 +110,22 @@ if ff and media.has_encoder("libx265"):
     assert link.what() and not link.sdr, "an SDR clip only slows down"
     panel.close_panel()
     print("60 FPS PASS")
+    # FFmpeg lists NVENC on PCs without an NVIDIA card: when it fails the processor makes the 60 FPS copy
+    real_run = media.run_ffmpeg
+    media.run_ffmpeg = lambda cmd, *a, **k: 1 if "hevc_nvenc" in cmd else real_run(cmd, *a, **k)
+    real_has = media.has_encoder
+    media.has_encoder = lambda name: True if name == "hevc_nvenc" else real_has(name)
+    link = phone_link.PhoneLink(fast, host="127.0.0.1")
+    assert link.ready.wait(120) and abs(media.frame_rate(link.path) - 60) < 0.5 and link.at60, "the CPU made it"
+    link.stop()
+    # every encoder fails: the original goes over, and the panel and page say so (not 60 FPS)
+    media.run_ffmpeg = lambda *a, **k: 1
+    link = phone_link.PhoneLink(fast, host="127.0.0.1")
+    assert link.ready.wait(30) and not link.at60 and link.what() == "The original file, in full quality"
+    assert "60 FPS" not in link.page()
+    link.stop()
+    media.run_ffmpeg, media.has_encoder = real_run, real_has
+    print("encoder fallback PASS")
 else:
     print("hvc1 SKIPPED (no ffmpeg with libx265)")
 v.close_viewer(); app.processEvents()   # let go of the file, so the test folder can be removed

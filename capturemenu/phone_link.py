@@ -14,6 +14,7 @@ import shutil
 import socket
 import tempfile
 import threading
+from urllib.parse import quote
 
 from . import language, media, runtime
 
@@ -47,24 +48,30 @@ def phone_copy(src: Path, out: Path, fps: bool, sdr: bool, on_progress=None) -> 
         return False
     vf = ",".join(([media.TO_SDR] if sdr else []) + ([f"fps={PHONE_FPS}"] if fps else [])) or "null"
     hdr = media.is_hdr(src) and not sdr          # a clip only slowed down keeps its HDR
+    bt2020 = ["-color_primaries", "bt2020", "-color_trc", "smpte2084", "-colorspace", "bt2020nc"]
+    tries = []                                   # the graphics card first; FFmpeg lists NVENC even with no NVIDIA card
     if media.has_encoder("hevc_nvenc"):
-        video = ["-c:v", "hevc_nvenc", "-preset", "p5", "-rc", "vbr", "-cq", "17", "-b:v", "0", "-maxrate", "80M",
-                 "-g", str(PHONE_FPS * 2)] + (["-profile:v", "main10", "-pix_fmt", "p010le"] if hdr else ["-pix_fmt", "yuv420p"])
-        tag = "hvc1"
-    elif media.has_encoder("libx265"):
-        video = ["-c:v", "libx265", "-preset", "fast", "-crf", "18"] + (
-            ["-profile:v", "main10", "-pix_fmt", "yuv420p10le", "-x265-params", "colorprim=bt2020:transfer=smpte2084:colormatrix=bt2020nc"]
-            if hdr else ["-pix_fmt", "yuv420p"])
-        tag = "hvc1"
-    else:                                        # no HEVC encoder: H.264 in normal colours plays everywhere
-        if media.is_hdr(src) and not sdr:
-            vf = media.TO_SDR + ("," + vf if vf != "null" else "")
-        video, hdr, tag = ["-c:v", "libx264", "-preset", "fast", "-crf", "18", "-pix_fmt", "yuv420p"], False, "avc1"
-    tags = ["-color_primaries", "bt2020", "-color_trc", "smpte2084", "-colorspace", "bt2020nc"] if hdr else []
-    code = media.run_ffmpeg([ffmpeg, "-y", "-v", "error", "-i", str(src), "-map", "0:v:0", "-map", "0:a:0?", "-vf", vf,
-                             *video, *tags, "-tag:v", tag, "-c:a", "copy", "-movflags", "+faststart", str(out)],
-                            media.media_duration(src) or 0, on_progress)
-    return code == 0 and out.exists() and out.stat().st_size > 0
+        tries.append((["-c:v", "hevc_nvenc", "-preset", "p5", "-rc", "vbr", "-cq", "17", "-b:v", "0", "-maxrate", "80M",
+                       "-g", str(PHONE_FPS * 2)] + (["-profile:v", "main10", "-pix_fmt", "p010le", *bt2020] if hdr
+                                                    else ["-pix_fmt", "yuv420p"]), "hvc1", vf))
+    if media.has_encoder("libx265"):
+        tries.append((["-c:v", "libx265", "-preset", "fast", "-crf", "18"] + (
+            ["-profile:v", "main10", "-pix_fmt", "yuv420p10le", "-x265-params",
+             "colorprim=bt2020:transfer=smpte2084:colormatrix=bt2020nc", *bt2020] if hdr else ["-pix_fmt", "yuv420p"]),
+            "hvc1", vf))
+    # no HEVC at all: H.264 in normal colours plays everywhere
+    tries.append((["-c:v", "libx264", "-preset", "fast", "-crf", "18", "-pix_fmt", "yuv420p"], "avc1",
+                  media.TO_SDR + ("," + vf if vf != "null" else "") if hdr else vf))
+    for video, tag, filters in tries:
+        code = media.run_ffmpeg([ffmpeg, "-y", "-v", "error", "-i", str(src), "-map", "0:v:0", "-map", "0:a:0?",
+                                 "-vf", filters, *video, "-tag:v", tag, "-c:a", "copy", "-movflags", "+faststart",
+                                 str(out)], media.media_duration(src) or 0, on_progress)
+        if code == 0 and out.exists() and out.stat().st_size > 0 and (
+                not fps or media.frame_rate(out) <= PHONE_FPS + 0.5):
+            return True
+        runtime.log.warning("phone copy with %s failed, trying the next encoder", video[1])
+    out.unlink(missing_ok=True)
+    return False
 
 
 def local_ip() -> str | None:
@@ -102,8 +109,9 @@ class PhoneLink:
                     out = self.work / self.source.name
                     if phone_copy(self.source, out, self.at60, self.sdr, lambda pct: setattr(self, "progress", pct)):
                         self.path = out
-                    else:
+                    else:                       # say what really goes over: the original
                         runtime.log.warning("the phone's copy failed, sending the original")
+                        self.at60 = self.sdr = False
                         self.path = for_apple(self.source, self.work)
                 else:
                     self.path = for_apple(self.source, self.work)
@@ -221,7 +229,9 @@ background:#fff;color:#0b0d12;font-weight:800;font-size:19px;text-decoration:non
         h.send_header("Accept-Ranges", "bytes")
         h.send_header("Content-Length", str(end - start + 1))
         if download:
-            h.send_header("Content-Disposition", f'attachment; filename="{self.source.name}"')
+            name = self.source.name                  # HTTP headers are Latin-1: an Arabic name goes as UTF-8
+            plain = name.encode("ascii", "replace").decode().replace("?", "_").replace('"', "_")
+            h.send_header("Content-Disposition", f"attachment; filename=\"{plain}\"; filename*=UTF-8''{quote(name)}")
         h.end_headers()
         try:
             with self.path.open("rb") as f:

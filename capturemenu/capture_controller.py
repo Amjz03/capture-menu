@@ -52,6 +52,9 @@ class Controller(QtCore.QObject):
         self.roots = [self.clips_dir] + ([self.shots_dir] if self.clips_dir not in
                                          (self.shots_dir, *self.shots_dir.parents) else [])
         self._busy = threading.Lock()
+        self._rec_lock = threading.Lock()        # one Start / Stop at a time: a second Stop can't join the same files
+        self._names_lock, self._names = threading.Lock(), set()   # names handed out, before their file exists
+        self._saves_lock, self._saves = threading.Lock(), 0        # saves joining the last minutes: no pruning then
         self._healing = threading.Lock()       # one replay-buffer repair at a time
         self._heal_failed_at = -1e9
         self._gpu_restart_at = -1e9
@@ -96,7 +99,7 @@ class Controller(QtCore.QObject):
 
     def all_captures(self) -> list[Path]:
         files = {p for root in self.roots for p in root.rglob("*")   # a set: one folder may hold the other
-                 if p.suffix.lower() in catalog.MEDIA_EXTS and not catalog.SKIP_DIRS & set(p.parts)}
+                 if p.suffix.lower() in catalog.MEDIA_EXTS and not catalog.SKIP_DIRS & set(p.relative_to(root).parts)}
         return sorted(files, key=lambda p: p.stat().st_mtime, reverse=True)
 
     def _scan_recent(self, limit: int = 30) -> list[Path]:
@@ -123,25 +126,28 @@ class Controller(QtCore.QObject):
         return self.meta(path).get("title")
 
     def set_meta(self, path: Path, title: str, note: str):
-        state = preferences.load_state()
-        all_meta = state.setdefault("meta", {})
         entry = {k: v.strip() for k, v in (("title", title), ("note", note)) if v.strip()}
-        if entry:
-            all_meta[self._fav_key(path)] = entry
-        else:
-            all_meta.pop(self._fav_key(path), None)
-        preferences.save_state(state)
+
+        def change(state):
+            all_meta = state.setdefault("meta", {})
+            if entry:
+                all_meta[self._fav_key(path)] = entry
+            else:
+                all_meta.pop(self._fav_key(path), None)
+        preferences.update_state(change)
         self.library_changed.emit()
 
     def toggle_favorite(self, path: Path) -> bool:
-        state = preferences.load_state()
-        favs = set(state.get("favorites", []))
         key = self._fav_key(path)
-        favs.symmetric_difference_update({key})
-        state["favorites"] = sorted(favs)
-        preferences.save_state(state)
+
+        def change(state):
+            favs = set(state.get("favorites", []))
+            favs.symmetric_difference_update({key})
+            state["favorites"] = sorted(favs)
+            return key in favs
+        on = preferences.update_state(change)
         self.library_changed.emit()
-        return key in favs
+        return on
 
     # ---- voice and game levels of one clip (the clip keeps its separate game and mic tracks)
     def mix_of(self, path: Path) -> tuple[int, int]:
@@ -167,15 +173,16 @@ class Controller(QtCore.QObject):
             os.replace(tmp, path)
             os.utime(path, (st.st_atime, st.st_mtime))     # same place in Recent and the gallery
             self.preview_path(path).unlink(missing_ok=True)   # a 720p preview copy has the old sound
-            state = preferences.load_state()
             key = self._fav_key(path)
-            state.get("mix", {}).pop(key, None)
-            levels = state.setdefault("levels", {})
-            if (voice, game) != (100, 100):
-                levels[key] = {"voice": voice, "game": game}
-            else:
-                levels.pop(key, None)
-            preferences.save_state(state)
+
+            def change(state):
+                state.get("mix", {}).pop(key, None)
+                levels = state.setdefault("levels", {})
+                if (voice, game) != (100, 100):
+                    levels[key] = {"voice": voice, "game": game}
+                else:
+                    levels.pop(key, None)
+            preferences.update_state(change)
             self.toast.emit(language.tr("Sound saved · your voice {voice} · game {game}",
                                voice=media.level_text(voice), game=media.level_text(game)), "ok")
         finally:
@@ -335,7 +342,7 @@ class Controller(QtCore.QObject):
         self._bg(self._trim, src, start_ms, end_ms, replace)
 
     def _trim(self, src: Path, start_ms: int, end_ms: int, replace: bool):
-        out = src.parent / f"Clip_{self._stamp()}_trim{src.suffix}"
+        out = self._new_path(src.parent, f"Clip_{self._stamp()}_trim", src.suffix)   # never the clip itself
         mode = media.trim_clip(src, start_ms, end_ms, out)
         length = language.clock((end_ms - start_ms))
         if self.meta(src):
@@ -386,6 +393,31 @@ class Controller(QtCore.QObject):
     def _stamp() -> str:
         return datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
+    def _new_path(self, folder: Path, stem: str, suffix: str) -> Path:
+        """folder/stem+suffix, or stem_2, stem_3...: never a file that exists or a name another save in the
+        same second was given (OBS writes a screenshot after it's asked)."""
+        with self._names_lock:
+            n, path = 1, folder / f"{stem}{suffix}"
+            while path.exists() or str(path).lower() in self._names:
+                n += 1
+                path = folder / f"{stem}_{n}{suffix}"
+            self._names.add(str(path).lower())
+            return path
+
+    def _saving(self):
+        """While a save joins files from the last minutes, _prune leaves every file alone."""
+        controller = self
+
+        class Hold:
+            def __enter__(self):
+                with controller._saves_lock:
+                    controller._saves += 1
+
+            def __exit__(self, *_):
+                with controller._saves_lock:
+                    controller._saves -= 1
+        return Hold()
+
     # ---- status
     def refresh_status(self):
         def run():
@@ -414,8 +446,7 @@ class Controller(QtCore.QObject):
             return      # no microphone in OBS (yet): try again next start
         if self.obs.set_mic_device(wanted):
             runtime.log.info("microphone: %s", wanted)
-        state["mic_device"] = wanted
-        preferences.save_state(state)
+        preferences.update_state(lambda s: s.update(mic_device=wanted))
 
     def auto_setup(self, width: int, height: int):
         """First run (or a new monitor/GPU): configure OBS for this PC, then restart it once."""
@@ -445,9 +476,7 @@ class Controller(QtCore.QObject):
         # encoder this PC can't run) and says so itself when it can't
         if self.heal_buffer():
             self.toast.emit(language.tr("OBS is ready · {summary}", summary=plan["summary"]), "ok")
-        state = preferences.load_state()       # heal_buffer may have noted a failed encoder
-        state["obs_setup"] = done
-        preferences.save_state(state)
+        preferences.update_state(lambda s: s.update(obs_setup=done))   # keeps a failed encoder heal_buffer noted
 
     def restart_obs(self) -> bool:
         """Closes OBS the polite way (like clicking ✕) and starts it again with the buffer on.
@@ -456,6 +485,12 @@ class Controller(QtCore.QObject):
         if not path:
             return False
         if obs_client.obs_running():
+            try:
+                if self.obs.streaming():  # every restart (setup, a stuck encoder) waits for the stream to end
+                    runtime.log.warning("OBS is streaming: not restarting it")
+                    return False
+            except obs_client.ObsOffline:
+                pass                      # OBS runs but doesn't answer at all: restarting it is the fix
             try:
                 self.obs.stop_buffer()    # or OBS asks whether to stop recording before it closes
             except Exception:
@@ -550,11 +585,11 @@ class Controller(QtCore.QObject):
         return False
 
     def _note_failed_encoder(self, encoder: str):
-        state = preferences.load_state()
-        failed = state.get("failed_encoders", [])
-        if encoder not in failed and encoder != "x264":
-            state["failed_encoders"] = failed + [encoder]
-            preferences.save_state(state)
+        def change(state):
+            failed = state.get("failed_encoders", [])
+            if encoder not in failed and encoder != "x264":
+                state["failed_encoders"] = failed + [encoder]
+        preferences.update_state(change)
 
     def _watch_buffer(self):
         """Every minute, in the background, while Capture Menu runs: OBS is running (started again
@@ -691,12 +726,15 @@ class Controller(QtCore.QObject):
         keep_from = time.time() - int(self.cfg["buffer_minutes"]) * 60
         if rec := self._recording():
             keep_from = min(keep_from, rec["since"])
-        for p, _, ended in self._segments()[:-1]:
-            if ended < keep_from:
-                try:
-                    p.unlink()
-                except OSError:
-                    pass
+        with self._saves_lock:
+            if self._saves:          # a save picked its files and is joining them: next time
+                return
+            for p, _, ended in self._segments()[:-1]:
+                if ended < keep_from:
+                    try:
+                        p.unlink()
+                    except OSError:
+                        pass
 
     @staticmethod
     def _recording() -> dict | None:
@@ -801,11 +839,12 @@ class Controller(QtCore.QObject):
                                    "Clips are collected from now on"), "error")
             return      # heal_buffer said why when it couldn't
         self.toast.emit(language.tr("Saving…"), "info")
-        segs = self._last_run(self._finished_segments())
-        files, inpoint = self._since(segs, None if seconds is None else segs[-1][2] - seconds)
-        suffix = "all" if seconds is None else f"{seconds}s"
-        out = self.folder_for(game) / f"Clip_{self._stamp()}_{suffix}{files[0].suffix}"
-        media.join(files, inpoint, out)
+        with self._saving():
+            segs = self._last_run(self._finished_segments())
+            files, inpoint = self._since(segs, None if seconds is None else segs[-1][2] - seconds)
+            suffix = "all" if seconds is None else f"{seconds}s"
+            out = self._new_path(self.folder_for(game), f"Clip_{self._stamp()}_{suffix}", files[0].suffix)
+            media.join(files, inpoint, out)
         length = media.media_duration(out) or float(seconds or 0)
         detail = (language.tr("Everything · {length}", length=language.clock(int(length * 1000)))
                   if seconds is None or length < seconds - 1
@@ -817,23 +856,31 @@ class Controller(QtCore.QObject):
         self._bg(self._toggle_record, game, exclusive=False)
 
     def _toggle_record(self, game: str):
+        if not self._rec_lock.acquire(blocking=False):
+            self.toast.emit(language.tr("Hang on, still saving the last clip…"), "info")
+            return
+        try:
+            self._start_stop(game)
+        finally:
+            self._rec_lock.release()
+
+    def _start_stop(self, game: str):
         """Recording uses the same files as the last minutes: Start notes the time, Stop joins
         everything since then (kept until then)."""
         rec = self._recording()
         if not rec:
             if not self.obs.buffer_active() and not self.heal_buffer():
                 return      # heal_buffer said why
-            preferences.save_state(preferences.load_state() | {"recording": {"since": time.time(), "game": game}})
+            preferences.update_state(lambda s: s.update(recording={"since": time.time(), "game": game}))
             self.recording.emit(True)
             self.toast.emit(language.tr("Recording started · open the menu and choose Stop to finish"), "rec")
             return
-        segs = self._finished_segments()
-        files, inpoint = self._since(segs, rec["since"])
-        dest = self.folder_for(rec.get("game") or game) / f"Recording_{self._stamp()}{files[0].suffix}"
-        media.join(files, inpoint, dest)
-        state = preferences.load_state()
-        state.pop("recording", None)
-        preferences.save_state(state)
+        with self._saving():
+            segs = self._finished_segments()
+            files, inpoint = self._since(segs, rec["since"])
+            dest = self._new_path(self.folder_for(rec.get("game") or game), f"Recording_{self._stamp()}", files[0].suffix)
+            media.join(files, inpoint, dest)
+        preferences.update_state(lambda s: s.pop("recording", None))
         self.recording.emit(False)
         length = media.media_duration(dest) or 0
         self._done(language.tr("Length {length}", length=language.clock(int(length * 1000))), dest)
@@ -843,9 +890,11 @@ class Controller(QtCore.QObject):
         self._bg(self._screenshot, game, exclusive=False)
 
     def _screenshot(self, game: str):
-        path = self.folder_for(game, self.shots_dir) / f"Screenshot_{self._stamp()}.png"
+        path = self._new_path(self.folder_for(game, self.shots_dir), f"Screenshot_{self._stamp()}", ".png")
         self.obs.screenshot(path)
-        media.wait_until_written(path, timeout=5)
+        if not media.wait_until_written(path, timeout=5):     # nothing (or nothing finished) was written
+            self.toast.emit(language.tr("Couldn't save the screenshot · try again"), "error")
+            return
         self._done("", path)
 
     def open_folder(self):

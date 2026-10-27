@@ -154,6 +154,7 @@ class Viewer(QtWidgets.QWidget):
         self.fwd5_btn.setToolTip(language.tr("Forward 5 seconds"))
         self.slider = QtWidgets.QSlider(Qt.Horizontal)
         self.slider.sliderMoved.connect(lambda v: self.player and self.player.setPosition(v))
+        self.slider.installEventFilter(self)     # a click on the bar jumps there (Qt only steps toward it)
         self.time = QtWidgets.QLabel("0:00 / 0:00", objectName="time")
         cl.addWidget(self.slider, 1)
         cl.addWidget(self.time)
@@ -844,6 +845,19 @@ class Viewer(QtWidgets.QWidget):
         self.fav_btn.setFocus()
 
     def eventFilter(self, obj, event):
+        if obj is self.slider and event.type() == QtCore.QEvent.MouseButtonPress and event.button() == Qt.LeftButton:
+            opt = QtWidgets.QStyleOptionSlider()
+            self.slider.initStyleOption(opt)
+            style = self.slider.style()
+            groove = style.subControlRect(QtWidgets.QStyle.CC_Slider, opt, QtWidgets.QStyle.SC_SliderGroove, self.slider)
+            handle = style.subControlRect(QtWidgets.QStyle.CC_Slider, opt, QtWidgets.QStyle.SC_SliderHandle, self.slider)
+            if not handle.contains(event.position().toPoint()):   # on the handle: Qt drags it as before
+                x = int(event.position().x()) - groove.x() - handle.width() // 2
+                value = QtWidgets.QStyle.sliderValueFromPosition(
+                    self.slider.minimum(), self.slider.maximum(), x, groove.width() - handle.width(), opt.upsideDown)
+                self.slider.setValue(value)              # under the pointer now, so the press goes on as a drag
+                if self.player is not None:
+                    self.player.setPosition(value)
         if (obj is self.video and event.type() == QtCore.QEvent.MouseButtonPress
                 and event.button() == Qt.LeftButton and not self.trimming):
             self.toggle_play()               # a click on the video plays / pauses it, like a phone's player
@@ -867,6 +881,9 @@ class Viewer(QtWidgets.QWidget):
     def _sync(self):
         """Shows what goes with the state: one panel at a time, its buttons in the footer."""
         panel = self.trimming or self.sounding or self.sharing
+        if panel and self.full:                  # T / V / E from "only the video": the panel needs the page back
+            self.full = False
+            self.resizeEvent(QtGui.QResizeEvent(self.size(), self.size()))
         full = self.full
         self.head.setVisible(not full)
         self.trim_panel.setVisible(self.trimming and not full)
@@ -919,7 +936,7 @@ class Viewer(QtWidgets.QWidget):
 
     def _trim_labels(self):
         t = self.timeline
-        self.trim_info.setText(f"{language.clock_precise(t.start)}  →  {language.clock_precise(t.end)}     "
+        self.trim_info.setText(f"\u2066{language.clock_precise(t.start)}  →  {language.clock_precise(t.end)}\u2069     "   # start → end in Arabic too
                                + language.tr("{length} selected", length=language.clock_precise(t.end - t.start)))
 
     def preview_selection(self):
@@ -972,17 +989,23 @@ class Viewer(QtWidgets.QWidget):
         open_it(path)
 
     def delete_current(self):
+        if getattr(self, "_deleting", False):
+            return
         if not self.del_btn.danger:       # the highlight goes to Delete, ready to confirm
             self.del_btn.danger = True
             self.del_btn.setText(language.tr("Press again to delete"))
             self.del_btn.setFocus()
             self._disarm.start(3000)
             return
+        self._reset_delete()                     # one confirm, one delete: more clicks don't queue another
+        self._disarm.stop()
+        self._deleting = True
         self._release()
         path = self.current
         QtCore.QTimer.singleShot(200, lambda: self._finish_delete(path))  # file handle released
 
     def _finish_delete(self, path: Path):
+        self._deleting = False
         if not self.ctl.delete(path):
             self._show_msg("Couldn't delete this file. Is it open somewhere else?")
             return
@@ -1173,6 +1196,7 @@ class PhonePanel(QtWidgets.QWidget):
             self.fine.setText(language.tr("Getting the video ready for the phone…"))
             QtCore.QTimer.singleShot(250, self._tick)
             return
+        self.notes[2].setText(link.what())    # what really goes over, now that it's made
         pm = QtGui.QPixmap()
         pm.loadFromData(link.qr_png(scale=9))
         self.code.setPixmap(pm.scaled(280, 280, Qt.KeepAspectRatio, Qt.FastTransformation))
