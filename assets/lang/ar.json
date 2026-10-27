@@ -64,6 +64,8 @@
   "OBS is still recording the last minutes, and nothing deletes the old ones while Capture Menu is closed. Quit anyway?": "ما زال OBS يسجّل آخر الدقائق، ولن يُحذف القديم منها وCapture Menu مغلق. هل تريد الخروج؟",
   "Settings saved · restart Capture Menu to use them": "حُفظت الإعدادات · أعد تشغيل Capture Menu لتطبيقها",
   "HDR goes over in normal colours, so apps don't show it grey": "مقاطع HDR تُرسل بألوان عادية حتى لا تظهر باهتة في التطبيقات",
+  "The QR code shows here in about {n} seconds": "يظهر رمز QR هنا خلال {n} ثانية تقريبًا",
+  "The QR code shows here in a few seconds": "يظهر رمز QR هنا خلال ثوانٍ",
   "Cancel": "إلغاء",
   "Capture Menu and OBS start when you sign in": "يبدأ Capture Menu وOBS عند تسجيل الدخول إلى ويندوز",
   "Capture Menu closes and installs it when the download finishes": "عند انتهاء التنزيل يُغلق Capture Menu ويثبّت التحديث ثم يعود",

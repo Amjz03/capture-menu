@@ -1222,6 +1222,7 @@ class PhonePanel(QtWidgets.QWidget):
     def show_link(self, link: phone_link.PhoneLink):
         self.close_panel()
         self.link = link
+        self._since = time.monotonic()           # for the seconds left until the code shows
         self.notes[2].setText(link.what())
         self.code.clear()
         if link.url is None:
@@ -1237,8 +1238,13 @@ class PhonePanel(QtWidgets.QWidget):
         if link is None or link.url is None:
             return
         if not link.ready.is_set():
-            self.code.setText(f"{link.progress}%")
-            self.fine.setText(language.tr("Getting the video ready for the phone…"))
+            pct = link.progress
+            self.code.setText(f"{pct}%")
+            spent = time.monotonic() - self._since
+            left = spent * (100 - pct) / pct if pct >= 5 and spent > 2 else None   # once the pace is known
+            self.fine.setText(language.tr("Getting the video ready for the phone…") + "\n" + (
+                language.tr("The QR code shows here in about {n} seconds", n=max(5, int(left + 4) // 5 * 5))
+                if left is not None and left > 7 else language.tr("The QR code shows here in a few seconds")))
             QtCore.QTimer.singleShot(250, self._tick)
             return
         self.notes[2].setText(link.what())    # what really goes over, now that it's made

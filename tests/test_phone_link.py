@@ -153,3 +153,18 @@ if ff and media.has_encoder("libx265"):
 else:
     print("hvc1 SKIPPED (no ffmpeg with libx265)")
 v.close_viewer(); app.processEvents()   # let go of the file, so the test folder can be removed
+
+# while the phone's copy is made the panel says the code is coming, and roughly when
+from capturemenu import ui_viewer as _uv
+class Slow:
+    url, progress, ready = "http://x", 0, __import__("threading").Event()
+    def what(self): return "x"
+    def stop(self): pass
+slow = Slow()
+v2 = ui_viewer.Viewer(ctl); v2.resize(1600, 900); v2.show()
+v2.phone_panel.show_link(slow); app.processEvents()
+assert "few seconds" in v2.phone_panel.fine.text(), v2.phone_panel.fine.text()
+v2.phone_panel._since -= 10; slow.progress = 25; v2.phone_panel._tick()
+assert "about 30 seconds" in v2.phone_panel.fine.text() and v2.phone_panel.code.text() == "25%", v2.phone_panel.fine.text()
+v2.phone_panel.link = None; v2.phone_panel.hide(); v2.close_viewer(); app.processEvents()
+print("QR coming PASS")
