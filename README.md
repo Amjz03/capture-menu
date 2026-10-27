@@ -89,7 +89,7 @@ Setup does the rest by itself:
 
 **First start.** Capture Menu sets up OBS for your PC and restarts it once: your main screen's resolution at 60 FPS, the best encoder for your graphics card (RTX 40/50: AV1, older NVIDIA: HEVC, AMD/Intel: their hardware encoder), a bitrate that suits the resolution, MP4 recordings and a Display Capture source. You'll see *Setting up OBS · 2560×1440 · 60 FPS · NVENC AV1 8000 Kbps*, then *OBS is ready*. It only runs again if your main monitor or graphics card changes.
 
-**Update:** Capture Menu looks for a new version a minute after it starts and twice a day, and shows a notice when there is one; click it, or open Settings → General → **Updates** (or right-click the tray icon → Check for updates). Press Enter there to download and install it, and Capture Menu restarts on its own. Nothing is downloaded or installed unless you press. Your settings and captures are kept.
+**Update:** Capture Menu looks for a new version a minute after it starts and then every hour, and shows a notice when there is one; click it, or open Settings → General → **Updates** (or right-click the tray icon → Check for updates). Press Enter there to download and install it, and Capture Menu restarts on its own. Nothing is downloaded or installed unless you press. Your settings and captures are kept.
 **Remove:** Windows **Settings → Apps → Installed apps → Capture Menu → Uninstall**. Your captures, OBS and FFmpeg stay.
 
 **Always on, out of the way.** Capture Menu starts with Windows and runs in the background with no window or taskbar button. A notice says *Capture Menu is running* when the PC starts, and its icon sits next to the clock: click it to open the bar, right-click for the gallery, Settings or Quit. OBS starts minimized to the tray too. Only one copy runs at a time.
@@ -164,7 +164,7 @@ Every capture shows a notification with its thumbnail; click it to open the capt
 | F11 | Only the video (Esc to come back) |
 | Esc | Back |
 
-The four big buttons under the video show the controller button that does each one: ▢ Trim, L3 Adjust audio, Options Share / Export, △ More. The video's own bar has play, the timeline, sound on / off and "only the video". If the built-in player can't show a clip's picture (for example AV1 without GPU decoding), a light 720p preview plays instead; the original is untouched.
+The four big buttons under the video show the controller button that does each one: ▢ Trim, L3 Adjust audio, Options Share / Export, △ More. The title is the file's name (or the name you gave it), with the game under it. The video's own bar has 5 seconds back, play, 5 seconds forward, the timeline, sound on / off and "only the video". If the built-in player can't show a clip's picture (for example AV1 without GPU decoding), a light 720p preview plays instead; the original is untouched. Click the video to pause or play it.
 
 ### Trim
 
@@ -206,6 +206,8 @@ In the viewer press **E** (Options on the controller). Three cards, then **Expor
 | Size limit | **No limit**, or **10 / 50 / 500 MB** to fit Discord (free / Nitro Basic / Nitro). Long clips drop to 720p or 480p; a clip too long for the limit asks you to trim it first |
 
 Copies go into a `Shared` folder in the game's folder and are **copied to the clipboard**, so you can paste them straight into Discord or WhatsApp.
+
+**To your phone.** Next to Cancel, **To your phone** shows a QR code. Scan it with the phone's camera: a page opens with the video and a **Download the video** button. The phone and the PC must be on the same Wi-Fi; nothing goes through the internet, and the link ends when you close the panel (or after 30 minutes). The video goes over in full resolution. Two exceptions so it plays in the iPhone's Photos app: a clip faster than 60 FPS goes at 60, and an HDR clip goes in normal colours; while that copy is made the panel shows a percentage. The first time, Windows may ask about network access: choose **Allow**.
 
 ### Gallery
 
@@ -375,7 +377,7 @@ Release files are built only by the [release workflow](.github/workflows/release
 - Committers and reviewers: [Amjz03](https://github.com/Amjz03)
 - Approvers (who decide what is released): [Amjz03](https://github.com/Amjz03)
 
-**Privacy:** Capture Menu doesn't send any information to other computers unless you ask it to. It talks to OBS on your own PC, and it asks GitHub for the latest version number when it starts and twice a day (nothing about you or your PC is sent), and downloads an update only if you choose to install it. Your clips and screenshots stay on your PC.
+**Privacy:** Capture Menu doesn't send any information to other computers unless you ask it to. It talks to OBS on your own PC, and it asks GitHub for the latest version number when it starts and every hour (nothing about you or your PC is sent), and downloads an update only if you choose to install it. Your clips and screenshots stay on your PC.
 
 ## Credits and license
 

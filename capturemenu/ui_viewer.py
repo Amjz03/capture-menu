@@ -13,6 +13,7 @@ from . import (
     input_devices,
     language,
     media,
+    phone_link,
     runtime,
     ui_theme,
     ui_widgets,
@@ -146,7 +147,11 @@ class Viewer(QtWidgets.QWidget):
         cl = QtWidgets.QHBoxLayout(self.controls)
         cl.setContentsMargins(16, 0, 16, 0)
         cl.setSpacing(16)
+        self.back5_btn = button(cl, "5", lambda: self.seek(-5000), "back5", "ctl")
+        self.back5_btn.setToolTip(language.tr("Back 5 seconds"))
         self.play_btn = button(cl, "", self.toggle_play, "pause", "ctl")
+        self.fwd5_btn = button(cl, "5", lambda: self.seek(5000), "fwd5", "ctl")
+        self.fwd5_btn.setToolTip(language.tr("Forward 5 seconds"))
         self.slider = QtWidgets.QSlider(Qt.Horizontal)
         self.slider.sliderMoved.connect(lambda v: self.player and self.player.setPosition(v))
         self.time = QtWidgets.QLabel("0:00 / 0:00", objectName="time")
@@ -299,6 +304,7 @@ class Viewer(QtWidgets.QWidget):
         shrow.setContentsMargins(0, 0, 0, 0)
         shrow.setSpacing(10)
         self.share_cancel = button(shrow, "Cancel", lambda: self._set_sharing(False))
+        self.phone_go = button(shrow, "To your phone", self.send_to_phone, "phone")   # the original file, by QR
         self.share_go = button(shrow, "Export & copy", self._do_share, "copy", "primary")
         for w in (self.trim_buttons, self.sound_buttons, self.share_buttons):
             foot.addWidget(w)
@@ -306,9 +312,10 @@ class Viewer(QtWidgets.QWidget):
 
 
         self._disarm = QtCore.QTimer(self, singleShot=True, timeout=self._reset_delete)
+        self.phone_panel = PhonePanel(self)
         for b in self.findChildren(QtWidgets.QPushButton):
             b.setFocusPolicy(Qt.NoFocus)  # keys go to the viewer, not to a button
-        for b in (self.share_cancel, self.share_go):
+        for b in (self.share_cancel, self.phone_go, self.share_go):
             b.setFocusPolicy(Qt.StrongFocus)   # Share is walked with ← → like its cards
         input_devices.input_mode().changed.connect(lambda _: (self.update_hints(), self._pick_focus()) if self.items else None)
         QtWidgets.QApplication.instance().focusChanged.connect(self._keep_focus_off_video)
@@ -370,6 +377,7 @@ class Viewer(QtWidgets.QWidget):
                 back()
 
     def close_viewer(self):
+        self.phone_panel.close_panel()
         self._release()
         self.image.clear()       # a screenshot fitted to the screen: up to 15 MB
         self.hide()
@@ -592,10 +600,9 @@ class Viewer(QtWidgets.QWidget):
         self.title.setTextFormat(Qt.RichText)
         star = '<span style="color:#ffd34d">★</span>&nbsp;' if fav else ""
         meta = self.ctl.meta(path)
-        name = meta.get("title") or path.parent.name
+        name = meta.get("title") or path.stem      # the file's name, as the folder shows it
         self.title.setText(star + name.replace("&", "&amp;").replace("<", "&lt;"))
-        game = f"{path.parent.name}  ·  " if meta.get("title") else ""
-        self.sub.setText(f"{game}{catalog.capture_kind(path)}  ·  {catalog.time_ago(path.stat().st_mtime)}")
+        self.sub.setText(f"{path.parent.name}  ·  {catalog.capture_kind(path)}  ·  {catalog.time_ago(path.stat().st_mtime)}")
         self.note.setText(meta.get("note", ""))
         self.note.setVisible(bool(meta.get("note")))
         self.fav_btn.setToolTip(language.tr("Favorited") if fav else language.tr("Favorite"))
@@ -794,13 +801,21 @@ class Viewer(QtWidgets.QWidget):
         else:
             self.ctl.share(path, "phone" if size is None else f"discord{size}", without_voice)
 
+    def send_to_phone(self):
+        """A link to this capture, as it is, for a phone on the same Wi-Fi: shown as a QR code."""
+        if not self.items:
+            return
+        if self.player is not None:
+            self.player.pause()               # the phone plays it now
+        self.phone_panel.show_link(phone_link.PhoneLink(self.items[self.index]))
+
     def _share_nav(self) -> list[QtWidgets.QWidget]:
         cards = [c for c in (self.format_card, self.voice_card, self.size_card) if c.isVisible() and c.isEnabled()]
-        return cards + [self.share_cancel, self.share_go]
+        return cards + [self.share_cancel, self.phone_go, self.share_go]
 
     def _all_nav(self) -> list[QtWidgets.QWidget]:
         return [self.back_btn, self.rename_btn, self.prev_btn, self.next_btn, self.close_btn,
-                self.play_btn, self.slider, self.vol_btn, self.full_btn,
+                self.back5_btn, self.play_btn, self.fwd5_btn, self.slider, self.vol_btn, self.full_btn,
                 self.trim_btn, self.sound_btn, self.share_btn,
                 self.fav_btn, self.folder_chip, self.external_chip, self.del_btn]
 
@@ -829,6 +844,10 @@ class Viewer(QtWidgets.QWidget):
         self.fav_btn.setFocus()
 
     def eventFilter(self, obj, event):
+        if (obj is self.video and event.type() == QtCore.QEvent.MouseButtonPress
+                and event.button() == Qt.LeftButton and not self.trimming):
+            self.toggle_play()               # a click on the video plays / pauses it, like a phone's player
+            return True
         if event.type() == QtCore.QEvent.KeyPress and (obj in self._all_nav() or obj is self.video):
             self.keyPressEvent(event)        # a focused button would eat the arrows and ✕ itself
             return True
@@ -985,6 +1004,10 @@ class Viewer(QtWidgets.QWidget):
 
     def keyPressEvent(self, e):
         k = e.key()
+        if self.phone_panel.isVisible():   # the QR on screen: Esc, ◯ / B or Enter puts it away
+            if k in (Qt.Key_Escape, Qt.Key_Backspace, Qt.Key_Return, Qt.Key_Enter):
+                self.phone_panel.close_panel()
+            return
         pos = self.player.position() if self.player else 0
         if self.editing:
             if k == Qt.Key_Escape:
@@ -1070,3 +1093,107 @@ class Viewer(QtWidgets.QWidget):
             handlers[k]()
         else:
             super().keyPressEvent(e)
+
+
+class PhonePanel(QtWidgets.QWidget):
+    """Over the viewer: the QR code for the phone, what it needs (the same Wi-Fi) and what it gets (the original
+    file). Closing it ends the link. Its own window on top of the viewer's: the video draws in a native window
+    that would cover anything placed inside the viewer."""
+
+    def __init__(self, viewer: QtWidgets.QWidget):
+        super().__init__(None, Qt.FramelessWindowHint | Qt.Tool | Qt.WindowStaysOnTopHint)
+        self.viewer = viewer
+        self.setAttribute(Qt.WA_TranslucentBackground)
+        self.setStyleSheet(viewer.styleSheet())
+        self.setFont(viewer.font())
+        self.link: phone_link.PhoneLink | None = None
+        self.hide()
+        outer = QtWidgets.QVBoxLayout(self)
+        outer.setAlignment(Qt.AlignCenter)
+        self.card = QtWidgets.QFrame(objectName="phoneCard")
+        self.card.setStyleSheet(f"#phoneCard {{ background: {ui_theme.PANEL}; border-radius: 24px; border: 1px solid rgba(255,255,255,22); }}"
+                                "QLabel { background: transparent; }")
+        outer.addWidget(self.card)
+        lay = QtWidgets.QVBoxLayout(self.card)
+        lay.setContentsMargins(40, 32, 40, 30)
+        lay.setSpacing(14)
+        self.title = QtWidgets.QLabel(language.tr("Send to your phone"), objectName="vTitle")
+        self.title.setAlignment(Qt.AlignCenter)
+        lay.addWidget(self.title)
+        self.code = QtWidgets.QLabel()            # the percentage while the phone's copy is made, then the code
+        self.code.setAlignment(Qt.AlignCenter)
+        self.code.setFixedSize(280, 280)
+        self.code.setStyleSheet(f"color: {ui_theme.INK}; font-size: 72px; font-weight: 700;")
+        lay.addWidget(self.code, 0, Qt.AlignCenter)
+        self.notes = []
+        for icon, text in (("phone", "Scan the code with your phone's camera: the video opens, with a button to download it"),
+                           ("info", "Your phone and this PC must be on the same Wi-Fi network"),
+                           ("file-video", "The video goes over in its full, original quality")):   # (or at 60 FPS: show_link)
+            row = QtWidgets.QHBoxLayout()
+            row.setSpacing(12)
+            pic = QtWidgets.QLabel()
+            pic.setPixmap(ui_theme.icon_pixmap(icon, 20, ui_theme.INK))
+            row.addWidget(pic, 0, Qt.AlignTop)
+            words = QtWidgets.QLabel(language.tr(text))
+            words.setWordWrap(True)
+            words.setStyleSheet(f"color: {ui_theme.INK}; font-size: 16px;")
+            row.addWidget(words, 1)
+            lay.addLayout(row)
+            self.notes.append(words)
+        self.fine = QtWidgets.QLabel(objectName="info")
+        self.fine.setWordWrap(True)
+        self.fine.setAlignment(Qt.AlignCenter)
+        lay.addWidget(self.fine)
+        close = QtWidgets.QPushButton(language.tr("Done"), objectName="primary")
+        close.setCursor(Qt.PointingHandCursor)
+        close.setFocusPolicy(Qt.NoFocus)
+        close.clicked.connect(self.close_panel)
+        lay.addWidget(close, 0, Qt.AlignCenter)
+        self.card.setFixedWidth(560)
+
+    def show_link(self, link: phone_link.PhoneLink):
+        self.close_panel()
+        self.link = link
+        self.notes[2].setText(link.what())
+        self.code.clear()
+        if link.url is None:
+            self.fine.setText(language.tr("This PC isn't connected to a network"))
+        else:
+            self._tick()                       # the code shows once the video is ready (a 60 FPS copy takes a moment)
+        self.setGeometry(self.viewer.geometry())
+        self.show()
+        ui_theme.bring_to_front(self)
+
+    def _tick(self):
+        link = self.link
+        if link is None or link.url is None:
+            return
+        if not link.ready.is_set():
+            self.code.setText(f"{link.progress}%")
+            self.fine.setText(language.tr("Getting the video ready for the phone…"))
+            QtCore.QTimer.singleShot(250, self._tick)
+            return
+        pm = QtGui.QPixmap()
+        pm.loadFromData(link.qr_png(scale=9))
+        self.code.setPixmap(pm.scaled(280, 280, Qt.KeepAspectRatio, Qt.FastTransformation))
+        self.fine.setText(language.tr("If Windows asks about network access, choose Allow. If the phone can't open it, set this Wi-Fi to Private in Windows settings") + "\n" + link.url)
+
+    def close_panel(self):
+        if self.link is not None:
+            self.link.stop()
+            self.link = None
+        self.hide()
+
+    def mousePressEvent(self, e):
+        if not self.card.geometry().contains(e.position().toPoint()):
+            self.close_panel()          # a click beside the card puts it away
+
+    def keyPressEvent(self, e):
+        if e.key() in (Qt.Key_Escape, Qt.Key_Backspace, Qt.Key_Return, Qt.Key_Enter):
+            self.close_panel()
+            if self.viewer.isVisible():
+                ui_theme.bring_to_front(self.viewer)   # the keys go back to the viewer
+
+    def paintEvent(self, _):
+        p = QtGui.QPainter(self)
+        p.fillRect(self.rect(), QtGui.QColor(6, 7, 11, 190))

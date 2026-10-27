@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.0.40 · 2026-10-27
+
+- **Send a video to your phone.** In the viewer, Share / Export → **To your phone** shows a QR code. Scan it on a phone on the same Wi-Fi: a page plays the video, with a clear **Download the video** button. Full resolution, straight from your PC (nothing goes through the internet). Clips faster than 60 FPS go at 60 and HDR clips in normal colours, so they play and look right in the iPhone's Photos app; the panel shows the percentage while it gets that copy ready.
+- **The viewer:** buttons for 5 seconds back and forward beside Play, and clicking the video pauses or plays it. The title is now the file's name, as in the folder, with the game's name under it.
+- **Share Capture Menu** is the first line in Settings: it opens the website, to send its link to anyone.
+- Capture Menu looks for updates every hour (it was twice a day), and checking by hand also shows *Update available* in the menu.
+
 ## 0.0.39 · 2026-10-27
 
 - **The mouse and the highlight agree.** Clicking Save recent opens the lengths under a mouse that hasn't moved, and Windows says nothing until it does, so the highlight stayed on the last length you picked while the pointer sat on another. Now the length under the pointer lights up at once. Keyboard and controller work as before.

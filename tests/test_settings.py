@@ -44,7 +44,7 @@ assert "2560×1440" in s.res_row.text() and "GB on the drive" in s.memory.text()
 print("open PASS", s.memory.text())
 
 # 3) keyboard: down to frame rate, right = 120; quality right = high
-key(Qt.Key_Down); key(Qt.Key_Right); key(Qt.Key_Down); key(Qt.Key_Right)
+s.res_row.setFocus(); key(Qt.Key_Down); key(Qt.Key_Right); key(Qt.Key_Down); key(Qt.Key_Right)
 assert s.values()["fps"] == 120 and s.values()["quality"] == "high", s.values()
 assert "2 unsaved changes" in s.info.text() or "unsaved" in s.info.text()
 
@@ -59,8 +59,8 @@ print("hotkey PASS")
 key(Qt.Key_Escape); assert not s.isVisible() and json.loads(preferences.CONFIG_PATH.read_text())["hotkey"] == "alt+c"
 # 6) reopen, change, save: only changed keys written, password kept, app restarts
 s.open((2560, 1440)); assert s.values()["fps"] == 60, "cancel discarded the edits"
-key(Qt.Key_Down); key(Qt.Key_Right)          # fps 120
-s.rows[0].setFocus(); key(Qt.Key_Right)      # 1440p is not below native -> next choice 1080p
+key(Qt.Key_Down); key(Qt.Key_Down); key(Qt.Key_Right)   # past Share and Resolution: fps 120
+s.res_row.setFocus(); key(Qt.Key_Right)      # 1440p is not below native -> next choice 1080p
 key(Qt.Key_S)
 saved = json.loads(preferences.CONFIG_PATH.read_text())
 assert saved["fps"] == 120 and saved["resolution"] == "1080p" and saved["obs_password"] == "keep-me", saved
@@ -79,4 +79,9 @@ key(Qt.Key_Up); assert s.focusWidget() is s.back_btn, s.focusWidget()
 key(Qt.Key_Right); assert s.focusWidget() is s.defaults_btn
 key(Qt.Key_Right); key(Qt.Key_Right); assert s.focusWidget() is s.save_btn
 key(Qt.Key_Down); assert s.focusWidget() is s.rows[0]
+# 11) the first row shares the app: Enter opens the website, and nothing of it is saved
+opened = []
+QtGui.QDesktopServices.openUrl = lambda url: opened.append(url.toString())
+share = s.rows[0]; assert share.key == "_share" and "_share" not in s.values()
+share.setFocus(); key(Qt.Key_Return); assert opened == ["https://amjz03.github.io/capture-menu/"], opened
 print("settings PASS")

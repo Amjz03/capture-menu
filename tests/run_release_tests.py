@@ -11,7 +11,7 @@ REPO = Path(__file__).resolve().parents[1]
 GATE = (
     "test_modules.py",
     "test_delete_safety.py", "test_recording_files.py", "test_update_integrity.py", "test_updates.py",
-    "test_translations.py", "test_obs_launch.py", "test_obs_setup.py", "test_buffer_repair.py", "test_keep_recording.py", "test_welcome.py",
+    "test_translations.py", "test_obs_launch.py", "test_obs_setup.py", "test_buffer_repair.py", "test_keep_recording.py", "test_welcome.py", "test_phone_link.py",
     "test_follow_screen.py", "test_controller.py", "test_settings.py",
     "test_devices.py", "test_folders_language.py", "test_blocked_folder.py", "test_startup.py",
 )

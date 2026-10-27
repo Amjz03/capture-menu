@@ -192,7 +192,7 @@ ICON_FILES = {
     "share": "share-2", "copy": "copy", "star": "star", "mic": "mic", "mic-off": "mic-off",
     "gallery": "layout-grid", "drive": "hard-drive", "settings": "settings",
     "volume": "volume-2", "volume-off": "volume-x", "maximize": "maximize", "minimize": "minimize",
-    "pencil": "pencil", "audio": "audio-lines", "export": "upload", "more": "ellipsis",
+    "pencil": "pencil", "audio": "audio-lines", "export": "upload", "phone": "smartphone", "back5": "rotate-ccw", "fwd5": "rotate-cw", "more": "ellipsis",
     "gamepad": "gamepad-2", "info": "info", "file-video": "file-video", "select": "square-check-big",
 }
 

@@ -130,6 +130,12 @@ class Settings(QtWidgets.QWidget):
         self.rows_layout.addWidget(self.card)
 
     def _build_rows(self):
+        # first, so it's easy to find again: the website, to send to anyone ("_" keeps it out of config.json)
+        self._section("Capture Menu")
+        share = self._row("_share", "Share Capture Menu", "action",
+                          describe=lambda v: "Opens the website, to send its link to anyone",
+                          display=lambda v: language.tr("Open the website"))
+        share.on_activate = lambda row: QtGui.QDesktopServices.openUrl(QtCore.QUrl(version.SITE))
         self._section("RECORDING")
         self.res_row = self._row("resolution", "Resolution", "choice", [("native", "Native")],
                                  lambda v: "Lower uses less space; Native looks sharpest")
@@ -300,7 +306,7 @@ class Settings(QtWidgets.QWidget):
     def values(self) -> dict:
         return {r.key: r.value for r in self.rows if not r.key.startswith("_")}
 
-    # ---- updates: looked for at start and twice a day, installed only when the player says so
+    # ---- updates: looked for at start and every hour, installed only when the player says so
     def check_quietly(self):
         """The background look for a new version: it only says so, never installs."""
         def run():

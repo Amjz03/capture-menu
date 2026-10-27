@@ -152,6 +152,20 @@ def sdr_filter(path: Path, vf: str) -> str:
     return f"{TO_SDR},{vf}" if is_hdr(path) else vf
 
 
+def frame_rate(path: Path) -> float:
+    """Frames a second of the first video stream (0 when it can't be read)."""
+    ffprobe = find_tool("ffprobe")
+    if not ffprobe:
+        return 0.0
+    r = run_quiet([ffprobe, "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=r_frame_rate",
+                   "-of", "csv=p=0", str(path)])
+    num, _, den = r.stdout.strip().split(",")[0].partition("/")
+    try:
+        return float(num) / float(den or 1)
+    except (ValueError, ZeroDivisionError):
+        return 0.0
+
+
 def video_codec(path: Path) -> str | None:
     ffprobe = find_tool("ffprobe")
     if not ffprobe:

@@ -204,8 +204,10 @@ def main():
             tm.insertAction(tm.actions()[0], QtGui.QAction(language.tr("Install update {version}", version=rel["version"]),
                                                            tm, triggered=settings.show_update))
     settings.update_found.connect(update_found)
+    # a check from Settings finds it too: the menu says so from then on (the notice isn't needed there)
+    settings.update_event.connect(lambda info: menu.set_update(info["version"]) if info["state"] == "available" else None)
     QtCore.QTimer.singleShot(60_000, settings.check_quietly)     # well after the start-up notices
-    QtCore.QTimer(app, interval=12 * 3600_000, timeout=settings.check_quietly).start()
+    QtCore.QTimer(app, interval=3600_000, timeout=settings.check_quietly).start()   # hourly: one small request
     # once everything has been closed for a while, give memory back (once per idle stretch): a page
     # that has been open since holds a native window again, so even a quick look counts
     pages = (menu, viewer, gallery, settings)
