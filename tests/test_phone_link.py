@@ -136,6 +136,20 @@ if ff and media.has_encoder("libx265"):
     link.stop()
     media.run_ffmpeg, media.has_encoder = real_run, real_has
     print("encoder fallback PASS")
+    # "Leave out" your voice in Share: the phone gets the game's track alone, and the panel says so
+    three = tmp / "Red Dead Redemption 2" / "Clip_2026-10-27_09-20-00_30s.mp4"
+    subprocess.run([ff, "-v", "error", "-y", "-f", "lavfi", "-i", "testsrc=size=320x180:rate=30:duration=1",
+                    *sum([["-f", "lavfi", "-i", f"sine=f={300 + 100 * i}:d=1"] for i in range(3)], []),
+                    "-map", "0", "-map", "1", "-map", "2", "-map", "3", "-c:v", "libx265", "-tag:v", "hev1",
+                    "-c:a", "aac", str(three)], check=True)
+    link = phone_link.PhoneLink(three, host="127.0.0.1", without_voice=True)
+    assert link.ready.wait(60) and media.audio_tracks(link.path) == 1 and tag(link.path) == "hvc1", link.path
+    assert "without your voice" in link.what() and media.audio_tracks(three) == 3, "the clip itself is untouched"
+    link.stop()
+    link = phone_link.PhoneLink(three, host="127.0.0.1")
+    assert link.ready.wait(60) and media.audio_tracks(link.path) == 3 and "without" not in link.what()
+    link.stop()
+    print("phone without your voice PASS")
 else:
     print("hvc1 SKIPPED (no ffmpeg with libx265)")
 v.close_viewer(); app.processEvents()   # let go of the file, so the test folder can be removed

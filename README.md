@@ -256,7 +256,7 @@ The Settings page writes to `config.json` in the install folder. You can also ed
 | `screenshots_dir` | Where screenshots go. Empty = the clips folder |
 | `language` | `auto` (same as Windows), `en` or `ar` |
 | `game_names` | Fix a game's folder name (see below) |
-| `controller_button` | `create`, `ps`, `options`, `touchpad`, `mute`, `share` (Xbox Series), `view`, or a combo like `l1+r1` |
+| `controller_button` | `create`, `ps`, `options`, `touchpad`, `mute`, `share` (Xbox Series), `view`, or a combo like `l1+r1` (both on one controller; games use those buttons too) |
 | `controller_hold_ms` | Hold time before the bar opens; `0` = on press. Use `400` if your game uses the same button |
 | `double_press_seconds` | Seconds saved by a double press; `0` = off |
 | `capture_screen` | `follow`: OBS records the screen your game is on; or one screen, as picked in Settings |

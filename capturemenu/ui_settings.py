@@ -179,7 +179,7 @@ class Settings(QtWidgets.QWidget):
         hk.on_activate = self._listen_hotkey
         self._row("controller_button", "Controller button", "choice",
                   [("create", "Create / View"), ("ps", "PS / Xbox button"), ("touchpad", "Touchpad"),
-                   ("mute", "Mute / Share"), ("l3+r3", "L3 + R3")],
+                   ("mute", "Mute / Share")],
                   lambda v: "The button that opens the menu, like Create on the PS5")
         self._row("controller_hold_ms", "Open the menu with", "choice", [(0, "A press"), (400, "A hold")],
                   lambda v: "Hold keeps a quick tap for the game, if it uses the same button",
@@ -687,7 +687,7 @@ class Welcome(Settings):
         hk.on_activate = self._listen_hotkey
         self._row("controller_button", "Which controller button opens it?", "choice",
                   [("create", "Create / View"), ("ps", "PS / Xbox button"), ("touchpad", "Touchpad"),
-                   ("mute", "Mute / Share"), ("l3+r3", "L3 + R3")],
+                   ("mute", "Mute / Share")],
                   lambda v: self._later("Like Create on the PS5."))
 
         self._section("LIBRARY")

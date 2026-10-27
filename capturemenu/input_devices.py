@@ -113,10 +113,12 @@ class PadState:
         self.next_repeat: dict[int, float] = {}
         self.solo: set[int] = set()     # buttons of a two-button combo pressed alone (so far)
 
-    def step(self, held: set[int], now: float) -> tuple[bool, list[int]]:
-        """Returns (open button triggered, buttons pressed this step)."""
+    def step(self, held: set[int], now: float, together: bool | None = None) -> tuple[bool, list[int]]:
+        """Returns (open button triggered, buttons pressed this step). together: the combo is held on one
+        controller (with two, L1 on one and R1 on the other isn't it); None: all of held is one controller."""
         triggered = False
-        if self.combo <= held:
+        combo_held = self.combo <= held if together is None else together
+        if combo_held:
             if self.combo_since is None:
                 self.combo_since, self.combo_fired = now, False
             if not self.combo_fired and now - self.combo_since >= self.hold:
@@ -137,7 +139,7 @@ class PadState:
             elif now >= self.next_repeat[b]:
                 presses.append(b)
                 self.next_repeat[b] = now + self.REPEAT_EVERY
-        if self.combo <= held:
+        if combo_held:
             self.solo.clear()           # it became the combo: not a press of its own
         for b in sorted(self.prev - held):
             if b in self.solo:          # L3 alone with an L3+R3 combo: still L3, on release
@@ -214,7 +216,7 @@ class Gamepad(QtCore.QObject):
                         name = names.pop(event.cdevice.which, "Controller")
                         runtime.log.info("controller disconnected: %s", name)
                         self.connected.emit(name, False)
-            held, fresh_kind = set(), None
+            held, fresh_kind, together = set(), None, False
             for jid, pad in pads.items():
                 mine = {b for b in range(21) if sdl2.SDL_GameControllerGetButton(pad, b)}
                 x = sdl2.SDL_GameControllerGetAxis(pad, sdl2.SDL_CONTROLLER_AXIS_LEFTX)
@@ -227,9 +229,10 @@ class Gamepad(QtCore.QObject):
                     fresh_kind = kinds.get(jid, "xbox")
                 last[jid] = mine
                 held |= mine
+                together |= self.state.combo <= mine
             if fresh_kind:
                 self.used.emit(fresh_kind)
-            triggered, presses = self.state.step(held, time.monotonic())
+            triggered, presses = self.state.step(held, time.monotonic(), together)
             if triggered:
                 self.activated.emit()
             for b in presses:

@@ -224,3 +224,13 @@ for _ in range(50):
 preferences._read_state = real_read
 assert len(calls) <= 1, len(calls)
 print("tile reads don't copy the state PASS")
+
+# ---- a combo counts on one controller only (L1 on one pad, R1 on another isn't it); L3 + R3 is no longer offered
+pair = input_devices.PadState(frozenset({9, 10}), 0)
+assert pair.step({9, 10}, 0.0, together=False) == (False, []), "split over two controllers: nothing"
+pair = input_devices.PadState(frozenset({9, 10}), 0)
+assert pair.step({9, 10}, 0.0, together=True)[0], "on one controller: it opens"
+cfg_file = tmp / "config.json"; cfg_file.write_text(json.dumps({"controller_button": "l3+r3"}), encoding="utf-8")
+with patch.object(preferences, "CONFIG_PATH", cfg_file):
+    assert preferences.load_config()["controller_button"] == "create"
+print("combo on one controller PASS")

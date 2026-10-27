@@ -22,24 +22,25 @@ LIFETIME_S = 30 * 60
 TYPES = {".mp4": "video/mp4", ".mkv": "video/x-matroska", ".mov": "video/quicktime", ".png": "image/png", ".jpg": "image/jpeg"}
 
 
-def for_apple(path: Path, work: Path) -> Path:
+def for_apple(path: Path, work: Path, game_only: bool = False) -> Path:
     """OBS tags HEVC as hev1, which an iPhone won't play or save to Photos: the same video retagged hvc1, a copy
-    without re-encoding (every frame as recorded). Anything else is sent as it is."""
-    if path.suffix.lower() != ".mp4" or media.video_codec(path) != "hevc":
-        return path
+    without re-encoding (every frame as recorded). game_only: just the game's sound track (no voice). Anything
+    else is sent as it is."""
+    hevc = path.suffix.lower() == ".mp4" and media.video_codec(path) == "hevc"
     ffmpeg = media.find_tool("ffmpeg")
-    if not ffmpeg:
+    if not ffmpeg or not (hevc or game_only):
         return path
     out = work / path.name
-    r = media.run_quiet([ffmpeg, "-v", "error", "-y", "-i", str(path), "-map", "0", "-c", "copy",
-                         "-tag:v", "hvc1", "-movflags", "+faststart", str(out)])
+    maps = ["-map", "0:v:0", "-map", "0:a:1"] if game_only else ["-map", "0"]
+    r = media.run_quiet([ffmpeg, "-v", "error", "-y", "-i", str(path), *maps, "-c", "copy",
+                         *(["-tag:v", "hvc1"] if hevc else []), "-movflags", "+faststart", str(out)])
     return out if r.returncode == 0 and out.exists() else path
 
 
 PHONE_FPS = 60
 
 
-def phone_copy(src: Path, out: Path, fps: bool, sdr: bool, on_progress=None) -> bool:
+def phone_copy(src: Path, out: Path, fps: bool, sdr: bool, on_progress=None, game_only: bool = False) -> bool:
     """The clip as the phone plays it best: at most 60 frames a second (the Photos app plays no more), and HDR in
     normal colours with the app's own tone mapping (an iPhone guesses at OBS's HDR and shows it grey). The same
     size, HEVC (hvc1), only the first sound track (everything). On the graphics card when it can."""
@@ -63,7 +64,8 @@ def phone_copy(src: Path, out: Path, fps: bool, sdr: bool, on_progress=None) -> 
     tries.append((["-c:v", "libx264", "-preset", "fast", "-crf", "18", "-pix_fmt", "yuv420p"], "avc1",
                   media.TO_SDR + ("," + vf if vf != "null" else "") if hdr else vf))
     for video, tag, filters in tries:
-        code = media.run_ffmpeg([ffmpeg, "-y", "-v", "error", "-i", str(src), "-map", "0:v:0", "-map", "0:a:0?",
+        code = media.run_ffmpeg([ffmpeg, "-y", "-v", "error", "-i", str(src), "-map", "0:v:0",
+                                 "-map", "0:a:1" if game_only else "0:a:0?",       # track 2: the game alone
                                  "-vf", filters, *video, "-tag:v", tag, "-c:a", "copy", "-movflags", "+faststart",
                                  str(out)], media.media_duration(src) or 0, on_progress)
         if code == 0 and out.exists() and out.stat().st_size > 0 and (
@@ -88,8 +90,10 @@ def local_ip() -> str | None:
 class PhoneLink:
     """Serves one file to the phone. url is None when the PC is on no network."""
 
-    def __init__(self, path: Path, host: str | None = None):
+    def __init__(self, path: Path, host: str | None = None, without_voice: bool = False):
         self.source = self.path = Path(path)
+        # "Leave out" your voice in Share: the phone gets the game's own track (OBS writes it when the voice is apart)
+        self.novoice = without_voice and media.audio_tracks(self.source) >= 3
         self.ready = threading.Event()          # the file to send is set (retagged, or at 60 FPS, for iPhone)
         self.at60 = media.frame_rate(self.source) > PHONE_FPS + 0.5   # faster than the Photos app plays
         self.sdr = media.is_hdr(self.source)    # HDR goes over in normal colours
@@ -107,14 +111,17 @@ class PhoneLink:
             try:
                 if self.at60 or self.sdr:
                     out = self.work / self.source.name
-                    if phone_copy(self.source, out, self.at60, self.sdr, lambda pct: setattr(self, "progress", pct)):
+                    if phone_copy(self.source, out, self.at60, self.sdr, lambda pct: setattr(self, "progress", pct),
+                                  game_only=self.novoice):
                         self.path = out
                     else:                       # say what really goes over: the original
                         runtime.log.warning("the phone's copy failed, sending the original")
                         self.at60 = self.sdr = False
-                        self.path = for_apple(self.source, self.work)
+                        self.path = for_apple(self.source, self.work, self.novoice)
                 else:
-                    self.path = for_apple(self.source, self.work)
+                    self.path = for_apple(self.source, self.work, self.novoice)
+                if self.novoice and self.path == self.source:   # couldn't take the voice out: say so, don't send it
+                    self.novoice = False
             finally:
                 self.progress = 100
                 self.ready.set()
@@ -169,6 +176,10 @@ class PhoneLink:
 
     def what(self) -> str:
         """What the phone gets, in a line."""
+        line = self._what()
+        return line + language.tr(" · without your voice") if self.novoice else line
+
+    def _what(self) -> str:
         if self.at60 and self.sdr:
             return language.tr("At 60 FPS and in normal colours, so the phone plays it right, in full resolution")
         if self.at60:

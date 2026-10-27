@@ -42,6 +42,7 @@ class Viewer(QtWidgets.QWidget):
         self.sharing = False
         self.editing = False
         self.sounding = False                    # the Sound panel: voice and game levels of this clip
+        self._share_hdr = False                  # the clip being shared is HDR
         self._previewing_sound = False           # the player shows a sound preview (or waits for one), not the clip
         self._sound_piece: Path | None = None    # the preview piece the latest request writes
         self._sound_start = 0.0                  # where in the clip the piece playing starts (s)
@@ -234,7 +235,8 @@ class Viewer(QtWidgets.QWidget):
         self.format_card = ui_widgets.OptionCard("file-video", language.tr("Format"),
                                       [("mp4", language.tr("MP4 for phones & apps")), ("copy", language.tr("Original file"))],
                                       lambda v: language.tr("Plays everywhere: WhatsApp, Discord, phones")
-                                      if v == "mp4" else language.tr("The clip exactly as it was saved"))
+                                      if v == "mp4" else language.tr("HDR goes over in normal colours, so apps don't show it grey")
+                                      if self._share_hdr else language.tr("The clip exactly as it was saved"))
         self.voice_card = ui_widgets.OptionCard("mic", language.tr("Your voice"), [(True, language.tr("Include")), (False, language.tr("Leave out"))],
                                      lambda v: language.tr("Your microphone is in the video") if v
                                      else language.tr("Only the game's sound"))
@@ -786,6 +788,7 @@ class Viewer(QtWidgets.QWidget):
             video = self.is_video()
             # leaving your voice out needs the separate game-only track (voice_track in OBS)
             split = video and media.audio_tracks(self.current) >= 3
+            self._share_hdr = video and media.is_hdr(self.current)   # its "original" goes in normal colours
             for card in (self.format_card, self.voice_card, self.size_card):
                 card.setVisible(video)
             self.format_card.set_value("mp4")
@@ -838,7 +841,8 @@ class Viewer(QtWidgets.QWidget):
             return
         if self.player is not None:
             self.player.pause()               # the phone plays it now
-        self.phone_panel.show_link(phone_link.PhoneLink(self.items[self.index]))
+        self.phone_panel.show_link(phone_link.PhoneLink(self.items[self.index],
+                                                        without_voice=self.is_video() and self.without_voice))
 
     def _share_nav(self) -> list[QtWidgets.QWidget]:
         cards = [c for c in (self.format_card, self.voice_card, self.size_card) if c.isVisible() and c.isEnabled()]

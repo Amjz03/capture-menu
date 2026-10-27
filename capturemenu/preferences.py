@@ -54,6 +54,8 @@ def load_config() -> dict:
     if CONFIG_PATH.exists():
         user = json.loads(CONFIG_PATH.read_text(encoding="utf-8-sig"))
         cfg.update({k: v for k, v in user.items() if v not in ("", None)})
+        if cfg.get("controller_button") == "l3+r3":   # no longer a choice (games use L3 and R3): Create
+            cfg["controller_button"] = "create"
         if user.get("capture_follow_game") is False and "capture_screen" not in user:
             cfg["capture_screen"] = "main"   # up to 0.0.10 "Follow the game's screen" off kept the main screen
     return cfg
