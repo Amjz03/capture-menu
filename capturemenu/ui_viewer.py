@@ -1251,7 +1251,7 @@ class PhonePanel(QtWidgets.QWidget):
         pm = QtGui.QPixmap()
         pm.loadFromData(link.qr_png(scale=9))
         self.code.setPixmap(pm.scaled(280, 280, Qt.KeepAspectRatio, Qt.FastTransformation))
-        self.fine.setText(language.tr("If Windows asks about network access, choose Allow. If the phone can't open it, set this Wi-Fi to Private in Windows settings") + "\n" + link.url)
+        self.fine.setText(language.tr("If Windows asks about network access, choose Allow. If the phone can't open it, set this Wi-Fi to Private in Windows settings"))   # no address: the code is enough
 
     def close_panel(self):
         if self.link is not None:

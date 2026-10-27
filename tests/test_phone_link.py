@@ -73,6 +73,7 @@ panel = v.phone_panel
 panel.link.ready.wait(10)
 for _ in range(10): app.processEvents(); time.sleep(0.05)   # the code shows once the file is ready
 assert panel.isVisible() and panel.link and panel.link.url and not panel.code.pixmap().isNull()
+assert "127.0.0.1" not in panel.fine.text(), "no address under the code"
 assert any("same Wi-Fi" in n.text() for n in panel.notes) and panel.notes[2].text() == "The original file, in full quality"
 running = panel.link
 QtWidgets.QApplication.sendEvent(v, QtGui.QKeyEvent(QtGui.QKeyEvent.KeyPress, Qt.Key_Escape, Qt.NoModifier))
