@@ -1194,6 +1194,11 @@ class PhonePanel(QtWidgets.QWidget):
         self.code.setFixedSize(280, 280)
         self.code.setStyleSheet(f"color: {ui_theme.INK}; font-size: 72px; font-weight: 700;")
         lay.addWidget(self.code, 0, Qt.AlignCenter)
+        self.waiting = QtWidgets.QLabel(language.tr("The QR code will appear in a moment"))   # right under it
+        self.waiting.setAlignment(Qt.AlignCenter)
+        self.waiting.setStyleSheet(f"color: {ui_theme.INK}; font-size: 16px;")
+        self.waiting.hide()
+        lay.addWidget(self.waiting)
         self.notes = []
         for icon, text in (("phone", "Scan the code with your phone's camera: the video opens, with a button to download it"),
                            ("info", "Your phone and this PC must be on the same Wi-Fi network"),
@@ -1225,6 +1230,8 @@ class PhonePanel(QtWidgets.QWidget):
         self.link = link
         self.notes[2].setText(link.what())
         self.code.clear()
+        self.waiting.hide()
+        self.fine.show()
         if link.url is None:
             self.fine.setText(language.tr("This PC isn't connected to a network"))
         else:
@@ -1239,13 +1246,16 @@ class PhonePanel(QtWidgets.QWidget):
             return
         if not link.ready.is_set():
             self.code.setPixmap(self._waiting_code(link.progress))
-            self.fine.setText(language.tr("The QR code will appear in a moment"))
+            self.waiting.show()
+            self.fine.hide()
             QtCore.QTimer.singleShot(250, self._tick)
             return
         self.notes[2].setText(link.what())    # what really goes over, now that it's made
         pm = QtGui.QPixmap()
         pm.loadFromData(link.qr_png(scale=9))
         self.code.setPixmap(pm.scaled(280, 280, Qt.KeepAspectRatio, Qt.FastTransformation))
+        self.waiting.hide()
+        self.fine.show()
         self.fine.setText(language.tr("If Windows asks about network access, choose Allow. If the phone can't open it, set this Wi-Fi to Private in Windows settings"))   # no address: the code is enough
 
     def _waiting_code(self, pct: int) -> QtGui.QPixmap:

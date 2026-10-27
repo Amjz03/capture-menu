@@ -164,6 +164,9 @@ slow = Slow()
 v2 = ui_viewer.Viewer(ctl); v2.resize(1600, 900); v2.show()
 v2.phone_panel.show_link(slow); app.processEvents()
 slow.progress = 38; v2.phone_panel._tick()
-assert v2.phone_panel.fine.text() == "The QR code will appear in a moment" and not v2.phone_panel.code.pixmap().isNull()
+pp = v2.phone_panel
+assert pp.waiting.isVisible() and pp.waiting.text() == "The QR code will appear in a moment" and not pp.code.pixmap().isNull()
+lay = pp.code.parentWidget().layout()
+assert lay.indexOf(pp.waiting) == lay.indexOf(pp.code) + 1, "right under the code"
 v2.phone_panel.link = None; v2.phone_panel.hide(); v2.close_viewer(); app.processEvents()
 print("QR coming PASS")
