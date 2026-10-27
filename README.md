@@ -62,6 +62,7 @@
 - [Troubleshooting](#troubleshooting)
 - [Development](#development)
 - [Code signing policy](#code-signing-policy)
+- [Privacy](#privacy)
 - [Credits and license](#credits-and-license)
 
 ## Install
@@ -89,7 +90,8 @@ Setup does the rest by itself:
 
 **First start.** Capture Menu sets up OBS for your PC and restarts it once: your main screen's resolution at 60 FPS, the best encoder for your graphics card (RTX 40/50: AV1, older NVIDIA: HEVC, AMD/Intel: their hardware encoder), a bitrate that suits the resolution, MP4 recordings and a Display Capture source. You'll see *Setting up OBS · 2560×1440 · 60 FPS · NVENC AV1 8000 Kbps*, then *OBS is ready*. It only runs again if your main monitor or graphics card changes.
 
-**Update:** Capture Menu looks for a new version a minute after it starts and then every hour, and shows a notice when there is one; click it, or open Settings → General → **Updates** (or right-click the tray icon → Check for updates). Press Enter there to download and install it, and Capture Menu restarts on its own. Nothing is downloaded or installed unless you press. Your settings and captures are kept.
+**Update:** when a new version is out, a notice says so. Click it, or open Settings → General → **Updates**, and press Enter to install. Capture Menu restarts by itself and keeps your settings and captures. Nothing is downloaded until you press.
+
 **Remove:** Windows **Settings → Apps → Installed apps → Capture Menu → Uninstall**. Your captures, OBS and FFmpeg stay.
 
 **Always on, out of the way.** Capture Menu starts with Windows and runs in the background with no window or taskbar button. A notice says *Capture Menu is running* when the PC starts, and its icon sits next to the clock: click it to open the bar, right-click for the gallery, Settings or Quit. OBS starts minimized to the tray too. Only one copy runs at a time.
@@ -293,7 +295,7 @@ The last minutes are kept on your drive, not in RAM: OBS records all the time in
 
 With your voice on its own track (the default), OBS records at constant quality, so busy scenes can use more, up to about 2.9 GB for 30 minutes at 1440p.
 
-OBS records the whole time Capture Menu runs. Capture Menu checks every minute and starts it again if OBS was closed or crashed, restarts it if a graphics driver update or reset left it recording nothing, or if the recording stopped growing, and never while you stream. If Capture Menu itself closes without **Quit** (a crash), Windows starts it again within about 5 minutes. **Quit** stops OBS's recording.
+OBS records the whole time Capture Menu runs. Once a minute Capture Menu checks on it and restarts it if it was closed, crashed, or stopped writing (a driver update can do that). It never touches OBS while you stream. If Capture Menu itself crashes, Windows starts it again within about 5 minutes. **Quit** stops the recording.
 
 Capture Menu itself uses about 75 MB while it waits. The video player loads only when you open a clip, and FFmpeg (thumbnails, trims, share copies) runs at below-normal priority so it never takes CPU from your game.
 
@@ -326,8 +328,8 @@ Capture Menu is a Python package built on [PySide6](https://doc.qt.io/qtforpytho
 ```
 capture_menu.py      thin launcher (source and PyInstaller entry point)
 capturemenu/          application package
-  app.py              startup and component wiring
-  runtime.py          source/frozen paths, explicit logging setup, lazy multimedia
+  app.py              startup
+  runtime.py          paths (source or built exe) and logging
   preferences.py      defaults, config.json and state.json
   language.py         translations, RTL and time labels
   windows.py          display/window integration, process launch and startup registration
@@ -352,9 +354,7 @@ docs/                images for this README
 
 **Run from source:** double-click `installer\Setup.cmd`. It installs Python 3.12, the libraries, OBS and FFmpeg, and installs the app from this folder (run it again after changes). Or run `py -3 capture_menu.py` directly with the libraries from `requirements.txt`.
 
-**Tests** are plain scripts that print `PASS` lines: `py -3 tests\test_trim.py <repo folder> <scratch folder>`. Several were written for Linux with `QT_QPA_PLATFORM=offscreen` and check non-Windows fallbacks.
-
-Tests and render tools import the module that owns a behavior; patch that module when replacing an external dependency. Importing `capture_menu` or `capturemenu.app` does not launch the UI, create a log file, or start workers. `app.main()` initializes logging and starts the application. The source folder and source archive must include both `capture_menu.py` and `capturemenu/`; user configuration remains beside the launcher/executable, and frozen assets remain in PyInstaller's bundle directory.
+**Tests** are plain scripts that print `PASS` lines: `py -3 tests\test_trim.py <repo folder> <scratch folder>`. Set `QT_QPA_PLATFORM=offscreen` to keep their windows off your screen. `py -3 tests\run_release_tests.py` runs the set the release workflow requires. Importing `capturemenu.app` has no side effects; only `app.main()` starts the app.
 
 **Build:** `installer\build_exe.bat` makes `dist\CaptureMenu\CaptureMenu.exe`, and `Output\CaptureMenu-Setup.exe` when [Inno Setup 6](https://jrsoftware.org/isinfo.php) is installed.
 
@@ -366,18 +366,18 @@ Tests and render tools import the module that owns a behavior; patch that module
 
 ## Code signing policy
 
-Before building or publishing, the release workflow must pass `python tests/run_release_tests.py` on Windows/Python 3.12. This gate runs the isolated scripts listed in `tests/run_release_tests.py`, including module imports/package paths, recycling and updater safety regressions, against disposable copies with OBS connections, external launches and startup-setting writes disabled. The runner lists the remaining hardware, multimedia, desktop and OS-integration scripts as not run; it does not claim full integration coverage. Run the same command locally with the dependencies in `requirements.txt` installed.
+Releases are not code-signed yet. The [release workflow](.github/workflows/release.yml) can sign through [SignPath.io](https://about.signpath.io), but that needs an approved SignPath project, which this repo doesn't have. Until it does, Windows shows no verified publisher; check the file's **Properties → Digital Signatures** if you want to be sure.
 
-Code signing is optional and is **not currently guaranteed**. The reviewed v0.0.30 release skipped the signing steps. The workflow has support for [SignPath.io](https://about.signpath.io), but signing requires an approved signing project/policy, a certificate and configured credentials. Those cannot be provisioned by changing this code. Check each downloaded executable's Windows signature properties rather than assuming it is signed.
+Release files are built only by that workflow on GitHub Actions, from the code in this repository, and only after `tests/run_release_tests.py` passes. Nothing built on a personal computer is published.
 
-The updater requires a valid SHA-256 digest from GitHub's HTTPS release metadata and checks the downloaded bytes again before launching. Missing digests, mismatches and launch failures leave the app running. This verifies consistency with GitHub's release asset; it is not a publisher signature and cannot protect against a compromised repository or release account.
-
-Release files are built only by the [release workflow](.github/workflows/release.yml) on GitHub Actions, from the code in this repository. Nothing built on a personal computer is published.
+The updater checks every download against the SHA-256 that GitHub lists for the release, and won't run a file that doesn't match. That catches a broken or swapped download, not a compromised GitHub account.
 
 - Committers and reviewers: [Amjz03](https://github.com/Amjz03)
 - Approvers (who decide what is released): [Amjz03](https://github.com/Amjz03)
 
-**Privacy:** Capture Menu doesn't send any information to other computers unless you ask it to. It talks to OBS on your own PC, and it asks GitHub for the latest version number when it starts and every hour (nothing about you or your PC is sent), and downloads an update only if you choose to install it. Your clips and screenshots stay on your PC.
+## Privacy
+
+Capture Menu talks to OBS on your own PC. The only thing it sends out is a request to GitHub for the latest version number when it starts and once an hour, with nothing about you or your PC in it. Updates download only when you choose to install one. Your clips and screenshots stay on your PC (apart from what you send to your phone over your own Wi-Fi).
 
 ## Credits and license
 
