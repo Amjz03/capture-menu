@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.0.39 · 2026-10-27
+
+- **The mouse and the highlight agree.** Clicking Save recent opens the lengths under a mouse that hasn't moved, and Windows says nothing until it does, so the highlight stayed on the last length you picked while the pointer sat on another. Now the length under the pointer lights up at once. Keyboard and controller work as before.
+
 ## 0.0.38 · 2026-10-26
 
 - **You'll know when there's an update.** Capture Menu looks for a new version a minute after it starts and twice a day. When there is one, a notice says so, the menu shows *Update available* beside the game's name, and Settings gets a blue dot. Clicking any of them opens Settings on the Updates line; nothing is installed until you press Enter there. Only the latest version number is asked from GitHub.

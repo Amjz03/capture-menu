@@ -226,9 +226,17 @@ class Menu(QtWidgets.QWidget):
         self.update_hints()
 
     def open_picker(self):
+        by_mouse = self.save_card.underMouse()
         self._set_picking(True)
         self._refresh_picker()
         self.chips[self.last_choice].setFocus()
+        if by_mouse:      # the lengths appear under a mouse that hasn't moved: no enter event comes,
+            QtCore.QTimer.singleShot(0, self._light_under_mouse)   # so light the one it's on ourselves
+
+    def _light_under_mouse(self):
+        chip = QtWidgets.QApplication.widgetAt(QtGui.QCursor.pos())
+        if chip in self.chips and self.picking:
+            chip.hover_in()
 
     def close_picker(self):
         self._set_picking(False)
