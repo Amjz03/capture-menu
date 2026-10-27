@@ -32,6 +32,8 @@ def main():
     diagnostics.install_crash_log()
     runtime.log.info("starting: %s %s", sys.executable, " ".join(sys.argv))
     cfg = preferences.load_config()
+    if Path(cfg["clips_dir"]) == Path(preferences.DEFAULTS["clips_dir"]):
+        preferences.move_old_clips(Path(cfg["clips_dir"]))   # 0.0.41: Videos\Clips became Capture Menu Clips
     language.set_language(cfg.get("language", "auto"))
     app = QtWidgets.QApplication(sys.argv)
     if language.is_rtl():

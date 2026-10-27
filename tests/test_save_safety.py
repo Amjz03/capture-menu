@@ -235,15 +235,23 @@ with patch.object(preferences, "CONFIG_PATH", cfg_file):
     assert preferences.load_config()["controller_button"] == "create"
 print("combo on one controller PASS")
 
-# ---- the clips folder: "Capture Menu Clips" for a new install; who used "Clips" before keeps it
-home = tmp / "home"; (home / "Videos" / "Clips").mkdir(parents=True)
-empty_cfg = tmp / "empty_config.json"; empty_cfg.write_text("{}", encoding="utf-8")
-fresh_state = tmp / "no_state.json"
-with patch.object(Path, "home", lambda: home), patch.object(preferences, "CONFIG_PATH", empty_cfg), \
-        patch.dict(preferences.DEFAULTS, clips_dir=str(home / "Videos" / "Capture Menu Clips")):
-    with patch.object(preferences, "STATE_PATH", fresh_state):
-        assert Path(preferences.load_config()["clips_dir"]).name == "Capture Menu Clips", "a new install"
-    used = tmp / "used_state.json"; used.write_text("{}", encoding="utf-8")
-    with patch.object(preferences, "STATE_PATH", used):
-        assert Path(preferences.load_config()["clips_dir"]) == home / "Videos" / "Clips", "an old install keeps it"
-print("clips folder name PASS")
+# ---- the clips folder is "Capture Menu Clips" for everyone: the old Videos\Clips moves over, favorites and all
+home = tmp / "home"; old = home / "Videos" / "Clips"; new = home / "Videos" / "Capture Menu Clips"
+(old / "Elden Ring").mkdir(parents=True); (old / "Elden Ring" / "Clip_a.mp4").write_bytes(b"a")
+(old / ".thumbs").mkdir(); (old / ".thumbs" / "t.jpg").write_bytes(b"t")
+written_cfg = tmp / "old_config.json"; written_cfg.write_text(json.dumps({"clips_dir": str(old)}), encoding="utf-8")
+with patch.object(preferences, "CONFIG_PATH", written_cfg), patch.object(preferences, "OLD_CLIPS_DIR", old),         patch.dict(preferences.DEFAULTS, clips_dir=str(new)):
+    assert Path(preferences.load_config()["clips_dir"]) == new, "the old folder written in config.json: the new one"
+preferences.move_old_clips(new, old)
+assert not old.exists() and (new / "Elden Ring" / "Clip_a.mp4").read_bytes() == b"a" and (new / ".thumbs" / "t.jpg").exists()
+c4 = C(dict(preferences.DEFAULTS, clips_dir=str(new)))
+assert c4._fav_key(new / "Elden Ring" / "Clip_a.mp4") == str(Path("Elden Ring") / "Clip_a.mp4"), "favorites keep their key"
+# both folders exist (a capture was saved in the new one first): what's inside merges, nothing is overwritten
+(old / "Elden Ring").mkdir(parents=True); (old / "Elden Ring" / "Clip_b.mp4").write_bytes(b"b")
+(old / "Elden Ring" / "Clip_a.mp4").write_bytes(b"other a")
+(old / "Desktop").mkdir(); (old / "Desktop" / "Screenshot_x.png").write_bytes(b"x")
+preferences.move_old_clips(new, old)
+assert (new / "Elden Ring" / "Clip_b.mp4").read_bytes() == b"b" and (new / "Desktop" / "Screenshot_x.png").exists()
+assert (new / "Elden Ring" / "Clip_a.mp4").read_bytes() == b"a" and (old / "Elden Ring" / "Clip_a.mp4").read_bytes() == b"other a",     "a name in both stays where it is"
+preferences.move_old_clips(new, tmp / "nowhere")                  # no old folder: nothing happens
+print("old clips folder moves PASS")

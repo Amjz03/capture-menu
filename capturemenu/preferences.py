@@ -58,10 +58,49 @@ def load_config() -> dict:
             cfg["controller_button"] = "create"
         if user.get("capture_follow_game") is False and "capture_screen" not in user:
             cfg["capture_screen"] = "main"   # up to 0.0.10 "Follow the game's screen" off kept the main screen
-    old = Path.home() / "Videos" / "Clips"   # the default up to 0.0.40: who has used it keeps it
-    if cfg["clips_dir"] == DEFAULTS["clips_dir"] and STATE_PATH.exists() and old.is_dir():
-        cfg["clips_dir"] = str(old)
+    if Path(cfg["clips_dir"]) == OLD_CLIPS_DIR:   # the old default, written out: the new one (move_old_clips)
+        cfg["clips_dir"] = DEFAULTS["clips_dir"]
     return cfg
+
+
+OLD_CLIPS_DIR = Path.home() / "Videos" / "Clips"   # the default folder up to 0.0.40
+
+
+def move_old_clips(new: Path, old: Path | None = None):
+    """Up to 0.0.40 captures went to Videos\\Clips; now Videos\\Capture Menu Clips. What's in the old folder moves
+    over (the same drive: renamed, never copied). Favorites and titles are kept relative to the folder, so they
+    come along. Anything that can't move now (open somewhere, or a name already in the new folder) stays and
+    moves on a later start; nothing is overwritten or deleted."""
+    old = old or OLD_CLIPS_DIR
+    if not old.is_dir() or old == new:
+        return
+    if not new.exists():
+        try:
+            old.rename(new)                      # the whole folder in one step
+            runtime.log.info("moved %s to %s", old, new)
+            return
+        except OSError as e:
+            runtime.log.warning("couldn't move %s in one go (%s): moving what's in it", old, e)
+            new.mkdir(parents=True, exist_ok=True)
+    _merge(old, new)
+
+
+def _merge(old: Path, new: Path):
+    for item in list(old.iterdir()):
+        target = new / item.name
+        try:
+            if not target.exists():
+                item.rename(target)
+            elif item.is_dir() and target.is_dir():   # a game folder in both: what's inside
+                _merge(item, target)
+            else:
+                runtime.log.warning("not moved, %s is in both folders", item.name)
+        except OSError as e:
+            runtime.log.warning("not moved yet: %s (%s)", item, e)
+    try:
+        old.rmdir()                              # only once it's empty
+    except OSError:
+        pass
 
 
 def save_config(changes: dict):
