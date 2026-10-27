@@ -9,3 +9,6 @@ dist/
 CaptureMenu.zip
 crash.log
 Output/
+.playwright-mcp/
+promo/
+.claude/
