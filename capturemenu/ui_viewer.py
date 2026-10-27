@@ -1188,7 +1188,8 @@ class PhonePanel(QtWidgets.QWidget):
         self.title = QtWidgets.QLabel(language.tr("Send to your phone"), objectName="vTitle")
         self.title.setAlignment(Qt.AlignCenter)
         lay.addWidget(self.title)
-        self.code = QtWidgets.QLabel()            # the percentage while the phone's copy is made, then the code
+        self._blur: QtGui.QPixmap | None = None   # the blurred code shown while waiting
+        self.code = QtWidgets.QLabel()            # the percentage on a blurred code while it's made, then the code
         self.code.setAlignment(Qt.AlignCenter)
         self.code.setFixedSize(280, 280)
         self.code.setStyleSheet(f"color: {ui_theme.INK}; font-size: 72px; font-weight: 700;")
@@ -1222,7 +1223,6 @@ class PhonePanel(QtWidgets.QWidget):
     def show_link(self, link: phone_link.PhoneLink):
         self.close_panel()
         self.link = link
-        self._since = time.monotonic()           # for the seconds left until the code shows
         self.notes[2].setText(link.what())
         self.code.clear()
         if link.url is None:
@@ -1238,13 +1238,8 @@ class PhonePanel(QtWidgets.QWidget):
         if link is None or link.url is None:
             return
         if not link.ready.is_set():
-            pct = link.progress
-            self.code.setText(f"{pct}%")
-            spent = time.monotonic() - self._since
-            left = spent * (100 - pct) / pct if pct >= 5 and spent > 2 else None   # once the pace is known
-            self.fine.setText(language.tr("Getting the video ready for the phone…") + "\n" + (
-                language.tr("The QR code shows here in about {n} seconds", n=max(5, int(left + 4) // 5 * 5))
-                if left is not None and left > 7 else language.tr("The QR code shows here in a few seconds")))
+            self.code.setPixmap(self._waiting_code(link.progress))
+            self.fine.setText(language.tr("The QR code will appear in a moment"))
             QtCore.QTimer.singleShot(250, self._tick)
             return
         self.notes[2].setText(link.what())    # what really goes over, now that it's made
@@ -1252,6 +1247,26 @@ class PhonePanel(QtWidgets.QWidget):
         pm.loadFromData(link.qr_png(scale=9))
         self.code.setPixmap(pm.scaled(280, 280, Qt.KeepAspectRatio, Qt.FastTransformation))
         self.fine.setText(language.tr("If Windows asks about network access, choose Allow. If the phone can't open it, set this Wi-Fi to Private in Windows settings"))   # no address: the code is enough
+
+    def _waiting_code(self, pct: int) -> QtGui.QPixmap:
+        """A blurred QR code (not one that scans) with how far the phone's copy is, big, on top."""
+        if self._blur is None:
+            import segno, io
+            raw = io.BytesIO()
+            segno.make("capture-menu-waiting", error="h").save(raw, kind="png", scale=4, border=2, light="white")
+            small = QtGui.QPixmap()
+            small.loadFromData(raw.getvalue())
+            small = small.scaled(30, 30, Qt.IgnoreAspectRatio, Qt.SmoothTransformation)   # down, then up: blurred
+            self._blur = small.scaled(280, 280, Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
+        pm = QtGui.QPixmap(self._blur)
+        p = QtGui.QPainter(pm)
+        p.fillRect(pm.rect(), QtGui.QColor(11, 13, 18, 150))            # darker, so the number stands out
+        p.setRenderHint(QtGui.QPainter.TextAntialiasing)
+        p.setFont(ui_theme.font(60, QtGui.QFont.Bold))
+        p.setPen(QtGui.QColor(ui_theme.INK))
+        p.drawText(pm.rect(), Qt.AlignCenter, f"{pct}%")
+        p.end()
+        return pm
 
     def close_panel(self):
         if self.link is not None:

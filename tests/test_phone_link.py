@@ -155,8 +155,7 @@ else:
     print("hvc1 SKIPPED (no ffmpeg with libx265)")
 v.close_viewer(); app.processEvents()   # let go of the file, so the test folder can be removed
 
-# while the phone's copy is made the panel says the code is coming, and roughly when
-from capturemenu import ui_viewer as _uv
+# while the phone's copy is made: a blurred code with the percentage on it, and the code is coming
 class Slow:
     url, progress, ready = "http://x", 0, __import__("threading").Event()
     def what(self): return "x"
@@ -164,8 +163,7 @@ class Slow:
 slow = Slow()
 v2 = ui_viewer.Viewer(ctl); v2.resize(1600, 900); v2.show()
 v2.phone_panel.show_link(slow); app.processEvents()
-assert "few seconds" in v2.phone_panel.fine.text(), v2.phone_panel.fine.text()
-v2.phone_panel._since -= 10; slow.progress = 25; v2.phone_panel._tick()
-assert "about 30 seconds" in v2.phone_panel.fine.text() and v2.phone_panel.code.text() == "25%", v2.phone_panel.fine.text()
+slow.progress = 38; v2.phone_panel._tick()
+assert v2.phone_panel.fine.text() == "The QR code will appear in a moment" and not v2.phone_panel.code.pixmap().isNull()
 v2.phone_panel.link = None; v2.phone_panel.hide(); v2.close_viewer(); app.processEvents()
 print("QR coming PASS")
