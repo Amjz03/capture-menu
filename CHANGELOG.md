@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.0.41 · 2026-10-27
+
+- **Your captures have their own folder: `Videos\Capture Menu Clips`.** What was in `Videos\Clips` moves there by itself the first time Capture Menu starts (favorites, titles and notes come along). A folder you picked yourself in Settings stays as it is.
+- **Saving is safer.** Pressing Stop twice no longer risks the recording just saved; the minute cleanup never removes a file a save is using; two captures in the same second never share a name; a save that fails removes only its own file. Settings and favorites are written in one step, so a crash or a full drive can't leave them half-written, and two changes at once both stay.
+- **To your phone:** a blurred code with the percentage while the video is made ready, then the QR code (with no address under it). It works on PCs without an NVIDIA card (the processor makes the 60 FPS copy), Arabic file names download, and *Leave out* your voice applies to the phone too.
+- **The viewer:** click anywhere on the time bar to jump there; T, V and E work from "only the video"; a trim or sound change that can't start brings the clip back; a late result never moves you to another clip; a damaged picture says so.
+- **Export:** a copy still over the size limit says so instead of "ready"; two clips with the same title get their own copies; *Original file* for an HDR clip says it goes in normal colours.
+- **Quit** asks first when OBS keeps recording; a restart that fails keeps Capture Menu open; Capture Menu never restarts OBS while you stream, even when OBS can't say.
+- **Controller:** double press works with *A hold*; L3 + R3 is no longer a choice (games use those buttons).
+- **Settings:** *Default* instead of *Same as Windows* for the microphone and language. Arabic uses هاتف for phone, and sizes and the trim range read left to right.
+- The gallery opens faster with many captures, a Recent card opens the capture it shows, and the menu shows no old values while OBS isn't running.
+
 ## 0.0.40 · 2026-10-27
 
 - **Send a video to your phone.** In the viewer, Share / Export → **To your phone** shows a QR code. Scan it on a phone on the same Wi-Fi: a page plays the video, with a clear **Download the video** button. Full resolution, straight from your PC (nothing goes through the internet). Clips faster than 60 FPS go at 60 and HDR clips in normal colours, so they play and look right in the iPhone's Photos app; the panel shows the percentage while it gets that copy ready.
