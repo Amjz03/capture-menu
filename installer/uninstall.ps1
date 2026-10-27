@@ -1,5 +1,5 @@
 # Removes Capture Menu: stops it, deletes its shortcuts and its install folder.
-# Captures (Videos\Clips by default), OBS Studio, FFmpeg and Python stay.
+# Captures (Videos\Capture Menu Clips by default), OBS Studio, FFmpeg and Python stay.
 $programs = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs"
 $shortcuts = @((Join-Path $programs "Capture Menu.lnk"), (Join-Path $programs "Startup\Capture Menu.lnk"))
 

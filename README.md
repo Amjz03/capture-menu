@@ -122,7 +122,7 @@ Press **Alt + C** in a game or on the desktop. A bar slides up along the bottom 
 **A folder per game.** Captures are saved by the game (or app) on screen when you press the shortcut:
 
 ```
-Videos\Clips\
+Videos\Capture Menu Clips\
 ├── Cyberpunk 2077\
 ├── Elden Ring\
 └── Desktop\        ← captures taken outside a game
@@ -252,7 +252,7 @@ The Settings page writes to `config.json` in the install folder. You can also ed
 | `buffer_minutes` | How many minutes it keeps |
 | `hotkey` | The shortcut, e.g. `alt+c`, `ctrl+shift+f8` or `f9` |
 | `durations_seconds` | The lengths shown in Save recent, in seconds |
-| `clips_dir` | Where clips and recordings go. Empty = `Videos\Clips` |
+| `clips_dir` | Where clips and recordings go. Empty = `Videos\Capture Menu Clips` (`Videos\Clips` if you used Capture Menu before 0.0.41) |
 | `screenshots_dir` | Where screenshots go. Empty = the clips folder |
 | `language` | `auto` (same as Windows), `en` or `ar` |
 | `game_names` | Fix a game's folder name (see below) |

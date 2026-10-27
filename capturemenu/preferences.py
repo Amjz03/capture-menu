@@ -20,7 +20,7 @@ DEFAULTS = {
     "obs_host": "localhost",
     "obs_port": 4455,
     "obs_password": "",
-    "clips_dir": str(Path.home() / "Videos" / "Clips"),
+    "clips_dir": str(Path.home() / "Videos" / "Capture Menu Clips"),
     "screenshots_dir": "",      # empty: screenshots go in clips_dir with the clips
     "language": "auto",         # auto (Windows' language) / en / ar
     "durations_seconds": [15, 30, 60, 180, 300, 900, 1800],
@@ -58,6 +58,9 @@ def load_config() -> dict:
             cfg["controller_button"] = "create"
         if user.get("capture_follow_game") is False and "capture_screen" not in user:
             cfg["capture_screen"] = "main"   # up to 0.0.10 "Follow the game's screen" off kept the main screen
+    old = Path.home() / "Videos" / "Clips"   # the default up to 0.0.40: who has used it keeps it
+    if cfg["clips_dir"] == DEFAULTS["clips_dir"] and STATE_PATH.exists() and old.is_dir():
+        cfg["clips_dir"] = str(old)
     return cfg
 
 

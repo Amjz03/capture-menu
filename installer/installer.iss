@@ -50,7 +50,7 @@ Filename: "schtasks.exe"; Parameters: "/Delete /TN ""Capture Menu watch ({userna
 Filename: "taskkill.exe"; Parameters: "/F /IM obs64.exe"; Flags: runhidden; RunOnceId: "StopObsRecording"
 
 [UninstallDelete]
-; setup.ps1 makes these; captures in Videos\Clips are never touched
+; setup.ps1 makes these; captures in Videos\Capture Menu Clips are never touched
 Type: files; Name: "{userprograms}\Capture Menu.lnk"
 Type: files; Name: "{userstartup}\Capture Menu.lnk"
 Type: filesandordirs; Name: "{app}"

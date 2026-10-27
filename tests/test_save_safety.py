@@ -234,3 +234,16 @@ cfg_file = tmp / "config.json"; cfg_file.write_text(json.dumps({"controller_butt
 with patch.object(preferences, "CONFIG_PATH", cfg_file):
     assert preferences.load_config()["controller_button"] == "create"
 print("combo on one controller PASS")
+
+# ---- the clips folder: "Capture Menu Clips" for a new install; who used "Clips" before keeps it
+home = tmp / "home"; (home / "Videos" / "Clips").mkdir(parents=True)
+empty_cfg = tmp / "empty_config.json"; empty_cfg.write_text("{}", encoding="utf-8")
+fresh_state = tmp / "no_state.json"
+with patch.object(Path, "home", lambda: home), patch.object(preferences, "CONFIG_PATH", empty_cfg), \
+        patch.dict(preferences.DEFAULTS, clips_dir=str(home / "Videos" / "Capture Menu Clips")):
+    with patch.object(preferences, "STATE_PATH", fresh_state):
+        assert Path(preferences.load_config()["clips_dir"]).name == "Capture Menu Clips", "a new install"
+    used = tmp / "used_state.json"; used.write_text("{}", encoding="utf-8")
+    with patch.object(preferences, "STATE_PATH", used):
+        assert Path(preferences.load_config()["clips_dir"]) == home / "Videos" / "Clips", "an old install keeps it"
+print("clips folder name PASS")
