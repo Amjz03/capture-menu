@@ -107,6 +107,10 @@
   "2026-10-29": {
    "count": 2,
    "uniques": 2
+  },
+  "2026-10-30": {
+   "count": 4,
+   "uniques": 3
   }
  },
  "downloads": {
@@ -783,6 +787,16 @@
    "total": 4
   },
   "2026-10-30": {
+   "by_release": {
+    "v0.0.41": {
+     "CaptureMenu-Setup.exe": 2,
+     "CaptureMenu.zip": 2
+    }
+   },
+   "setup_exe": 2,
+   "total": 4
+  },
+  "2026-10-31": {
    "by_release": {
     "v0.0.41": {
      "CaptureMenu-Setup.exe": 2,
@@ -1662,6 +1676,56 @@
     "title": "/blob/main/docs/screenshots/save-recent.jpg",
     "uniques": 1
    }
+  ],
+  "2026-10-31": [
+   {
+    "count": 25,
+    "path": "/Amjz03/capture-menu",
+    "title": "Overview",
+    "uniques": 4
+   },
+   {
+    "count": 7,
+    "path": "/Amjz03/capture-menu/releases/tag/v0.0.32",
+    "title": "/releases/tag/v0.0.32",
+    "uniques": 5
+   },
+   {
+    "count": 6,
+    "path": "/Amjz03/capture-menu/releases/tag/v0.0.2",
+    "title": "/releases/tag/v0.0.2",
+    "uniques": 5
+   },
+   {
+    "count": 1,
+    "path": "/Amjz03/capture-menu/blob/main/docs/screenshots/notifications.jpg",
+    "title": "/blob/main/docs/screenshots/notifications.jpg",
+    "uniques": 1
+   },
+   {
+    "count": 1,
+    "path": "/Amjz03/capture-menu/blob/main/docs/screenshots/viewer.jpg",
+    "title": "/blob/main/docs/screenshots/viewer.jpg",
+    "uniques": 1
+   },
+   {
+    "count": 1,
+    "path": "/Amjz03/capture-menu/issues",
+    "title": "/issues",
+    "uniques": 1
+   },
+   {
+    "count": 1,
+    "path": "/Amjz03/capture-menu/releases",
+    "title": "/releases",
+    "uniques": 1
+   },
+   {
+    "count": 1,
+    "path": "/Amjz03/capture-menu/stargazers",
+    "title": "/stargazers",
+    "uniques": 1
+   }
   ]
  },
  "referrers": {
@@ -1818,6 +1882,23 @@
     "referrer": "amjz03.github.io",
     "uniques": 1
    }
+  ],
+  "2026-10-31": [
+   {
+    "count": 9,
+    "referrer": "github.com",
+    "uniques": 1
+   },
+   {
+    "count": 4,
+    "referrer": "t.co",
+    "uniques": 4
+   },
+   {
+    "count": 1,
+    "referrer": "amjz03.github.io",
+    "uniques": 1
+   }
   ]
  },
  "repo": {
@@ -1825,7 +1906,7 @@
   "stars": 2,
   "watchers": 0
  },
- "updated": "2026-10-30T10:08:25+00:00",
+ "updated": "2026-10-31T09:44:29+00:00",
  "views": {
   "2026-10-03": {
    "count": 0,
@@ -1932,6 +2013,10 @@
    "uniques": 0
   },
   "2026-10-29": {
+   "count": 0,
+   "uniques": 0
+  },
+  "2026-10-30": {
    "count": 0,
    "uniques": 0
   }
