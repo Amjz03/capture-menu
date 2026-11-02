@@ -427,6 +427,13 @@ html.phone .on-phone { display: block; }   /* set in app.js: a phone or tablet t
 .faq-item p { margin: -6px 0 24px; color: var(--muted); font-size: 16px; max-width: 38em; }
 .faq-item p a { color: var(--ink); text-underline-offset: 3px; }
 .faq-item:target summary { color: #fff; }
+/* answers slide open; browsers without ::details-content just show them */
+.faq-item { interpolate-size: allow-keywords; }
+.faq-item::details-content {
+  block-size: 0; overflow: clip;
+  transition: block-size .3s var(--ease), content-visibility .3s allow-discrete;
+}
+.faq-item[open]::details-content { block-size: auto; }
 /* install: the same numbered list as How it works */
 .install { padding-top: 140px; }
 .install > div:first-child { position: sticky; top: 110px; }
