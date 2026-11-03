@@ -119,6 +119,10 @@
   "2026-11-01": {
    "count": 23,
    "uniques": 13
+  },
+  "2026-11-02": {
+   "count": 14,
+   "uniques": 9
   }
  },
  "downloads": {
@@ -833,6 +837,16 @@
    },
    "setup_exe": 2,
    "total": 4
+  },
+  "2026-11-03": {
+   "by_release": {
+    "v0.0.41": {
+     "CaptureMenu-Setup.exe": 4,
+     "CaptureMenu.zip": 2
+    }
+   },
+   "setup_exe": 4,
+   "total": 6
   }
  },
  "paths": {
@@ -1830,6 +1844,56 @@
     "title": "/stargazers",
     "uniques": 1
    }
+  ],
+  "2026-11-03": [
+   {
+    "count": 25,
+    "path": "/Amjz03/capture-menu",
+    "title": "Overview",
+    "uniques": 2
+   },
+   {
+    "count": 7,
+    "path": "/Amjz03/capture-menu/releases/tag/v0.0.32",
+    "title": "/releases/tag/v0.0.32",
+    "uniques": 5
+   },
+   {
+    "count": 1,
+    "path": "/Amjz03/capture-menu/blob/main/docs/screenshots/notifications.jpg",
+    "title": "/blob/main/docs/screenshots/notifications.jpg",
+    "uniques": 1
+   },
+   {
+    "count": 1,
+    "path": "/Amjz03/capture-menu/blob/main/docs/screenshots/viewer.jpg",
+    "title": "/blob/main/docs/screenshots/viewer.jpg",
+    "uniques": 1
+   },
+   {
+    "count": 1,
+    "path": "/Amjz03/capture-menu/issues",
+    "title": "/issues",
+    "uniques": 1
+   },
+   {
+    "count": 1,
+    "path": "/Amjz03/capture-menu/releases",
+    "title": "/releases",
+    "uniques": 1
+   },
+   {
+    "count": 1,
+    "path": "/Amjz03/capture-menu/releases/tag/v0.0.41",
+    "title": "/releases/tag/v0.0.41",
+    "uniques": 1
+   },
+   {
+    "count": 1,
+    "path": "/Amjz03/capture-menu/stargazers",
+    "title": "/stargazers",
+    "uniques": 1
+   }
   ]
  },
  "referrers": {
@@ -2027,6 +2091,18 @@
     "referrer": "amjz03.github.io",
     "uniques": 1
    }
+  ],
+  "2026-11-03": [
+   {
+    "count": 9,
+    "referrer": "github.com",
+    "uniques": 1
+   },
+   {
+    "count": 1,
+    "referrer": "amjz03.github.io",
+    "uniques": 1
+   }
   ]
  },
  "repo": {
@@ -2034,7 +2110,7 @@
   "stars": 2,
   "watchers": 0
  },
- "updated": "2026-11-02T11:19:32+00:00",
+ "updated": "2026-11-03T10:57:51+00:00",
  "views": {
   "2026-10-03": {
    "count": 0,
@@ -2155,6 +2231,10 @@
   "2026-11-01": {
    "count": 0,
    "uniques": 0
+  },
+  "2026-11-02": {
+   "count": 4,
+   "uniques": 2
   }
  }
 }
