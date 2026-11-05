@@ -75,14 +75,62 @@ function Find-FFmpeg {
     return $null
 }
 
-function Find-OBS {
-    foreach ($key in "HKLM:\SOFTWARE\OBS Studio", "HKCU:\SOFTWARE\OBS Studio") {
-        $dir = (Get-ItemProperty $key -ErrorAction SilentlyContinue).'(default)'
-        if ($dir -and (Test-Path (Join-Path $dir "bin\64bit\obs64.exe"))) { return Join-Path $dir "bin\64bit\obs64.exe" }
+# Capture Menu runs its own OBS: the official portable zip, checked against its published SHA-256, in a
+# folder of its own. The player's own OBS (if they have one) is never touched.
+# Not 33.0.1: its MP4 output splits only when a keyframe lands within 1 ms of the split time, so the
+# last minutes grow into one file that's never split. Check a newer one splits before moving to it.
+$ObsVersion = "32.2.2"
+$ObsSha256 = "4d6e40e3ab155f56b30de517380566a206d74b63cdf5ad49aa596924768f97e1"
+$ObsDir = Join-Path $env:LOCALAPPDATA "CaptureMenu\OBS"
+$ObsExe = Join-Path $ObsDir "bin\64bit\obs64.exe"
+$ObsConfig = Join-Path $ObsDir "config\obs-studio"
+
+# Only the OBS running from our folder; taskkill without /F asks it to close like clicking the X
+# (OBS rewrites its settings when it exits), and it's ended if it doesn't. CIM, not Get-Process: the
+# installer runs this in 32-bit PowerShell, where Get-Process can't read a 64-bit program's path.
+function Stop-OurObs {
+    $ours = @(Get-CimInstance Win32_Process -Filter "Name = 'obs64.exe'" -ErrorAction SilentlyContinue |
+              Where-Object { $_.ExecutablePath -ieq $ObsExe } | ForEach-Object { $_.ProcessId })
+    if ($ours) {
+        $ours | ForEach-Object { taskkill /PID $_ *> $null }
+        Wait-Process -Id $ours -Timeout 20 -ErrorAction SilentlyContinue
+        Stop-Process -Id $ours -Force -ErrorAction SilentlyContinue
     }
-    $default = Join-Path $env:ProgramFiles "obs-studio\bin\64bit\obs64.exe"
-    if (Test-Path $default) { return $default }
-    return $null
+}
+
+# Unpacks next to the old copy and swaps only once it's complete; an update keeps our OBS's settings
+function Install-OurObs {
+    if ((Test-Path $ObsExe) -and (Get-Item $ObsExe).VersionInfo.ProductVersion -like "$ObsVersion*") {
+        Write-Host "   OBS Studio $ObsVersion already in place"
+        return
+    }
+    Write-Host "   OBS Studio $ObsVersion for Capture Menu (about 190 MB) ..." -NoNewline
+    $zip = Join-Path $env:TEMP "CaptureMenu-OBS-$ObsVersion.zip"
+    $new = "$ObsDir.new"
+    $old = "$ObsDir.old"
+    try {
+        curl.exe -fsSL -o $zip "https://github.com/obsproject/obs-studio/releases/download/$ObsVersion/OBS-Studio-$ObsVersion-Windows-x64.zip"
+        if ($LASTEXITCODE -ne 0) { throw "the download failed" }
+        if ((Get-FileHash $zip -Algorithm SHA256).Hash -ne $ObsSha256) { throw "the download isn't the official file" }
+        Remove-Item $new, $old -Recurse -Force -ErrorAction SilentlyContinue
+        New-Item -ItemType Directory -Force $new | Out-Null
+        & "$env:SystemRoot\System32\tar.exe" -xf $zip -C $new   # Windows' own: Git's tar can't read C:\ paths
+        if ($LASTEXITCODE -ne 0 -or -not (Test-Path (Join-Path $new "bin\64bit\obs64.exe"))) { throw "unpacking failed" }
+        New-Item -ItemType File -Force (Join-Path $new "portable_mode.txt") | Out-Null   # settings stay in its folder
+        New-Item -ItemType File -Force (Join-Path $new "disable_updater.txt") | Out-Null # Setup picks its version
+        Stop-OurObs
+        if (Test-Path $ObsDir) { Rename-Item $ObsDir $old -ErrorAction Stop }
+        Move-Item $new $ObsDir -ErrorAction Stop
+        if (Test-Path (Join-Path $old "config")) { Move-Item (Join-Path $old "config") (Join-Path $ObsDir "config") }
+        Remove-Item $old -Recurse -Force -ErrorAction SilentlyContinue
+        Write-Host " done"
+    } catch {
+        Write-Host " failed: $_"
+        Remove-Item $new -Recurse -Force -ErrorAction SilentlyContinue
+        if (-not (Test-Path $ObsDir) -and (Test-Path $old)) { Rename-Item $old $ObsDir }
+    } finally {
+        Remove-Item $zip -Force -ErrorAction SilentlyContinue
+    }
 }
 
 function Stop-CaptureMenu {
@@ -138,7 +186,8 @@ if ($frozen) {
 } else {
     Install-Package "Python.Python.3.12" "Python 3.12"
 }
-if (Find-OBS) { Write-Host "   OBS Studio already installed" } else { Install-Package "OBSProject.OBSStudio" "OBS Studio" }
+Stop-CaptureMenu   # it would start our OBS again while it's being replaced
+Install-OurObs
 if (Find-FFmpeg) { Write-Host "   FFmpeg already installed" } else { Install-Package "Gyan.FFmpeg" "FFmpeg" }
 Refresh-Path   # pick up the new PATH entries without reopening the window
 
@@ -156,15 +205,9 @@ if ($frozen) {
 }
 
 # ---------------------------------------------------------------- 4. OBS websocket
-Step "Connecting OBS"
-# OBS rewrites its settings when it exits, so close it politely first
-# (taskkill without /F asks it to close like clicking ✕; that also reaches OBS when it sits in the tray)
-$obs = Get-Process obs64 -ErrorAction SilentlyContinue
-if ($obs) {
-    taskkill /IM obs64.exe *> $null
-    $obs | Wait-Process -Timeout 20 -ErrorAction SilentlyContinue
-}
-$wsDir = Join-Path $env:APPDATA "obs-studio\plugin_config\obs-websocket"
+Step "Connecting Capture Menu's OBS"
+Stop-OurObs   # OBS rewrites its settings when it exits
+$wsDir = Join-Path $ObsConfig "plugin_config\obs-websocket"
 New-Item -ItemType Directory -Force $wsDir | Out-Null
 $wsFile = Join-Path $wsDir "config.json"
 $ws = if (Test-Path $wsFile) { Get-Content $wsFile -Raw | ConvertFrom-Json } else { [pscustomobject]@{} }
@@ -173,7 +216,7 @@ if (-not $password) {
     $chars = [char[]]((48..57) + (65..90) + (97..122))
     $password = -join (1..20 | ForEach-Object { $chars | Get-Random })
 }
-$port = if ($ws.server_port) { $ws.server_port } else { 4455 }
+$port = if ($ws.server_port) { $ws.server_port } else { 4456 }   # 4455 is OBS's default: the player's own OBS may use it
 foreach ($kv in @{ server_enabled = $true; auth_required = $true; server_password = $password;
                     server_port = $port; first_load = $false; alerts_enabled = $false }.GetEnumerator()) {
     $ws | Add-Member -NotePropertyName $kv.Key -NotePropertyValue $kv.Value -Force
@@ -181,7 +224,8 @@ foreach ($kv in @{ server_enabled = $true; auth_required = $true; server_passwor
 [IO.File]::WriteAllText($wsFile, ($ws | ConvertTo-Json), $utf8)
 
 # OBS opens its Auto-Configuration Wizard on the very first start. Capture Menu sets OBS up
-# itself, so mark that first start as done and OBS stays quietly in the tray.
+# itself, so mark that first start as done and OBS stays quietly in the tray. FirstRun=true means
+# "it has run" (OBS writes it after its first start); false is what opens the wizard.
 function Set-IniValue($file, $section, $key, $value) {
     $lines = if (Test-Path $file) { @(Get-Content $file) } else { @() }
     $out = New-Object System.Collections.Generic.List[string]
@@ -199,16 +243,13 @@ function Set-IniValue($file, $section, $key, $value) {
     }
     [IO.File]::WriteAllLines($file, $out, $utf8)
 }
-$obsDir = Join-Path $env:APPDATA "obs-studio"
-# OBS 31+ keeps these in user.ini and copies global.ini over the first time, so only touch
-# user.ini once it exists; a fresh install gets global.ini, which OBS 31 then takes over.
-$inis = @("global.ini")
-if (Test-Path (Join-Path $obsDir "user.ini")) { $inis += "user.ini" }
-New-Item -ItemType Directory -Force $obsDir | Out-Null
-foreach ($ini in $inis) {
-    Set-IniValue (Join-Path $obsDir $ini) "General" "FirstRun" "false"
-    Set-IniValue (Join-Path $obsDir $ini) "BasicWindow" "SysTrayEnabled" "true"
-    Set-IniValue (Join-Path $obsDir $ini) "BasicWindow" "SysTrayWhenStarted" "true"
+# OBS 31+ reads these from user.ini and doesn't take them from global.ini on a fresh install, so both
+# get them before OBS first starts
+New-Item -ItemType Directory -Force $ObsConfig | Out-Null
+foreach ($ini in "global.ini", "user.ini") {
+    Set-IniValue (Join-Path $ObsConfig $ini) "General" "FirstRun" "true"
+    Set-IniValue (Join-Path $ObsConfig $ini) "BasicWindow" "SysTrayEnabled" "true"
+    Set-IniValue (Join-Path $ObsConfig $ini) "BasicWindow" "SysTrayWhenStarted" "true"
 }
 
 $cfgFile = Join-Path $InstallDir "config.json"
@@ -280,7 +321,7 @@ else {
     & $python -c "import sys; sys.path.insert(0, sys.argv[1]); import PySide6, obsws_python, sdl2, capturemenu.app" $InstallDir 2>$null
     if ($LASTEXITCODE -eq 0) { Ok "Python libraries" } else { Warn "Python libraries didn't load. Run Setup again."; $problems++ }
 }
-if (Find-OBS) { Ok "OBS Studio" } else { Warn "OBS Studio isn't installed. Install it from obsproject.com, then run Setup again."; $problems++ }
+if (Test-Path $ObsExe) { Ok "OBS Studio (Capture Menu's own copy)" } else { Warn "Capture Menu's OBS didn't download. Check the internet connection and run Setup again."; $problems++ }
 if (Find-FFmpeg) { Ok "FFmpeg (saving, trimming and sharing clips)" } else { Warn "FFmpeg isn't installed, so clips can't be saved. Run Setup again."; $problems++ }
 $running = Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
            Where-Object { $_.Name -eq "CaptureMenu.exe" -or ($_.Name -like "python*.exe" -and $_.CommandLine -like "*capture_menu.py*") }

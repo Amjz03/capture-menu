@@ -486,13 +486,18 @@ class Controller(QtCore.QObject):
         # (OBS records into BUFFER_DIR in AppData, which Controlled folder access doesn't block)
         done = plan["summary"] + " · on disk"    # until 0.0.34 the last minutes were in RAM: set up again
         state = preferences.load_state()
-        if state.get("obs_setup") == done:
+        # a new OBS has no Display Capture yet, though the setup is noted as done: 0.0.41 and older set up
+        # the player's own OBS, and Setup may have unpacked our OBS again
+        if state.get("obs_setup") == done and self.obs.display_source():
             self.obs.set_colours(plan["force_sdr"], plan["vivid"])   # live: keeps the colours up to date
             return
         if self._recording():
             return   # never interrupt a recording; try again next start
         self.toast.emit(language.tr("Setting up OBS · {summary}", summary=plan["summary"]), "info")
         self.obs.stop_ram_buffer()
+        # OBS can't change the video size or FPS while it records: the last minutes stop until heal_buffer
+        # below (the files already written stay), as OBS restarts for the new settings anyway
+        self.obs.stop_buffer()
         changed = self.obs.apply_plan(plan)
         if changed:
             self.restart_obs()     # OBS loads the new settings when it starts
@@ -505,7 +510,7 @@ class Controller(QtCore.QObject):
     def restart_obs(self) -> bool:
         """Closes OBS the polite way (like clicking ✕) and starts it again with the buffer on.
         True once the buffer runs. If OBS won't close (an error box it's waiting on), it's ended."""
-        path = obs_client.obs_exe_path() or obs_client.find_obs_exe()
+        path = obs_client.find_obs_exe()
         if not path:
             return False
         if obs_client.obs_running():
@@ -519,14 +524,14 @@ class Controller(QtCore.QObject):
                 self.obs.stop_buffer()    # or OBS asks whether to stop recording before it closes
             except Exception:
                 pass
-            media.run_quiet(["taskkill", "/IM", "obs64.exe"])
+            obs_client.close_obs()
             for _ in range(80):
                 time.sleep(0.25)
                 if not obs_client.obs_running():
                     break
             else:
                 runtime.log.warning("OBS didn't close; ending it")
-                media.run_quiet(["taskkill", "/F", "/IM", "obs64.exe"])
+                obs_client.close_obs(force=True)
                 time.sleep(2)
                 if obs_client.obs_running():
                     return False
@@ -677,7 +682,7 @@ class Controller(QtCore.QObject):
 
     @classmethod
     def _obs_lost_gpu(cls) -> bool:
-        logs = Path(os.environ.get("APPDATA", str(Path.home()))) / "obs-studio" / "logs"
+        logs = obs_client.OBS_CONFIG / "logs"
         try:
             log = max(logs.glob("*.txt"), key=lambda p: p.stat().st_mtime)
             with open(log, "rb") as f:
@@ -813,6 +818,8 @@ class Controller(QtCore.QObject):
 
         def run():
             runtime.touch_alive()
+            if runtime.IS_WINDOWS:
+                obs_client.stop_old_buffer(int(self.cfg["obs_port"]))
             if runtime.IS_WINDOWS and not obs_client.obs_running() and obs_client.start_obs():
                 self._wait_for_obs()
             self.check_storage()

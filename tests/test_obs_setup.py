@@ -20,30 +20,37 @@ assert prof[("SimpleOutput", "RecFormat2")] == "hybrid_mp4"
 assert {(c, n): v for c, n, v in obs_client.obs_plan(dict(preferences.DEFAULTS), 2560, 1440, "x264", "29.1.3")["profile"]}[("SimpleOutput", "RecFormat2")] == "mp4"
 print(plan["summary"]); print("plan PASS")
 
+from obsws_python.error import OBSSDKRequestError
+
 class FakeObs(obs_client.Obs):
     def __init__(self):
         super().__init__(dict(preferences.DEFAULTS))
         self.video = {"baseWidth": 1920, "baseHeight": 1080, "outputWidth": 1280, "outputHeight": 720,
                       "fpsNumerator": 30, "fpsDenominator": 1}
         self.params, self.inputs, self.buffer, self.ram, self.log = {}, [], False, True, []
+        self.kinds = {}
     def raw(self, req, d=None):
         self.log.append(req)
         if req == "GetVersion": return {"obsVersion": "31.0.2"}
         if req == "GetVideoSettings": return dict(self.video)
-        if req == "SetVideoSettings": self.video.update(d); return {}
+        if req == "SetVideoSettings":
+            if self.buffer: raise OBSSDKRequestError(req, 500, "Video settings cannot be changed while an output is active.")
+            self.video.update(d); return {}
         if req == "GetProfileParameter": return {"parameterValue": self.params.get((d["parameterCategory"], d["parameterName"]))}
         if req == "SetProfileParameter": self.params[(d["parameterCategory"], d["parameterName"])] = d["parameterValue"]; return {}
-        if req == "GetInputList": return {"inputs": [{"inputName": n} for n in self.inputs]}
-        if req == "CreateInput": self.inputs.append(d["inputName"]); return {}
+        if req == "GetInputList": return {"inputs": [{"inputName": n, "inputKind": k} for n, k in self.kinds.items()
+                                                     if not d or d.get("inputKind") in (None, k)]}
+        if req == "CreateInput": self.inputs.append(d["inputName"]); self.kinds[d["inputName"]] = d["inputKind"]; return {}
         if req == "GetCurrentProgramScene": return {"sceneName": "Scene"}
         if req == "GetSceneItemId": return {"sceneItemId": 1}
         return {}
-    def record_status(self): return False, 0
+    def record_status(self): return self.buffer, 0
     def buffer_active(self): return self.buffer
     def call(self, name, *a):
         if name == "get_replay_buffer_status": return SimpleNamespace(output_active=self.ram)
         if name == "stop_replay_buffer": self.ram = False; return
         if name == "start_record": self.buffer = True; return
+        if name == "stop_record": self.buffer = False; return
         return super().call(name, *a)
 
 app = QtWidgets.QApplication([])
@@ -58,11 +65,20 @@ o = ctl.obs
 assert o.video["baseWidth"] == 2560 and o.video["fpsNumerator"] == 60
 assert o.params[("SimpleOutput", "StreamEncoder")] == "nvenc_av1" and o.params[("SimpleOutput", "RecRB")] == "false"
 assert not o.ram and o.buffer, "the old RAM buffer stopped, the last minutes recorded to disk"
-assert o.inputs == ["Display Capture"] and "SetSceneItemTransform" in o.log
+# a fresh OBS (no first-run wizard, so no sound sources yet) gets game sound, the mic and the screen
+assert o.inputs == ["Desktop Audio", "Mic/Aux", "Display Capture"] and "SetSceneItemTransform" in o.log, o.inputs
 assert json.loads(preferences.STATE_PATH.read_text())["obs_setup"].startswith("2560×1440")
 print(*toasts, sep="\n")
 o.log.clear(); ctl.auto_setup(2560, 1440)
 assert "SetVideoSettings" not in o.log and "SetProfileParameter" not in o.log, "second start: nothing to do"
+assert "CreateInput" not in o.log, "nothing added twice"
+# updating from 0.0.41: the setup is noted as done (it set up the player's own OBS), but our OBS is new
+ctl.obs = fresh = FakeObs(); restarted = []
+fresh.buffer = True        # it already records (at 1080p): OBS refuses a new size while it does
+ctl.restart_obs = lambda: restarted.append(1) or True
+ctl.auto_setup(2560, 1440)
+assert fresh.inputs == ["Desktop Audio", "Mic/Aux", "Display Capture"] and fresh.video["baseWidth"] == 2560, fresh.inputs
+assert restarted and fresh.buffer, "the new settings load when it restarts, and it records again"
 print("auto setup PASS")
 
 # one press opens (after the wait), two quick presses save instantly

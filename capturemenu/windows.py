@@ -69,18 +69,32 @@ def _exe_version_string(exe_path: str, field: str) -> str:
     return ""
 
 
+def process_path(pid: int) -> str:
+    """The full path of a running program's .exe ("" when it's gone or can't be read)."""
+    from ctypes import wintypes
+    kernel32 = ctypes.windll.kernel32
+    kernel32.OpenProcess.restype = wintypes.HANDLE
+    kernel32.QueryFullProcessImageNameW.argtypes = [
+        wintypes.HANDLE, wintypes.DWORD, wintypes.LPWSTR, ctypes.POINTER(wintypes.DWORD)]
+    kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
+    handle = kernel32.OpenProcess(0x1000, False, pid)  # QUERY_LIMITED_INFORMATION
+    if not handle:
+        return ""
+    try:
+        buf, size = ctypes.create_unicode_buffer(1024), wintypes.DWORD(1024)
+        return buf.value if kernel32.QueryFullProcessImageNameW(handle, 0, buf, ctypes.byref(size)) else ""
+    finally:
+        kernel32.CloseHandle(handle)
+
+
 def foreground_app(cfg: dict) -> str:
     """Name of the game or app in the foreground, used as its folder name."""
     if not runtime.IS_WINDOWS:
         return DESKTOP
     try:
         from ctypes import wintypes
-        user32, kernel32 = ctypes.windll.user32, ctypes.windll.kernel32
+        user32 = ctypes.windll.user32
         user32.GetForegroundWindow.restype = wintypes.HWND
-        kernel32.OpenProcess.restype = wintypes.HANDLE
-        kernel32.QueryFullProcessImageNameW.argtypes = [
-            wintypes.HANDLE, wintypes.DWORD, wintypes.LPWSTR, ctypes.POINTER(wintypes.DWORD)]
-        kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
         user32.GetWindowTextW.argtypes = [wintypes.HWND, wintypes.LPWSTR, ctypes.c_int]
         user32.GetWindowThreadProcessId.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.DWORD)]
 
@@ -91,13 +105,7 @@ def foreground_app(cfg: dict) -> str:
         user32.GetWindowTextW(hwnd, title, 256)
         pid = wintypes.DWORD()
         user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
-        exe_path = ""
-        handle = kernel32.OpenProcess(0x1000, False, pid.value)  # QUERY_LIMITED_INFORMATION
-        if handle:
-            buf, size = ctypes.create_unicode_buffer(1024), wintypes.DWORD(1024)
-            if kernel32.QueryFullProcessImageNameW(handle, 0, buf, ctypes.byref(size)):
-                exe_path = buf.value
-            kernel32.CloseHandle(handle)
+        exe_path = process_path(pid.value)
 
         exe = Path(exe_path).name.lower()
         overrides = {k.lower(): v for k, v in cfg.get("game_names", {}).items()}

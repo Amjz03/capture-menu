@@ -1,5 +1,5 @@
 # Removes Capture Menu: stops it, deletes its shortcuts and its install folder.
-# Captures (Videos\Capture Menu Clips by default), OBS Studio, FFmpeg and Python stay.
+# Captures (Videos\Capture Menu Clips by default), the player's own OBS Studio, FFmpeg and Python stay.
 $programs = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs"
 $shortcuts = @((Join-Path $programs "Capture Menu.lnk"), (Join-Path $programs "Startup\Capture Menu.lnk"))
 
@@ -21,7 +21,7 @@ if (-not (Is-AppFolder $dir)) {
 
 Write-Host ""
 Write-Host "  This removes Capture Menu from $dir" -ForegroundColor White
-Write-Host "  Your captures, OBS Studio and FFmpeg are kept." -ForegroundColor Gray
+Write-Host "  Your captures, your own OBS Studio and FFmpeg are kept." -ForegroundColor Gray
 $answer = Read-Host "  Type Y and press Enter to remove it"
 if ($answer -notmatch '^[yY]') { Write-Host "  Nothing was removed."; exit 0 }
 
@@ -34,8 +34,12 @@ foreach ($lnk in $shortcuts) { Remove-Item $lnk -Force -ErrorAction SilentlyCont
 Remove-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run" -Name "Capture Menu" -ErrorAction SilentlyContinue
 Unregister-ScheduledTask -TaskName "Capture Menu ($env:USERNAME)" -Confirm:$false -ErrorAction SilentlyContinue
 Unregister-ScheduledTask -TaskName "Capture Menu watch ($env:USERNAME)" -Confirm:$false -ErrorAction SilentlyContinue
-# OBS records the last minutes into AppData\CaptureMenu for Capture Menu: stop it, then remove them
-Stop-Process -Name obs64 -Force -ErrorAction SilentlyContinue
+# Capture Menu's own OBS runs from AppData\CaptureMenu and records the last minutes there: stop only
+# that one (the player's own OBS is left alone), then remove them
+Get-CimInstance Win32_Process -Filter "Name = 'obs64.exe'" -ErrorAction SilentlyContinue |
+    Where-Object { $_.ExecutablePath -like "$env:LOCALAPPDATA\CaptureMenu\*" } |
+    ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+Start-Sleep -Seconds 1   # its files are let go once it's ended
 Start-Sleep -Seconds 1
 Remove-Item "$env:LOCALAPPDATA\CaptureMenu" -Recurse -Force -ErrorAction SilentlyContinue
 Write-Host "  Stopped it and removed the shortcuts." -ForegroundColor Green

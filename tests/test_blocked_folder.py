@@ -47,6 +47,7 @@ class FakeObs:
     def buffer_active(self): return False
     def apply_plan(self, plan): self.applied = plan; return False
     def stop_ram_buffer(self): pass
+    def stop_buffer(self): return True
     def set_colours(self, *a): pass
     def start_buffer(self): return True
 

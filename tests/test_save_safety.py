@@ -114,7 +114,7 @@ o.raw = lambda *a, **k: (_ for _ in ()).throw(OBSSDKRequestError("GetStreamStatu
 assert o.streaming() is True
 killed = []
 capture_controller.media.run_quiet = lambda cmd, **k: killed.append(cmd)
-with patch.object(obs_client, "obs_running", lambda: True), patch.object(obs_client, "obs_exe_path", lambda: "obs64.exe"):
+with patch.object(obs_client, "obs_running", lambda: True), patch.object(obs_client, "find_obs_exe", lambda: "obs64.exe"):
     ctl.obs = o
     assert ctl.restart_obs() is False and not killed, killed
 capture_controller.media.run_quiet = real_run

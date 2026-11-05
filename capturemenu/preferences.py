@@ -18,7 +18,7 @@ STATE_PATH = runtime.APP_DIR / "state.json"
 DEFAULTS = {
     "hotkey": "alt+c",
     "obs_host": "localhost",
-    "obs_port": 4455,
+    "obs_port": 4456,
     "obs_password": "",
     "clips_dir": str(Path.home() / "Videos" / "Capture Menu Clips"),
     "screenshots_dir": "",      # empty: screenshots go in clips_dir with the clips

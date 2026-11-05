@@ -9,10 +9,9 @@ InstallModes:
 - silent
 - silentWithProgress
 UpgradeBehavior: install
-# setup.ps1 installs these with winget when they're missing; listing them lets winget do it first
+# setup.ps1 installs FFmpeg with winget when it's missing (and downloads its own OBS); listing it lets winget do it first
 Dependencies:
   PackageDependencies:
-  - PackageIdentifier: OBSProject.OBSStudio
   - PackageIdentifier: Gyan.FFmpeg
 ProductCode: '{6E0C2D4B-7A51-4C8E-9B3F-CA9E3D1F2A60}_is1'
 ReleaseDate: 2026-10-27

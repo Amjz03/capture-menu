@@ -42,7 +42,7 @@
 - **Works with a controller:** DualSense, Xbox and most others, with on-screen hints that match.
 - **Follows your game** across monitors and TVs, or always records the screen you pick. The menu shows in your clips and screen shares, but never in its own screenshots.
 - **English and Arabic:** the whole interface, mirrored right to left in Arabic, like the PS5.
-- **One-click install:** OBS Studio and FFmpeg are installed and set up for your PC automatically.
+- **One-click install:** Capture Menu gets its own copy of OBS Studio, and FFmpeg, set up for your PC automatically. If you use OBS yourself, your OBS isn't touched.
 
 <p align="center">
   <img src="docs/poster.jpg" alt="Capture Menu over Call of Duty and Red Dead Redemption 2">
@@ -60,7 +60,7 @@
 
 That's it: press **Alt + C** in a game. No admin rights and no Python needed.
 
-**Or with winget**, in a terminal (OBS Studio and FFmpeg come with it):
+**Or with winget**, in a terminal (FFmpeg comes with it; Setup downloads Capture Menu's own OBS):
 
 ```
 winget install Amjz03.CaptureMenu
@@ -70,7 +70,7 @@ winget install Amjz03.CaptureMenu
 
 **Update:** when a new version is out, a notice says so. Click it, or open Settings → General → **Updates**, and press Enter to install. Capture Menu restarts by itself and keeps your settings and captures. Nothing is downloaded until you press.
 
-**Remove:** Windows **Settings → Apps → Installed apps → Capture Menu → Uninstall**. Your captures, OBS and FFmpeg stay.
+**Remove:** Windows **Settings → Apps → Installed apps → Capture Menu → Uninstall**. Your captures, your own OBS and FFmpeg stay.
 
 ## Using it
 

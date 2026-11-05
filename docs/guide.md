@@ -13,14 +13,18 @@ Everything about using and setting up Capture Menu. Back to the [README](../READ
 Setup does all of this by itself:
 
 - installs Capture Menu to `%LOCALAPPDATA%\Programs\CaptureMenu`
-- installs **OBS Studio** and **FFmpeg** if you don't have them
-- turns on OBS's WebSocket with a random password and saves it to `config.json`
+- downloads Capture Menu's **own copy of OBS Studio** (the official release, checked before it's used) into `%LOCALAPPDATA%\CaptureMenu\OBS`, and installs **FFmpeg** if you don't have it
+- turns on that OBS's WebSocket (port 4456) with a random password and saves it to `config.json`
+
+**Your own OBS stays yours.** Capture Menu records with its own OBS, with its own settings, scenes and logs. If you use OBS yourself (to stream or record), it's never changed, closed or restarted, and both run side by side. Capture Menu 0.0.41 and older used your OBS: the first start of a newer version stops only the last-minutes recording it left running there.
+
+**A Windows Firewall message the first time.** When Capture Menu's OBS starts for the first time, Windows may ask whether to allow OBS Studio on your networks. Either answer is fine: Capture Menu only talks to its OBS on this PC, which the firewall doesn't block.
 - adds Capture Menu to the Start menu and to Windows startup, and starts it
 - checks everything, and if something isn't ready, offers a log that says what to fix
 
 **First start.** Capture Menu sets up OBS for your PC and restarts it once: your main screen's resolution at 60 FPS, the best encoder for your graphics card (RTX 40/50: AV1, older NVIDIA: HEVC, AMD/Intel: their hardware encoder), a bitrate that suits the resolution, MP4 recordings and a Display Capture source. You'll see *Setting up OBS · 2560×1440 · 60 FPS · NVENC AV1 8000 Kbps*, then *OBS is ready*. It only runs again if your main monitor or graphics card changes.
 
-**Always on, out of the way.** Capture Menu starts with Windows and runs in the background with no window or taskbar button. A notice says *Capture Menu is running* when the PC starts, and its icon sits next to the clock: click it to open the bar, right-click for the gallery, Settings or Quit. OBS starts minimized to the tray too. Only one copy runs at a time.
+**Always on, out of the way.** Capture Menu starts with Windows and runs in the background with no window or taskbar button. A notice says *Capture Menu is running* when the PC starts, and its icon sits next to the clock: click it to open the bar, right-click for the gallery, Settings or Quit. Its OBS starts minimized to the tray too. Only one copy runs at a time.
 
 ## Using it
 
@@ -221,7 +225,7 @@ The last minutes are kept on your drive, not in RAM: OBS records all the time in
 
 With your voice on its own track (the default), OBS records at constant quality, so busy scenes can use more, up to about 2.9 GB for 30 minutes at 1440p.
 
-OBS records the whole time Capture Menu runs. Once a minute Capture Menu checks on it and restarts it if it was closed, crashed, or stopped writing (a driver update can do that). It never touches OBS while you stream. If Capture Menu itself crashes, Windows starts it again within about 5 minutes. **Quit** stops the recording.
+OBS records the whole time Capture Menu runs. Once a minute Capture Menu checks on it and restarts it if it was closed, crashed, or stopped writing (a driver update can do that). It never restarts its OBS while that OBS streams, and never touches your own OBS. If Capture Menu itself crashes, Windows starts it again within about 5 minutes. **Quit** stops the recording.
 
 Capture Menu itself uses about 75 MB while it waits. The video player loads only when you open a clip, and FFmpeg (thumbnails, trims, share copies) runs at below-normal priority so it never takes CPU from your game.
 
@@ -239,6 +243,8 @@ Clips are AV1 on recent cards. VLC, Chrome and Discord play them; the Windows Ph
 
 <details>
 <summary><b>Set up OBS by hand</b> (only if the automatic setup can't)</summary>
+
+Open Capture Menu's OBS from its icon next to the clock (not your own OBS), then:
 
 1. **Sources → + → Display Capture.**
 2. **Settings → Video:** Base and Output `2560x1440`, FPS `60`.

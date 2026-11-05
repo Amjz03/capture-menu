@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from obsws_python.error import OBSSDKRequestError
 from pathlib import Path
+import json
 import obsws_python as obsws
 import os
 import re
@@ -166,11 +167,19 @@ class Obs:
             self.raw("SetVideoSettings", plan["video"])
             changed = True
         changed |= self.set_profile(plan["profile"])
+        scene = self.raw("GetCurrentProgramScene")
+        scene = scene.get("sceneName") or scene.get("currentProgramSceneName")
+        # our OBS skips its first-run wizard, and with it the sound sources it makes then: game sound
+        # and microphone (Windows' default devices) are added here, so clips aren't silent
+        desktop, mics = self.audio_inputs()
+        for missing, name, kind in ((not desktop, "Desktop Audio", "wasapi_output_capture"),
+                                    (not mics, "Mic/Aux", "wasapi_input_capture")):
+            if missing:
+                self.raw("CreateInput", {"sceneName": scene, "inputName": name, "inputKind": kind,
+                                         "inputSettings": {"device_id": "default"}, "sceneItemEnabled": True})
         if plan.get("voice_track"):
             changed |= self.split_voice_track()
         if not self.display_source():
-            scene = self.raw("GetCurrentProgramScene")
-            scene = scene.get("sceneName") or scene.get("currentProgramSceneName")
             self.raw("CreateInput", {"sceneName": scene, "inputName": "Display Capture",
                                      "inputKind": "monitor_capture", "inputSettings": {},
                                      "sceneItemEnabled": True})
@@ -476,54 +485,78 @@ def obs_plan(cfg: dict, width: int, height: int, encoder: str, obs_version: str,
     }
 
 
-def obs_exe_path() -> str | None:
-    if not runtime.IS_WINDOWS:
-        return None
-    r = media.run_quiet(["powershell", "-NoProfile", "-Command",
-                   "(Get-Process obs64 -ErrorAction SilentlyContinue | Select-Object -First 1).Path"])
-    return r.stdout.strip() or None
+# Capture Menu runs its own OBS, a portable copy Setup unpacks here: its settings, scenes and logs stay in
+# its own folder and it runs beside the player's own OBS (if they have one), which is never touched.
+OBS_DIR = Path(os.environ.get("LOCALAPPDATA", str(Path.home()))) / "CaptureMenu" / "OBS"
+OBS_EXE = OBS_DIR / "bin" / "64bit" / "obs64.exe"
+OBS_CONFIG = OBS_DIR / "config" / "obs-studio"
+
+
+def stop_old_buffer(our_port: int):
+    """Until 0.0.41 Capture Menu recorded with the player's own OBS. If that OBS still records the last
+    minutes into BUFFER_DIR (it was running when Capture Menu updated), only that recording stops:
+    nothing else in their OBS changes, and it stays open."""
+    ws = Path(os.environ.get("APPDATA", str(Path.home()))) / "obs-studio" / "plugin_config" / "obs-websocket" / "config.json"
+    try:
+        c = json.loads(ws.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return
+    port = int(c.get("server_port") or 4455)
+    if not c.get("server_enabled") or port == our_port:
+        return
+    theirs = Obs({"obs_host": "localhost", "obs_port": port, "obs_password": c.get("server_password", "")})
+    try:
+        if theirs.buffer_active():
+            theirs.stop_buffer()
+            runtime.log.info("stopped the last-minutes recording in the player's own OBS")
+    except (ObsOffline, OBSSDKRequestError):
+        pass
 
 
 def find_obs_exe() -> str | None:
-    """obs64.exe from OBS's install record, else the default install folder."""
+    return str(OBS_EXE) if OBS_EXE.exists() else None
+
+
+def obs_pids() -> list[int]:
+    """Our OBS's process ids, told apart from the player's own OBS by where the .exe is. Only the end of
+    the path is compared: to a packaged app (Python from the Store) Windows reports AppData\\Local files
+    under its own Packages\\...\\LocalCache folder instead."""
     if not runtime.IS_WINDOWS:
-        return None
-    import winreg
-    for hive in (winreg.HKEY_LOCAL_MACHINE, winreg.HKEY_CURRENT_USER):
-        try:
-            with winreg.OpenKey(hive, r"SOFTWARE\OBS Studio") as key:
-                exe = Path(winreg.QueryValueEx(key, "")[0]) / "bin" / "64bit" / "obs64.exe"
-                if exe.exists():
-                    return str(exe)
-        except OSError:
-            continue
-    exe = Path(os.environ.get("ProgramFiles", r"C:\Program Files")) / "obs-studio" / "bin" / "64bit" / "obs64.exe"
-    return str(exe) if exe.exists() else None
+        return []
+    r = media.run_quiet(["tasklist", "/FI", "IMAGENAME eq obs64.exe", "/FO", "CSV", "/NH"])
+    ours = os.path.normcase(str(OBS_EXE.relative_to(OBS_DIR.parent.parent)))   # CaptureMenu\OBS\bin\64bit\obs64.exe
+    return [pid for pid in map(int, re.findall(r'^"obs64\.exe","(\d+)"', r.stdout, re.M | re.I))
+            if os.path.normcase(windows.process_path(pid)).endswith(os.sep + ours)]
+
+
+def close_obs(force: bool = False):
+    """Asks our OBS to close like clicking ✕ (force: ends it). The player's own OBS is left alone."""
+    for pid in obs_pids():
+        media.run_quiet(["taskkill", *(["/F"] if force else []), "/PID", str(pid)])
 
 
 def launch_obs(exe: str | Path):
-    """Starts OBS hidden in the tray, without its "did not properly shut
-    down, run in Safe Mode?" question. That question waits on screen and nothing records meanwhile;
-    it comes after Windows ends OBS while it's still closing (a restart with a long replay buffer).
-    OBS 32 dropped --disable-shutdown-check and asks whenever it finds a run file left in .sentinel,
-    so when no OBS is running those leftovers go first. The flag stays for older OBS."""
+    """Starts our OBS hidden in the tray, beside the player's own OBS if one runs (--multi), without its
+    "did not properly shut down, run in Safe Mode?" question. That question waits on screen and nothing
+    records meanwhile; it comes after Windows ends OBS while it's still closing (a restart with a long
+    buffer). OBS 32 dropped --disable-shutdown-check and asks whenever it finds a run file left in
+    .sentinel, so when ours isn't running those leftovers go first. The flag stays for older OBS."""
     if not obs_running():
-        sentinel = Path(os.environ.get("APPDATA", str(Path.home()))) / "obs-studio" / ".sentinel"
-        for f in sentinel.glob("run_*"):
+        for f in (OBS_CONFIG / ".sentinel").glob("run_*"):
             try:
                 f.unlink()
                 runtime.log.info("cleared OBS's unclean-shutdown mark: %s", f.name)
             except OSError:
                 pass
-    windows.launch_outside([str(exe), "--minimize-to-tray", "--disable-shutdown-check"],
+    windows.launch_outside([str(exe), "--portable", "--multi", "--minimize-to-tray", "--disable-shutdown-check"],
                    cwd=str(Path(exe).parent), flags=0x00000008 | 0x00000200)  # DETACHED, NEW_PROCESS_GROUP
 
 
 def start_obs() -> bool:
-    """Starts OBS hidden in the tray (Capture Menu starts its recording)."""
+    """Starts our OBS hidden in the tray (Capture Menu starts its recording)."""
     exe = find_obs_exe()
     if not exe:
-        runtime.log.warning("OBS not found")
+        runtime.log.warning("OBS not found: %s", OBS_EXE)
         return False
     launch_obs(exe)
     runtime.log.info("started OBS: %s", exe)
@@ -531,7 +564,4 @@ def start_obs() -> bool:
 
 
 def obs_running() -> bool:
-    if not runtime.IS_WINDOWS:
-        return False
-    r = media.run_quiet(["tasklist", "/FI", "IMAGENAME eq obs64.exe", "/NH"])
-    return "obs64.exe" in r.stdout.lower()
+    return bool(obs_pids())
