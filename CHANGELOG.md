@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.0.42 · 2026-11-05
+
+- **Capture Menu has its own OBS, and your OBS stays yours.** Setup downloads the official OBS Studio 32.2.2 (checked before it's used) into `%LOCALAPPDATA%\CaptureMenu\OBS`, with its own settings, scenes and WebSocket port (4456). If you use OBS yourself, to stream or record, it's never changed, closed or restarted, and both run side by side, even both recording during a game.
+- **Updating from 0.0.41:** the first start stops only the last-minutes recording Capture Menu left running in your OBS, and sets its own OBS up for your PC once. Nothing else in your OBS changes.
+- **No OBS setup wizard** on a new install, and game sound and the microphone are recorded from the first start.
+- **Changing the resolution or FPS** in Settings, or a new screen, sets OBS up again reliably (OBS refused while it recorded).
+- **Uninstall** stops and removes only Capture Menu's OBS. Your own OBS, your captures and FFmpeg stay.
+- The first time Capture Menu's OBS starts, Windows may ask about the firewall: either answer is fine.
+
 ## 0.0.41 · 2026-10-27
 
 - **Your captures have their own folder: `Videos\Capture Menu Clips`.** What was in `Videos\Clips` moves there by itself the first time Capture Menu starts (favorites, titles and notes come along). A folder you picked yourself in Settings stays as it is.
