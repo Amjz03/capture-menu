@@ -131,6 +131,10 @@
   "2026-11-04": {
    "count": 8,
    "uniques": 5
+  },
+  "2026-11-05": {
+   "count": 25,
+   "uniques": 11
   }
  },
  "downloads": {
@@ -875,6 +879,20 @@
    },
    "setup_exe": 4,
    "total": 6
+  },
+  "2026-11-06": {
+   "by_release": {
+    "v0.0.41": {
+     "CaptureMenu-Setup.exe": 5,
+     "CaptureMenu.zip": 3
+    },
+    "v0.0.42": {
+     "CaptureMenu-Setup.exe": 1,
+     "CaptureMenu.zip": 1
+    }
+   },
+   "setup_exe": 6,
+   "total": 10
   }
  },
  "paths": {
@@ -2022,6 +2040,56 @@
     "title": "/stargazers",
     "uniques": 1
    }
+  ],
+  "2026-11-06": [
+   {
+    "count": 26,
+    "path": "/Amjz03/capture-menu",
+    "title": "Overview",
+    "uniques": 2
+   },
+   {
+    "count": 7,
+    "path": "/Amjz03/capture-menu/releases/tag/v0.0.32",
+    "title": "/releases/tag/v0.0.32",
+    "uniques": 5
+   },
+   {
+    "count": 3,
+    "path": "/Amjz03/capture-menu/releases/tag/v0.0.41",
+    "title": "/releases/tag/v0.0.41",
+    "uniques": 1
+   },
+   {
+    "count": 1,
+    "path": "/Amjz03/capture-menu/blob/main/docs/screenshots/notifications.jpg",
+    "title": "/blob/main/docs/screenshots/notifications.jpg",
+    "uniques": 1
+   },
+   {
+    "count": 1,
+    "path": "/Amjz03/capture-menu/blob/main/docs/screenshots/viewer.jpg",
+    "title": "/blob/main/docs/screenshots/viewer.jpg",
+    "uniques": 1
+   },
+   {
+    "count": 1,
+    "path": "/Amjz03/capture-menu/issues",
+    "title": "/issues",
+    "uniques": 1
+   },
+   {
+    "count": 1,
+    "path": "/Amjz03/capture-menu/releases",
+    "title": "/releases",
+    "uniques": 1
+   },
+   {
+    "count": 1,
+    "path": "/Amjz03/capture-menu/stargazers",
+    "title": "/stargazers",
+    "uniques": 1
+   }
   ]
  },
  "referrers": {
@@ -2255,6 +2323,18 @@
     "referrer": "amjz03.github.io",
     "uniques": 1
    }
+  ],
+  "2026-11-06": [
+   {
+    "count": 9,
+    "referrer": "github.com",
+    "uniques": 1
+   },
+   {
+    "count": 1,
+    "referrer": "amjz03.github.io",
+    "uniques": 1
+   }
   ]
  },
  "repo": {
@@ -2262,7 +2342,7 @@
   "stars": 2,
   "watchers": 0
  },
- "updated": "2026-11-05T11:03:00+00:00",
+ "updated": "2026-11-06T11:00:21+00:00",
  "views": {
   "2026-10-03": {
    "count": 0,
@@ -2393,6 +2473,10 @@
    "uniques": 2
   },
   "2026-11-04": {
+   "count": 0,
+   "uniques": 0
+  },
+  "2026-11-05": {
    "count": 0,
    "uniques": 0
   }
