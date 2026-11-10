@@ -55,6 +55,12 @@ def main():
         windows.set_watch_task()
     threading.Thread(target=tasks, daemon=True).start()
     problems: list[str] = []
+    if preferences.CONFIG_PROBLEM == "unreadable":     # a typo in a hand-edited file never stops the app
+        problems.append(language.tr("config.json couldn't be read · the default settings are used, and your file "
+                                    "is kept as config.broken.json"))
+    elif preferences.CONFIG_PROBLEM:
+        problems.append(language.tr("config.json has values that can't be used · the defaults are used for: {names}",
+                                    names=", ".join(preferences.CONFIG_PROBLEM)))
 
     ctl = capture_controller.Controller(cfg)
     # Where captures went instead, said once and calmly: it all works, there's nothing to do.
@@ -124,8 +130,11 @@ def main():
                             "Capture Menu is closed. Quit anyway?"),
                 QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No, QtWidgets.QMessageBox.No) != QtWidgets.QMessageBox.Yes:
             return                             # keep running: it goes on looking after the files
-        runtime.ALIVE.unlink(missing_ok=True)     # closed on purpose: the watch task leaves it closed
-        app.quit()
+        def finish():
+            runtime.ALIVE.unlink(missing_ok=True)     # closed on purpose: the watch task leaves it closed
+            app.quit()
+        # a clip being saved, trimmed or made ready to share is finished first: closing now would lose it
+        ctl.when_idle(finish, language.tr("Finishing the clip that's being saved · Capture Menu closes right after"))
     tm.addAction(language.tr("Quit"), quit_app)
     tray.setContextMenu(tm)
     tray.activated.connect(lambda r: menu.show_menu()
@@ -184,18 +193,22 @@ def main():
 
     hotkey = input_devices.Hotkey(cfg["hotkey"], lambda: windows.foreground_app(cfg))
     hotkey.pressed.connect(presses.press)
-    registered = hotkey.start()
-    for _ in range(20 if restarted and runtime.IS_WINDOWS else 0):   # the old copy may still be letting go
+    usable = hotkey.valid()        # keys typed into config.json that aren't a shortcut: said, never a crash
+    registered = usable and hotkey.start()
+    for _ in range(20 if usable and restarted and runtime.IS_WINDOWS else 0):   # the old copy may still be letting go
         if registered:
             break
         time.sleep(0.25)
         registered = hotkey.start()
-    if runtime.IS_WINDOWS and not registered:
+    if not usable:
+        problems.append(language.tr("{keys} isn't a shortcut Capture Menu can use · "
+                                    "pick other keys in Settings", keys=cfg["hotkey"].upper()))
+    elif runtime.IS_WINDOWS and not registered:
         problems.append(language.tr("{keys} is taken by another app · "
                            "use the controller or the tray icon, and pick other keys in Settings",
                            keys=cfg["hotkey"].upper()))
     keys = " + ".join(k.upper() if len(k) == 1 or k[0] == "f" and k[1:].isdigit() else k.capitalize()
-                      for k in cfg["hotkey"].split("+"))   # alt+c -> Alt + C
+                      for k in cfg["hotkey"].split("+") if k)   # alt+c -> Alt + C
     pad_name = cfg["controller_button"].replace("+", " + ").title()
     if problems:
         toast.show_message(problems[0], "error")

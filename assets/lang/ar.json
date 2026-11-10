@@ -432,5 +432,14 @@
   "Lower uses less space.": "الأقل يستهلك مساحة أقل.",
   "OBS stopped recording after a graphics driver reset, so I restarted it": "توقف OBS عن التسجيل بعد إعادة تشغيل تعريف كرت الشاشة، فأعدت تشغيله",
   "OBS stopped recording, so I restarted it": "توقف OBS عن التسجيل، فأعدت تشغيله",
-  "Only {free} GB free on {drive} · Capture Menu needs room there for the last minutes": "بقي {free} جيجابايت فقط على {drive} · يحتاج Capture Menu مساحة هناك لآخر الدقائق"
+  "Only {free} GB free on {drive} · Capture Menu needs room there for the last minutes": "بقي {free} جيجابايت فقط على {drive} · يحتاج Capture Menu مساحة هناك لآخر الدقائق",
+  "Hang on, the last trim or sound change is still running…": "لحظة، ما زال القص أو تعديل الصوت السابق يعمل…",
+  "config.json couldn't be read · the default settings are used, and your file is kept as config.broken.json": "تعذّرت قراءة config.json · نستخدم الإعدادات الافتراضية، وملفك محفوظ باسم config.broken.json",
+  "config.json has values that can't be used · the defaults are used for: {names}": "في config.json قيم لا يمكن استخدامها · نستخدم القيم الافتراضية لـ: {names}",
+  "Finishing the clip that's being saved · Capture Menu closes right after": "نُكمل حفظ المقطع الحالي · ثم يُغلق Capture Menu مباشرة",
+  "{keys} isn't a shortcut Capture Menu can use · pick other keys in Settings": "{keys} ليس اختصارًا يمكن استخدامه · اختر أزرارًا أخرى من الإعدادات",
+  "Deleting…": "جارٍ الحذف…",
+  "Settings saved · Capture Menu restarts once the clip is saved": "حُفظت الإعدادات · يُعاد تشغيل Capture Menu بعد حفظ المقطع",
+  "Still recording · {length} so far · open the menu and choose Stop to finish": "ما زال التسجيل يعمل · {length} حتى الآن · افتح القائمة واختر «إيقاف» لإنهائه",
+  "New clips go here, a folder per game. The ones in the folder you used before stay there and stay in the gallery": "المقاطع الجديدة تُحفظ هنا، مجلد لكل لعبة. وما في المجلد السابق يبقى مكانه ويبقى ظاهرًا في المعرض"
 }

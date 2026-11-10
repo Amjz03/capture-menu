@@ -47,6 +47,13 @@ class Hotkey(QtCore.QObject):
             raise ValueError(f"Unrecognised hotkey: {self.spec}")
         return mods, vk
 
+    def valid(self) -> bool:
+        try:
+            self._parse()
+            return True
+        except ValueError:
+            return False
+
     def start(self) -> bool:
         if not runtime.IS_WINDOWS:
             return False

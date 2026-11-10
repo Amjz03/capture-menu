@@ -80,11 +80,11 @@ v.resize(1600, 900); v.show()
 v.open(list(clips), 0); wait(lambda: v.player.duration() > 0)
 
 # busy: the trim never starts, the viewer goes back to the clip instead of "Saving…" for good
-ctl._busy.acquire()
+ctl._edits.acquire()
 v.enter_trim(); v.timeline.start, v.timeline.end = 1000, 3000
 v.save_trim(False)
 assert wait(lambda: on_clip(v, clips[0]), 5), v.msg.text()
-ctl._busy.release()
+ctl._edits.release()
 print("trim turned away: back to the clip PASS")
 
 # a trim finishing after you moved on doesn't take you back

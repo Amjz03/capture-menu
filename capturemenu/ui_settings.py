@@ -196,7 +196,8 @@ class Settings(QtWidgets.QWidget):
         folder = self._row("clips_dir", "Clips folder", "action",
                            describe=lambda v: "Windows Security protects the folder you picked, so captures "
                                               "are saved here"
-                           if in_use(v) != v else "Clips and recordings, a folder per game",
+                           if in_use(v) != v else "New clips go here, a folder per game. The ones in the folder "
+                                                  "you used before stay there and stay in the gallery",
                            display=in_use)
         folder.on_activate = self._pick_folder
         shots = self._row("screenshots_dir", "Screenshots folder", "action",
@@ -515,6 +516,8 @@ class Settings(QtWidgets.QWidget):
         if not changes:
             self.close_settings()
             return
+        if "clips_dir" in changes:
+            changes = dict(changes, library_dirs=self._keep_library(Path(changes["clips_dir"])))
         preferences.save_config(changes)
         if "start_with_windows" in changes:
             windows.set_start_with_windows(bool(changes["start_with_windows"]))
@@ -523,7 +526,16 @@ class Settings(QtWidgets.QWidget):
         self.ctl.cfg.update(changes)
         runtime.log.info("settings saved: %s", ", ".join(changes))
         self.hide()
-        self._restart()
+        # a clip being saved, trimmed or made ready to share is finished first: restarting now would lose it
+        self.ctl.when_idle(self._restart, language.tr("Settings saved · Capture Menu restarts once the clip is saved"))
+
+    def _keep_library(self, new: Path) -> list[str]:
+        """The clips folder changes to `new`: nothing is moved. The folder used until now is noted (the
+        returned library_dirs), so its captures stay in the gallery, with their favorites and titles."""
+        old = self.ctl.clips_dir
+        preferences.rekey_library(old, new)
+        kept = [d for d in [*(self.ctl.cfg.get("library_dirs") or []), str(old)] if Path(d) != new]
+        return list(dict.fromkeys(kept))
 
     def _restart(self):
         if self.restart() is False:        # the new copy didn't start: this one goes on, saved settings and all

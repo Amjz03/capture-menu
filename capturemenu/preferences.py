@@ -4,6 +4,8 @@ from __future__ import annotations
 from pathlib import Path
 import json
 import os
+import re
+import shutil
 import threading
 
 from . import runtime
@@ -22,6 +24,7 @@ DEFAULTS = {
     "obs_password": "",
     "clips_dir": str(Path.home() / "Videos" / "Capture Menu Clips"),
     "screenshots_dir": "",      # empty: screenshots go in clips_dir with the clips
+    "library_dirs": [],         # clips folders used before: what's in them still shows in the gallery
     "language": "auto",         # auto (Windows' language) / en / ar
     "durations_seconds": [15, 30, 60, 180, 300, 900, 1800],
     "buffer_minutes": 30,
@@ -49,11 +52,105 @@ DEFAULTS = {
 }
 
 
+# What load_config had to put right, for main() to say once: "unreadable" (config.json isn't valid JSON:
+# the defaults are used and the file is kept as config.broken.json), or the names of the settings whose
+# value couldn't be used (the default is used for those). None: the file was fine.
+CONFIG_PROBLEM: str | list[str] | None = None
+
+
+def _read_user_config() -> dict | None:
+    """config.json as written, {} when there's none, None when it can't be read as settings. A file edited
+    by hand with a typo in it must never stop the app from starting: the OBS password and port are still
+    picked out of it, so the recording goes on."""
+    try:
+        text = CONFIG_PATH.read_text(encoding="utf-8-sig")
+    except FileNotFoundError:
+        return {}
+    except (OSError, UnicodeError) as e:
+        runtime.log.error("config.json can't be read: %s", e)
+        return None
+    try:
+        user = json.loads(text)
+        if isinstance(user, dict):
+            return user
+        runtime.log.error("config.json isn't a list of settings")
+    except ValueError as e:
+        runtime.log.error("config.json isn't valid JSON: %s", e)
+    return None
+
+
+def _salvage() -> dict:
+    """The OBS password and port from a config.json that isn't valid JSON any more."""
+    found = {}
+    try:
+        text = CONFIG_PATH.read_text(encoding="utf-8-sig", errors="replace")
+    except OSError:
+        return found
+    if m := re.search(r'"obs_password"\s*:\s*"((?:[^"\\]|\\.)*)"', text):
+        try:
+            found["obs_password"] = json.loads(f'"{m.group(1)}"')
+        except ValueError:
+            pass
+    if m := re.search(r'"obs_port"\s*:\s*(\d+)', text):
+        found["obs_port"] = int(m.group(1))
+    return found
+
+
+def _usable(default, value):
+    """value as the kind of thing the default is, or None when it can't be one."""
+    if isinstance(default, bool):
+        return value if isinstance(value, bool) else None
+    if isinstance(default, int):
+        if isinstance(value, bool):
+            return None
+        try:
+            return int(value) if float(value) == int(float(value)) else None
+        except (TypeError, ValueError):
+            return None
+    if isinstance(default, str):
+        return value if isinstance(value, str) else None
+    if default == []:                 # library_dirs: folders
+        return value if isinstance(value, list) and all(isinstance(v, str) for v in value) else None
+    if isinstance(default, list):     # durations_seconds: whole seconds, at least one
+        if not isinstance(value, list) or not value:
+            return None
+        try:
+            lengths = [int(v) for v in value if not isinstance(v, bool)]
+        except (TypeError, ValueError):
+            return None
+        return lengths if len(lengths) == len(value) and all(n > 0 for n in lengths) else None
+    if isinstance(default, dict):
+        return value if isinstance(value, dict) else None
+    return value
+
+
 def load_config() -> dict:
+    global CONFIG_PROBLEM
+    CONFIG_PROBLEM = None
     cfg = dict(DEFAULTS)
-    if CONFIG_PATH.exists():
-        user = json.loads(CONFIG_PATH.read_text(encoding="utf-8-sig"))
+    user = _read_user_config()
+    if user is None:
+        CONFIG_PROBLEM = "unreadable"
+        try:
+            shutil.copy2(CONFIG_PATH, CONFIG_PATH.with_name("config.broken.json"))
+        except OSError:
+            pass
+        user = _salvage()
+    if user:
         cfg.update({k: v for k, v in user.items() if v not in ("", None)})
+        wrong = []
+        for key, default in DEFAULTS.items():
+            value = _usable(default, cfg[key])
+            if value is None:
+                wrong.append(key)
+                value = default
+            cfg[key] = value
+        if int(cfg["buffer_minutes"]) < 1:
+            wrong.append("buffer_minutes")
+            cfg["buffer_minutes"] = DEFAULTS["buffer_minutes"]
+        if wrong:
+            runtime.log.warning("config.json: unusable values for %s, using the defaults", ", ".join(wrong))
+            CONFIG_PROBLEM = CONFIG_PROBLEM or wrong
         if cfg.get("controller_button") == "l3+r3":   # no longer a choice (games use L3 and R3): Create
             cfg["controller_button"] = "create"
         if user.get("capture_follow_game") is False and "capture_screen" not in user:
@@ -105,9 +202,9 @@ def _merge(old: Path, new: Path):
 
 def save_config(changes: dict):
     """Writes only the given keys into config.json, keeping everything else (like the OBS password)."""
-    user = {}
-    if CONFIG_PATH.exists():
-        user = json.loads(CONFIG_PATH.read_text(encoding="utf-8-sig"))
+    user = _read_user_config()
+    if user is None:          # not valid JSON (load_config kept a copy as config.broken.json): start it again
+        user = _salvage()
     user.update(changes)
     write_atomic(CONFIG_PATH, json.dumps(user, indent=2, ensure_ascii=False))
 
@@ -171,6 +268,28 @@ def update_state(change):
         result = change(state)
         _write_state(state)
         return result
+
+
+def rekey_library(old: Path, new: Path):
+    """The clips folder changed from old to new. Favorites, titles and sound levels are kept by a capture's
+    path inside the clips folder (or its whole path when it's somewhere else), so each one is written again
+    for the new folder: captures left in the old folder keep theirs, and so do ones already in the new."""
+    def key_for(key: str) -> str:
+        path = Path(key)
+        path = path if path.is_absolute() else old / path
+        try:
+            return str(path.relative_to(new))
+        except ValueError:
+            return str(path)
+
+    def change(state):
+        if "favorites" in state:
+            state["favorites"] = sorted({key_for(k) for k in state["favorites"]})
+        for table in ("meta", "levels", "mix"):
+            if table in state:
+                state[table] = {key_for(k): v for k, v in state[table].items()}
+    if old != new:
+        update_state(change)
 
 
 def save_state(state: dict):
