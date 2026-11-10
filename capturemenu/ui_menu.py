@@ -9,6 +9,7 @@ if TYPE_CHECKING:
 from PySide6 import QtCore, QtGui, QtWidgets
 from PySide6.QtCore import Qt
 from pathlib import Path
+import time
 
 from . import capture_controller, catalog, input_devices, language, ui_theme, ui_widgets, windows
 
@@ -53,6 +54,11 @@ class Menu(QtWidgets.QWidget):
         self.storage_label = QtWidgets.QLabel(objectName="storage")
         self.storage_label.hide()
         head.addWidget(self.storage_label, 0, Qt.AlignBaseline)
+        # the last thing that went wrong, said again here: its notice is gone in seconds, mid-game
+        self.problem_label = QtWidgets.QLabel(objectName="storage")
+        self.problem_label.hide()
+        head.addWidget(self.problem_label, 0, Qt.AlignBaseline)
+        self._problem: tuple[str, float] | None = None
         # a new version: said here, where the player looks, until it's installed (the notice can be missed)
         self.update_btn = QtWidgets.QPushButton(objectName="update")
         self.update_btn.setFocusPolicy(Qt.NoFocus)
@@ -181,6 +187,7 @@ class Menu(QtWidgets.QWidget):
         self.game_label.setText(self.game_label.fontMetrics().elidedText(self.game, Qt.ElideRight, 420))
         self.status.setText("")
         self._set_picking(False)
+        self._show_problem()
         self.refresh_recent()
         self.ctl.refresh_status()
         self._timer.start()
@@ -194,9 +201,26 @@ class Menu(QtWidgets.QWidget):
         if fresh and ui_theme.MOTION_MS:
             self._rise.start()
 
+    PROBLEM_KEPT = 30 * 60     # seconds an error is still worth repeating in the bar
+
+    def note_problem(self, text: str, kind: str = "error"):
+        """An error notice was shown: the bar says it again the next time it opens (once)."""
+        if kind == "error":
+            self._problem = (text, time.monotonic())
+
+    def _show_problem(self):
+        fresh = self._problem is not None and time.monotonic() - self._problem[1] < self.PROBLEM_KEPT
+        if fresh:
+            text = "⚠  " + self._problem[0].replace(" · ", "  ·  ")
+            self.problem_label.setText(self.problem_label.fontMetrics().elidedText(text, Qt.ElideRight, 760))
+            self.problem_label.setToolTip(self._problem[0])
+        self.problem_label.setVisible(fresh)
+
     def hide_menu(self):
         self._timer.stop()
         self.picking = False
+        if self.isVisible() and self.problem_label.isVisible():
+            self._problem = None       # seen
         self.hide()
 
     def changeEvent(self, e):

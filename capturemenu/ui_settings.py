@@ -220,6 +220,10 @@ class Settings(QtWidgets.QWidget):
                   [(0, "Never"), (50, "50 GB"), (100, "100 GB"), (200, "200 GB"), (500, "500 GB"),
                    (1000, "1 TB")], lambda v: "Only a notice. Nothing is ever deleted for you",
                   custom=lambda v: language.tr("{n} GB", n=v))
+        self._row("low_space_gb", "Warn me when the drive has less than", "choice",
+                  [(0, "Never"), (5, "5 GB"), (10, "10 GB"), (20, "20 GB"), (50, "50 GB")],
+                  lambda v: "A notice once a day while the clips drive is this low" if v else
+                  "No notice when the clips drive runs low", custom=lambda v: language.tr("{n} GB", n=v))
         self._section("GENERAL")
         self._row("start_with_windows", "Start with Windows", "bool",
                   describe=lambda v: "Capture Menu and OBS start when you sign in")
@@ -436,6 +440,7 @@ class Settings(QtWidgets.QWidget):
 
     def _refresh(self):
         for r in self.rows:
+            r.fit()            # an explanation that changed with another row's value may need a second line
             r.update()
         cfg = self._plan_cfg()
         enc = obs_client.choose_encoder(self.encoder or "nvenc_av1", cfg["video_codec"])

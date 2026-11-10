@@ -186,6 +186,22 @@ class Gallery(ui_widgets.Grow, QtWidgets.QWidget):
         titles.addWidget(self.info)
         head.addLayout(titles)
         head.addStretch()
+        # find a capture by its title, note, file name or game; and show only one kind of capture
+        self.search = QtWidgets.QLineEdit(placeholderText=language.tr("Search"))
+        self.search.setFixedWidth(240)
+        self.search.setClearButtonEnabled(True)
+        self.search.setFocusPolicy(Qt.ClickFocus)
+        self.search.addAction(ui_theme.qicon("search"), QtWidgets.QLineEdit.LeadingPosition)
+        self.search.textChanged.connect(lambda _: self._fill(self.games.currentRow()))
+        head.addWidget(self.search)
+        head.addSpacing(4)
+        self.kind = "all"
+        self.kind_btn = QtWidgets.QPushButton(language.tr("Show: Everything"))
+        self.kind_btn.setFocusPolicy(Qt.NoFocus)
+        self.kind_btn.setCursor(Qt.PointingHandCursor)
+        self.kind_btn.clicked.connect(self.next_kind)
+        head.addWidget(self.kind_btn)
+        head.addSpacing(4)
         self.sort_btn = QtWidgets.QPushButton(language.tr("Sort: Newest"))
         self.sort_btn.setFocusPolicy(Qt.NoFocus)
         self.sort_btn.setCursor(Qt.PointingHandCursor)
@@ -248,6 +264,7 @@ class Gallery(ui_widgets.Grow, QtWidgets.QWidget):
         self.grid.itemClicked.connect(self._clicked)
         self.grid.currentRowChanged.connect(lambda row: (self._update_info(), self._regrow(row)))
         self.grid.installEventFilter(self)
+        self.search.installEventFilter(self)
         for w in (*self._head_nav(all=True), self.games):
             w.installEventFilter(self)          # the D-pad moves between them too, like a mouse
         body.addWidget(self.grid, 1)
@@ -315,6 +332,9 @@ class Gallery(ui_widgets.Grow, QtWidgets.QWidget):
         self.select_mode = False
         self.clear_marks()
         self.hide()
+        self.search.blockSignals(True)
+        self.search.clear()      # the next visit starts with everything
+        self.search.blockSignals(False)
         self.grid.clear()        # the tiles' pixmaps go with it; reopening rebuilds them in ~0.1 s
         self.tiles.forget()
         self.items = []
@@ -340,16 +360,16 @@ class Gallery(ui_widgets.Grow, QtWidgets.QWidget):
             by_game.setdefault(p.parent.name, []).append(p)
         games = list(by_game.items())
         if self.by_size:   # biggest games first, and inside each list the biggest captures first
-            games.sort(key=lambda kv: sum(catalog.file_size(p) for p in kv[1]), reverse=True)
+            games.sort(key=lambda kv: sum(self.ctl.size_of(p) for p in kv[1]), reverse=True)
         self.cats = [("All", everything),
                      (self.FAVORITES, [p for p in everything if self.ctl._fav_key(p) in favs]),
                      *games]
         if self.by_size:
-            self.cats = [(n, sorted(ps, key=catalog.file_size, reverse=True)) for n, ps in self.cats]
+            self.cats = [(n, sorted(ps, key=self.ctl.size_of, reverse=True)) for n, ps in self.cats]
         self.games.blockSignals(True)
         self.games.clear()
         for name, items in self.cats:
-            size = catalog.human_size(sum(catalog.file_size(p) for p in items))
+            size = catalog.human_size(sum(self.ctl.size_of(p) for p in items))
             item = QtWidgets.QListWidgetItem(f"{name}   {len(items)}  ·  {size}")
             item.setData(Qt.UserRole, (self._cat_name(name), len(items), size))
             self.games.addItem(item)
@@ -361,13 +381,14 @@ class Gallery(ui_widgets.Grow, QtWidgets.QWidget):
     def _fill(self, cat_row: int, select_row: int = 0):
         if cat_row < 0 or cat_row >= len(self.cats):
             return
-        self.items = list(self.cats[cat_row][1])
+        self.items = self._shown(self.cats[cat_row][1])
+        self._items_size = sum(self.ctl.size_of(p) for p in self.items)   # once, not at every move of the highlight
         self.grid.clear()
         missing = []
         for p in self.items:
             title = self.ctl.title_of(p) or catalog.capture_kind(p)
             title = title if len(title) <= 30 else title[:29] + "…"
-            item = QtWidgets.QListWidgetItem(f"{title}\n{catalog.time_ago(p.stat().st_mtime)}  ·  {catalog.human_size(catalog.file_size(p))}")
+            item = QtWidgets.QListWidgetItem(f"{title}\n{catalog.time_ago(self.ctl.modified_of(p))}  ·  {catalog.human_size(self.ctl.size_of(p))}")
             item.setData(Qt.UserRole, str(p))
             item.setTextAlignment(Qt.AlignHCenter | Qt.AlignTop)
             self.grid.addItem(item)
@@ -398,18 +419,20 @@ class Gallery(ui_widgets.Grow, QtWidgets.QWidget):
     def _update_info(self):
         name = self.cats[self.games.currentRow()][0] if self.cats else ""
         count = len(self.items)
-        size = catalog.human_size(sum(catalog.file_size(p) for p in self.items))
+        size = catalog.human_size(getattr(self, "_items_size", 0))
         storage = self.ctl.last_storage
         used = "  ·  " + language.tr("{used} GB used in total", used=f"{storage['used_gb']:.0f}") if storage else ""
         captures = language.tr("1 capture") if count == 1 else language.tr("{n} captures", n=count)
         text = f"{self._cat_name(name)}  ·  {captures}  ·  {size}{used}"
         if self.marked:
             text = (language.tr("{n} selected", n=len(self.marked)) + "  ·  "
-                    f"{catalog.human_size(sum(catalog.file_size(p) for p in self.marked))}  ·  {text}")
+                    f"{catalog.human_size(sum(self.ctl.size_of(p) for p in self.marked))}  ·  {text}")
         self.info.setText(text)
         picking = self.selecting
         self.select_btn.setVisible(not picking)
         self.sort_btn.setVisible(not picking)
+        self.kind_btn.setVisible(not picking)
+        self.search.setVisible(not picking)
         for b in (self.all_btn, self.del_btn, self.clear_btn):
             b.setVisible(picking)
         self.del_btn.setEnabled(bool(self.marked))
@@ -422,7 +445,42 @@ class Gallery(ui_widgets.Grow, QtWidgets.QWidget):
     def _cat_name(cls, name: str) -> str:
         return language.tr("Favorites") if name == cls.FAVORITES else language.tr("All") if name == "All" else name
 
-    # ---- sort, select, delete many
+    # ---- search, show, sort, select, delete many
+    KINDS = (("all", "Show: Everything"), ("clips", "Show: Clips"), ("shots", "Show: Screenshots"),
+             ("recordings", "Show: Recordings"))
+
+    @staticmethod
+    def kind_of(path: Path) -> str:
+        first = path.stem.split("_")[0]
+        return "shots" if path.suffix.lower() == ".png" else "recordings" if first == "Recording" else "clips"
+
+    def _shown(self, items: list[Path]) -> list[Path]:
+        """The game's captures that pass "Show" and the search (title, note, file name or game)."""
+        words = self.search.text().casefold().split()
+        if self.kind == "all" and not words:
+            return list(items)
+        out = []
+        for p in items:
+            if self.kind != "all" and self.kind_of(p) != self.kind:
+                continue
+            if words:
+                meta = self.ctl.meta(p)
+                text = " ".join((meta.get("title", ""), meta.get("note", ""), p.stem, p.parent.name)).casefold()
+                if not all(w in text for w in words):
+                    continue
+            out.append(p)
+        return out
+
+    def next_kind(self):
+        kinds = [k for k, _ in self.KINDS]
+        self.kind = kinds[(kinds.index(self.kind) + 1) % len(kinds)]
+        self.kind_btn.setText(language.tr(dict(self.KINDS)[self.kind]))
+        self._fill(self.games.currentRow())
+
+    def start_search(self):
+        self.search.setFocus()
+        self.search.selectAll()
+
     def toggle_sort(self):
         self.by_size = not self.by_size
         self.sort_btn.setText(language.tr("Sort: Largest") if self.by_size else language.tr("Sort: Newest"))
@@ -537,12 +595,27 @@ class Gallery(ui_widgets.Grow, QtWidgets.QWidget):
             [("DPAD", "Move"), ("A", "Open"), ("X", "Select"), ("OPT", "Delete"),
              ("L1R1", "Game"), ("Y", "Favorite"), ("B", "Back")] if pad
             else [("k:← →", "Move"), ("k:Enter", "Open"), ("k:Space", "Select"), ("k:Del", "Delete"),
-                  ("k:[ ]", "Game"), ("k:S", "Sort"), ("k:F", "Favorite"), ("k:Esc", "Back")], input_devices.input_mode().mode)
+                  ("k:[ ]", "Game"), ("k:S", "Sort"), ("k:T", "Show"), ("k:/", "Search"), ("k:F", "Favorite"),
+                  ("k:Esc", "Back")], input_devices.input_mode().mode)
 
     def eventFilter(self, obj, event):
+        if obj is self.search and event.type() == QtCore.QEvent.KeyPress:
+            if event.key() == Qt.Key_Escape:        # Esc empties the search first, then leaves it
+                if self.search.text():
+                    self.search.clear()
+                else:
+                    self.grid.setFocus()
+                return True
+            if event.key() in (Qt.Key_Return, Qt.Key_Enter, Qt.Key_Down):
+                self.grid.setFocus()
+                return True
+            return False                            # everything else is typed
         if obj is self.grid and event.type() == QtCore.QEvent.KeyPress:
             if input_devices.latin_key(event) == Qt.Key_A and event.modifiers() & Qt.ControlModifier:
                 self.mark_all()
+                return True
+            if input_devices.latin_key(event) == Qt.Key_F and event.modifiers() & Qt.ControlModifier:
+                self.start_search()
                 return True
             if event.key() in ui_theme.ARROWS:
                 before = self.grid.currentRow()
@@ -588,7 +661,7 @@ class Gallery(ui_widgets.Grow, QtWidgets.QWidget):
 
     def _head_nav(self, all: bool = False) -> list[QtWidgets.QWidget]:
         """The buttons along the top; all: hidden ones too."""
-        head = [self.back_btn, self.sort_btn, self.select_btn, self.all_btn, self.del_btn, self.clear_btn,
+        head = [self.back_btn, self.kind_btn, self.sort_btn, self.select_btn, self.all_btn, self.del_btn, self.clear_btn,
                 self.folder_btn, self.close_btn]
         return head if all else [b for b in head if b.isVisible() and b.isEnabled()]
 
@@ -618,7 +691,7 @@ class Gallery(ui_widgets.Grow, QtWidgets.QWidget):
                    Qt.Key_Enter: open_or_pick, Qt.Key_BracketLeft: lambda: self.step_game(-1),
                    Qt.Key_BracketRight: lambda: self.step_game(1), Qt.Key_F: self.toggle_favorite,
                    Qt.Key_Space: self.toggle_mark, Qt.Key_Delete: self.delete_marked,
-                   Qt.Key_S: self.toggle_sort}
+                   Qt.Key_S: self.toggle_sort, Qt.Key_T: self.next_kind, Qt.Key_Slash: self.start_search}
         if k in actions:
             actions[k]()
             return True

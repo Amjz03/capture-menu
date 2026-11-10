@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased
+
+- **A save is never turned away by a trim.** A long trim or sound change no longer answers a save pressed in the game with "still saving".
+- **A typo in `config.json` no longer stops Capture Menu.** The defaults are used, a notice says so, your file is kept as `config.broken.json`, and OBS is still reached. Keys that aren't a shortcut are said instead of crashing.
+- **Keys work in any keyboard layout.** S, T, V, [ ] and the others, and picking a shortcut, go by the key itself: an Arabic layout no longer disables them.
+- **Settings:** Esc with unsaved changes asks once before leaving; a click on a row's name no longer changes its value; sounds, rumble, the warnings, the REC indicator, *Record your microphone* and *Start with Windows* save without a restart; long explanations take a second line instead of ending in "…". Saving (and Quit) waits for a clip that's being saved, trimmed or made ready to share.
+- **New shortcuts:** optional keys that take a screenshot or start / stop a recording without the bar.
+- **Trim to the frame without the mouse:** `,` and `.` step one frame, ↑ ↓ one second, Shift + ← → one second. On the controller L1 / R1 step a frame, the D-pad a second, and Options previews.
+- **Gallery:** search by title, note, file name or game (`/`); show only clips, screenshots or recordings (`T`); Del deletes the capture the highlight is on; deleting many captures no longer freezes the page; a library of thousands opens and moves faster.
+- **A new clips folder keeps your library.** The captures in the old folder stay there and stay in the gallery, favorites and titles with them (`library_dirs`).
+- **Errors don't slip by.** An error notice isn't covered by a smaller one, and the bar repeats it the next time it opens.
+- **A recording left running** says so every 30 minutes.
+- **The low-space warning** is a setting (Library), and comes once a day instead of at every start. Quit's question matches the app, in its language.
+- The first-start questions ask whether the controller opens the menu with a press or a hold; `double_press_ms` in `config.json` sets how soon the second press of a double press must come.
+
 ## 0.0.42 · 2026-11-05
 
 - **Capture Menu has its own OBS, and your OBS stays yours.** Setup downloads the official OBS Studio 32.2.2 (checked before it's used) into `%LOCALAPPDATA%\CaptureMenu\OBS`, with its own settings, scenes and WebSocket port (4456). If you use OBS yourself, to stream or record, it's never changed, closed or restarted, and both run side by side, even both recording during a game.

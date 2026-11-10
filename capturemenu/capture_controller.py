@@ -116,9 +116,42 @@ class Controller(QtCore.QObject):
         return self.previews_dir / (hashlib.md5(str(path).encode()).hexdigest() + ".mp4")
 
     def all_captures(self) -> list[Path]:
-        files = {p for root in self.roots for p in root.rglob("*")   # a set: one folder may hold the other
-                 if p.suffix.lower() in catalog.MEDIA_EXTS and not catalog.SKIP_DIRS & set(p.relative_to(root).parts)}
-        return sorted(files, key=lambda p: p.stat().st_mtime, reverse=True)
+        """Every capture, newest first. One walk of the folders: each file's time and size come with the
+        folder listing (no extra look at every file), and are kept for size_of / modified_of, so a
+        gallery of thousands opens, sorts and moves without asking the drive again."""
+        found: dict[Path, tuple[float, int]] = {}      # a dict: one folder may hold the other
+        for root in self.roots:
+            folders = [str(root)]
+            while folders:
+                try:
+                    entries = list(os.scandir(folders.pop()))
+                except OSError:
+                    continue
+                for entry in entries:
+                    try:
+                        if entry.is_dir():
+                            if entry.name not in catalog.SKIP_DIRS:
+                                folders.append(entry.path)
+                        elif os.path.splitext(entry.name)[1].lower() in catalog.MEDIA_EXTS:
+                            st = entry.stat()
+                            found[Path(entry.path)] = (st.st_mtime, st.st_size)
+                    except OSError:
+                        pass
+        self._seen = found
+        return sorted(found, key=lambda p: found[p][0], reverse=True)
+
+    def size_of(self, path: Path) -> int:
+        seen = getattr(self, "_seen", {}).get(path)
+        return seen[1] if seen else catalog.file_size(path)
+
+    def modified_of(self, path: Path) -> float:
+        seen = getattr(self, "_seen", {}).get(path)
+        if seen:
+            return seen[0]
+        try:
+            return path.stat().st_mtime
+        except OSError:
+            return 0.0
 
     def _scan_recent(self, limit: int = 30) -> list[Path]:
         return self.all_captures()[:limit]
@@ -213,8 +246,13 @@ class Controller(QtCore.QObject):
             used = sum(catalog.folder_size_gb(root) for root in self.roots)
             free = shutil.disk_usage(self.clips_dir).free / 1024 ** 3
             limit = float(self.cfg.get("storage_warn_gb") or 0)
+            low_under = float(self.cfg.get("low_space_gb") or 0)
             info = {"used_gb": used, "free_gb": free, "limit_gb": limit,
-                    "over": bool(limit) and used > limit, "low": free < 20}
+                    "over": bool(limit) and used > limit, "low": bool(low_under) and free < low_under}
+            # a small drive is always "low": that notice comes once a day, not at every start (the bar still says it)
+            today = datetime.now().strftime("%Y-%m-%d")
+            if info["low"] and preferences.peek_state().get("low_space_told") == today:
+                self._warned.add("low")
             self.last_storage = info
             self.storage.emit(info)
             for flag, text in (("over", language.tr("Captures use {used} GB, over your {limit} GB limit"
@@ -223,6 +261,8 @@ class Controller(QtCore.QObject):
                                           free=f"{free:.0f}"))):
                 if info[flag] and flag not in self._warned:
                     self._warned.add(flag)
+                    if flag == "low":
+                        preferences.update_state(lambda s: s.update(low_space_told=today))
                     self.toast.emit(text, "error")
                 elif not info[flag]:
                     self._warned.discard(flag)
