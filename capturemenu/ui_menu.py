@@ -209,6 +209,11 @@ class Menu(QtWidgets.QWidget):
         self.hide_menu()
         fn(*args)
 
+    def shoot(self, game: str):
+        """The screenshot shortcut: the same shot as the bar's, without the bar."""
+        self.game = game
+        self._screenshot()
+
     def _screenshot(self):
         self.hide_menu()
         game = self.game
@@ -408,7 +413,7 @@ class Menu(QtWidgets.QWidget):
         return cards + [self.all_card, self.settings_card]
 
     def keyPressEvent(self, e):
-        k = e.key()
+        k = input_devices.latin_key(e)
         cards = self._nav_cards()
         focused = self.focusWidget()
         if k in (Qt.Key_Left, Qt.Key_Right) and focused in cards:

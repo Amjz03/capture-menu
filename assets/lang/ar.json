@@ -441,5 +441,13 @@
   "Deleting…": "جارٍ الحذف…",
   "Settings saved · Capture Menu restarts once the clip is saved": "حُفظت الإعدادات · يُعاد تشغيل Capture Menu بعد حفظ المقطع",
   "Still recording · {length} so far · open the menu and choose Stop to finish": "ما زال التسجيل يعمل · {length} حتى الآن · افتح القائمة واختر «إيقاف» لإنهائه",
-  "New clips go here, a folder per game. The ones in the folder you used before stay there and stay in the gallery": "المقاطع الجديدة تُحفظ هنا، مجلد لكل لعبة. وما في المجلد السابق يبقى مكانه ويبقى ظاهرًا في المعرض"
+  "New clips go here, a folder per game. The ones in the folder you used before stay there and stay in the gallery": "المقاطع الجديدة تُحفظ هنا، مجلد لكل لعبة. وما في المجلد السابق يبقى مكانه ويبقى ظاهرًا في المعرض",
+  "Screenshot shortcut": "اختصار لقطة الشاشة",
+  "Takes a screenshot without opening the menu. Enter, then the keys; Backspace turns it off": "يأخذ لقطة شاشة بدون فتح القائمة. اضغط Enter ثم الأزرار، و Backspace يوقفه",
+  "Record shortcut": "اختصار التسجيل",
+  "Starts or stops a recording without opening the menu. Enter, then the keys; Backspace turns it off": "يبدأ التسجيل أو يوقفه بدون فتح القائمة. اضغط Enter ثم الأزرار، و Backspace يوقفه",
+  "Press again to leave without saving your changes": "اضغط مرة أخرى للخروج بدون حفظ تغييراتك",
+  "Open it with a press or a hold?": "تفتحها بضغطة أم بضغطة مطوّلة؟",
+  "Frame": "فريم",
+  "1 sec": "ثانية"
 }

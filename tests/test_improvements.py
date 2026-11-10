@@ -147,3 +147,91 @@ preferences.update_state(lambda s: s.pop("recording"))
 ctl._remind_recording()
 assert ctl._reminded == 0
 print("a long recording reminds PASS")
+
+# ---- 7) shortcuts go by the key, not by what the keyboard layout types with it
+from PySide6 import QtGui
+from PySide6.QtCore import Qt
+from capturemenu import ui_gallery, ui_menu, ui_settings, ui_viewer
+
+
+def press(key, vk=0, mods=Qt.NoModifier):
+    return QtGui.QKeyEvent(QtCore.QEvent.KeyPress, key, mods, 0, vk, 0)
+
+
+arabic_s, arabic_bracket = 0x0633, 0x062C          # what the S and [ keys type on an Arabic layout
+assert input_devices.latin_key(press(arabic_s, 0x53), on_windows=True) == Qt.Key_S
+assert input_devices.latin_key(press(arabic_bracket, 0xDB), on_windows=True) == Qt.Key_BracketLeft
+assert input_devices.latin_key(press(0x0648, 0xBC), on_windows=True) == Qt.Key_Comma
+assert input_devices.latin_key(press(Qt.Key_T, 0x54), on_windows=True) == Qt.Key_T
+assert input_devices.latin_key(press(Qt.Key_Left, 0x25), on_windows=True) == Qt.Key_Left
+assert input_devices.latin_key(press(arabic_s), on_windows=True) == arabic_s, "the controller's keys have no code"
+print("keys in any keyboard layout PASS")
+
+# ---- 8) Settings: a click on a row's name doesn't change it; small settings save without a restart;
+#         the extra shortcuts can be set, can't repeat another one, and Backspace turns them off
+preferences.CONFIG_PATH.write_text(json.dumps({"hotkey": "alt+c"}))
+ctl = controller()
+ctl.cfg.update(preferences.load_config(), clips_dir=str(tmp / "Clips"))
+s = ui_settings.Settings(ctl); s.encoder = "nvenc_av1"
+restarts, applied = [], []
+s.restart = lambda: restarts.append(1)
+s.applied.connect(applied.append)
+s.resize(1000, 900)
+s.open((2560, 1440)); app.processEvents()
+rows = {r.key: r for r in s.rows}
+fps = rows["fps"]
+
+
+def click(row, x):
+    pos = QtCore.QPointF(x, row.height() / 2)
+    QtWidgets.QApplication.sendEvent(row, QtGui.QMouseEvent(QtCore.QEvent.MouseButtonPress, pos, row.mapToGlobal(pos),
+                                                            Qt.LeftButton, Qt.LeftButton, Qt.NoModifier))
+
+
+click(fps, 60)
+assert fps.value == 60, "a click on the name leaves the value alone"
+click(fps, fps._value_rect().center().x())
+assert fps.value == 120, "the value changes it"
+fps.set_value(60, emit=True)
+rows["sounds"].activate(); rows["storage_warn_gb"].step(1)
+s.save()
+assert restarts == [] and not s.isVisible() and applied == [{"sounds": False, "storage_warn_gb": 500}], applied
+assert json.loads(preferences.CONFIG_PATH.read_text())["sounds"] is False and ctl.cfg["sounds"] is False
+s.open((2560, 1440)); app.processEvents()
+shot = rows["hotkey_screenshot"]
+assert shot.text() == "Off"
+shot.setFocus(); shot.activate(); assert shot.listening
+QtWidgets.QApplication.sendEvent(shot, press(Qt.Key_C, 0x43, Qt.AltModifier))
+assert shot.listening and shot.value == "", "Alt + C opens the menu already"
+QtWidgets.QApplication.sendEvent(shot, press(Qt.Key_F10, 0x79, Qt.ControlModifier))
+assert not shot.listening and shot.value == "ctrl+f10" and shot.text() == "Ctrl + F10", shot.text()
+shot.activate(); QtWidgets.QApplication.sendEvent(shot, press(Qt.Key_Backspace))
+assert not shot.listening and shot.value == ""
+main_key = rows["hotkey"]; main_key.setFocus(); main_key.activate()
+QtWidgets.QApplication.sendEvent(main_key, press(Qt.Key_Backspace))
+assert main_key.listening and main_key.value == "alt+c", "the menu's own shortcut can't be turned off"
+s.close_settings()
+print("settings: clicks, no restart, extra shortcuts PASS")
+
+# ---- 9) trimming: the controller steps a frame and a second; the bar and the gallery
+viewer = ui_viewer.Viewer(ctl)
+menu = ui_menu.Menu(ctl, viewer)
+viewer.show(); viewer.trimming = True
+keys = {b: input_devices.pad_key(b, menu, viewer) for b in (input_devices.L1, input_devices.R1, input_devices.UP,
+                                                             input_devices.DOWN, 6)}
+assert list(keys.values()) == [Qt.Key_Comma, Qt.Key_Period, Qt.Key_Up, Qt.Key_Down, Qt.Key_P], keys
+viewer.trimming = False; viewer.hide()
+shots = []
+ctl.screenshot = lambda game: shots.append(game)
+menu.shoot("Elden Ring")
+assert wait(lambda: shots == ["Elden Ring"]), "the screenshot shortcut takes the shot for the game in front"
+
+gallery = ui_gallery.Gallery(ctl, viewer)
+only = ctl.clips_dir / "Game" / "Screenshot_only.png"
+only.parent.mkdir(parents=True, exist_ok=True); only.write_bytes(b"x")
+gallery.resize(1600, 900); gallery.open(); app.processEvents()
+assert gallery.items and not gallery.marked
+gallery.grid.setFocus(); gallery.delete_marked()
+assert gallery.marked == {gallery.items[0]} and gallery.del_btn.property("danger"), "Del picks the capture and asks"
+gallery.close_gallery()
+print("trim steps, screenshot shortcut, Del in the gallery PASS")
