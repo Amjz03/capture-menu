@@ -43,6 +43,16 @@ class RecIndicator(QtWidgets.QWidget):
         self.show()
         self._tick.start()
 
+    def set_corner(self, corner: str):
+        """Settings changed where it shows (or turned it off): from now on, a recording that's running too."""
+        was, self.corner = self.started, corner
+        if corner == "off":
+            self.started = None
+            self._tick.stop()
+            self.hide()
+        elif was is not None:
+            self._place()
+
     def sync(self, st: dict):
         """From the status poll: catches recordings started in OBS itself, or before a restart."""
         if st.get("online"):
@@ -174,6 +184,7 @@ class Toast(QtWidgets.QWidget):
 
     def mousePressEvent(self, e):
         action, self.action = self.action, None
+        self._error_until = 0          # read and put away: the next notice needn't wait
         if self.path:
             self._open(trim=False)    # click the notice: open it in the viewer
         else:
@@ -233,7 +244,15 @@ class Toast(QtWidgets.QWidget):
         self.hint.show()
         self._present(9000)
 
+    ERROR_MS = 6000       # an error stays this long; a smaller notice waits for it
+
     def show_message(self, text: str, kind: str = "info"):
+        left = getattr(self, "_error_until", 0) - time.monotonic()
+        if kind in ("info", "ok") and left > 0 and self.isVisible():
+            # an error is on screen: "Controller connected" comes after it, not over it
+            QtCore.QTimer.singleShot(int(left * 1000) + 300, lambda: self.show_message(text, kind))
+            return
+        self._error_until = time.monotonic() + self.ERROR_MS / 1000 if kind == "error" else 0
         self.path = self.action = None
         self.trim_btn.hide()
         self.unsetCursor()
@@ -245,7 +264,7 @@ class Toast(QtWidgets.QWidget):
         self.sub.setText(sub)
         self.sub.setVisible(bool(sub))
         self.hint.hide()
-        self._present(6000 if kind == "error" else 3500)
+        self._present(self.ERROR_MS if kind == "error" else 3500)
 
     def _present(self, ms: int):
         # each line gets its natural width and wraps only past 380 px (Qt would wrap far earlier)

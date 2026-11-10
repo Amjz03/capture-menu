@@ -188,7 +188,7 @@ ICON_FILES = {
     "camera": "camera", "rewind": "history", "record": "circle-dot", "stop": "circle-stop",
     "folder": "folder", "play": "play", "pause": "pause", "scissors": "scissors",
     "trash": "trash-2", "external": "external-link", "left": "chevron-left",
-    "right": "chevron-right", "close": "x", "image": "image",
+    "right": "chevron-right", "close": "x", "image": "image", "search": "search",
     "share": "share-2", "copy": "copy", "star": "star", "mic": "mic", "mic-off": "mic-off",
     "gallery": "layout-grid", "drive": "hard-drive", "settings": "settings",
     "volume": "volume-2", "volume-off": "volume-x", "maximize": "maximize", "minimize": "minimize",
@@ -286,7 +286,8 @@ def glyph(name: str) -> str:
 
 
 KEY_NAMES = {"←": "left", "→": "right", "↑": "up", "↓": "down", "Enter": "enter", "Esc": "escape",
-             "Space": "space", "Del": "delete", "Alt": "alt", "Ctrl": "control", "Shift": "shift"}
+             "Space": "space", "Del": "delete", "Alt": "alt", "Ctrl": "control", "Shift": "shift",
+             ",": "comma", ".": "period", "/": "slash"}
 
 
 PAD_GLYPHS = {

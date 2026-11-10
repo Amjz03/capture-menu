@@ -799,6 +799,27 @@ class Timeline(QtWidgets.QWidget):
         self.update()
 
 
+def confirm(text: str, yes: str, no: str) -> bool:
+    """A question with two answers, in the app's colours and language; `no` is the one Enter picks."""
+    box = QtWidgets.QMessageBox()
+    box.setWindowTitle("Capture Menu")
+    box.setWindowIcon(ui_theme.tray_icon())
+    box.setText(text)
+    yes_btn = box.addButton(yes, QtWidgets.QMessageBox.AcceptRole)
+    no_btn = box.addButton(no, QtWidgets.QMessageBox.RejectRole)
+    box.setDefaultButton(no_btn)
+    box.setEscapeButton(no_btn)
+    box.setWindowFlag(Qt.WindowStaysOnTopHint)
+    box.setStyleSheet(
+        f"QMessageBox {{ background: rgb{ui_theme.NIGHT}; }}"
+        f"QLabel {{ color: {ui_theme.INK}; font-size: 15px; min-width: 380px; }}"
+        f"QPushButton {{ color: {ui_theme.INK}; background: rgba(255,255,255,22); border: none; border-radius: 17px;"
+        f" padding: 9px 20px; font-size: 14px; font-weight: 600; min-width: 110px; }}"
+        f"QPushButton:hover, QPushButton:focus {{ background: {ui_theme.INK}; color: {ui_theme.DARK}; }}")
+    box.exec()
+    return box.clickedButton() is yes_btn
+
+
 class SettingRow(HoverFocus, QtWidgets.QWidget):
     """One line in Settings: name and explanation on the left, its value on the right.
     Choices change with ← → (or a click), switches flip, actions (folder, shortcut) open with Enter."""
@@ -831,9 +852,27 @@ class SettingRow(HoverFocus, QtWidgets.QWidget):
             else:
                 value = min(values, key=lambda c: abs(c - value)) if numeric else values[0]
         self.value = value
+        self.fit()
         self.update()
         if emit:
             self.changed.emit()
+
+    def fit(self):
+        """One line taller when the explanation needs a second line at this width (Arabic often does)."""
+        try:
+            desc = self.describe(self.value)
+        except (TypeError, ValueError, KeyError):
+            return        # the page is still filling its rows in: an explanation may read another row's value
+        metrics = QtGui.QFontMetrics(ui_theme.font(14))
+        room = self.width() - 340
+        two = bool(desc) and room > 100 and metrics.horizontalAdvance(desc) > room
+        height = self.H + (metrics.lineSpacing() if two else 0)
+        if height != self.height():
+            self.setFixedHeight(height)
+
+    def resizeEvent(self, e):
+        super().resizeEvent(e)
+        self.fit()
 
     def text(self) -> str:
         if self.kind == "bool":
@@ -844,7 +883,9 @@ class SettingRow(HoverFocus, QtWidgets.QWidget):
             return language.tr("Press the new keys…")
         if self.display:
             return self.display(self.value)
-        if self.key == "hotkey":
+        if self.key.startswith("hotkey"):
+            if not self.value:
+                return language.tr("Off")
             return " + ".join(p.upper() if len(p) <= 3 and p[0] == "f" or len(p) == 1 else p.capitalize()
                               for p in str(self.value).split("+"))
         return str(self.value)
@@ -899,10 +940,10 @@ class SettingRow(HoverFocus, QtWidgets.QWidget):
 
     def mousePressEvent(self, e):
         self.keep_focus()
-        if self.kind == "choice" and e.position().x() < self._value_rect().left() + 28:
-            self.step(-1)
-        elif self.kind == "choice":
-            self.step(1)
+        if self.kind == "choice":     # only a click on the value changes it; anywhere else just picks the row
+            v, x = self._value_rect(), e.position().x()
+            if v.left() <= x <= v.right():
+                self.step(-1 if x < v.left() + 28 else 1)
         else:
             self.activate()
 
@@ -934,8 +975,11 @@ class SettingRow(HoverFocus, QtWidgets.QWidget):
             p.drawText(left.adjusted(0, 13, 0, 0), language.lead() | Qt.AlignTop, self.label)
             p.setPen(soft)
             p.setFont(ui_theme.font(14))
-            p.drawText(left.adjusted(0, 39, 0, 0), language.lead() | Qt.AlignTop,
-                       p.fontMetrics().elidedText(desc, Qt.ElideRight, int(left.width())))
+            if self.height() > self.H:      # fit() made room: the whole explanation, on two lines
+                p.drawText(left.adjusted(0, 39, 0, -6), language.lead() | Qt.AlignTop | Qt.TextWordWrap, desc)
+            else:
+                p.drawText(left.adjusted(0, 39, 0, 0), language.lead() | Qt.AlignTop,
+                           p.fontMetrics().elidedText(desc, Qt.ElideRight, int(left.width())))
         else:
             p.drawText(left, language.lead() | Qt.AlignVCenter, self.label)
         v = self._value_rect()

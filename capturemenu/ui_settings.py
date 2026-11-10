@@ -31,6 +31,10 @@ class Settings(QtWidgets.QWidget):
     mics_ready = QtCore.Signal(object)       # Obs.mic_devices(), or None
     update_event = QtCore.Signal(dict)       # what the update check / download is doing
     update_found = QtCore.Signal(dict)       # the background check saw a newer release
+    applied = QtCore.Signal(dict)            # settings saved that need no restart: main() applies them
+
+    # read every time they're used, so saving them needs no restart
+    LIVE = {"sounds", "rumble", "storage_warn_gb", "low_space_gb", "record_indicator", "mic_on", "start_with_windows"}
 
     def __init__(self, ctl: capture_controller.Controller):
         super().__init__(None, Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool)
@@ -177,6 +181,14 @@ class Settings(QtWidgets.QWidget):
         hk = self._row("hotkey", "Keyboard shortcut", "action",
                        describe=lambda v: "Opens the menu. Press Enter, then the new keys")
         hk.on_activate = self._listen_hotkey
+        shot = self._row("hotkey_screenshot", "Screenshot shortcut", "action",
+                         describe=lambda v: "Takes a screenshot without opening the menu. Enter, then the keys; "
+                                            "Backspace turns it off")
+        shot.on_activate = self._listen_hotkey
+        rec = self._row("hotkey_record", "Record shortcut", "action",
+                        describe=lambda v: "Starts or stops a recording without opening the menu. Enter, then "
+                                           "the keys; Backspace turns it off")
+        rec.on_activate = self._listen_hotkey
         self._row("controller_button", "Controller button", "choice",
                   [("create", "Create / View"), ("ps", "PS / Xbox button"), ("touchpad", "Touchpad"),
                    ("mute", "Mute / Share")],
@@ -196,7 +208,8 @@ class Settings(QtWidgets.QWidget):
         folder = self._row("clips_dir", "Clips folder", "action",
                            describe=lambda v: "Windows Security protects the folder you picked, so captures "
                                               "are saved here"
-                           if in_use(v) != v else "Clips and recordings, a folder per game",
+                           if in_use(v) != v else "New clips go here, a folder per game. The ones in the folder "
+                                                  "you used before stay there and stay in the gallery",
                            display=in_use)
         folder.on_activate = self._pick_folder
         shots = self._row("screenshots_dir", "Screenshots folder", "action",
@@ -207,6 +220,10 @@ class Settings(QtWidgets.QWidget):
                   [(0, "Never"), (50, "50 GB"), (100, "100 GB"), (200, "200 GB"), (500, "500 GB"),
                    (1000, "1 TB")], lambda v: "Only a notice. Nothing is ever deleted for you",
                   custom=lambda v: language.tr("{n} GB", n=v))
+        self._row("low_space_gb", "Warn me when the drive has less than", "choice",
+                  [(0, "Never"), (5, "5 GB"), (10, "10 GB"), (20, "20 GB"), (50, "50 GB")],
+                  lambda v: "A notice once a day while the clips drive is this low" if v else
+                  "No notice when the clips drive runs low", custom=lambda v: language.tr("{n} GB", n=v))
         self._section("GENERAL")
         self._row("start_with_windows", "Start with Windows", "bool",
                   describe=lambda v: "Capture Menu and OBS start when you sign in")
@@ -423,6 +440,7 @@ class Settings(QtWidgets.QWidget):
 
     def _refresh(self):
         for r in self.rows:
+            r.fit()            # an explanation that changed with another row's value may need a second line
             r.update()
         cfg = self._plan_cfg()
         enc = obs_client.choose_encoder(self.encoder or "nvenc_av1", cfg["video_codec"])
@@ -431,6 +449,7 @@ class Settings(QtWidgets.QWidget):
         self.memory.setText(language.tr("Recording {w}×{h} at {fps} FPS  ·  the last minutes take up to {gb} GB on the drive",
                                w=w, h=h, fps=cfg["fps"], gb=f"{mb / 1024:.1f}"))
         dirty = self.changes()
+        self._leave_armed = False
         self.info.setText((language.tr("1 unsaved change") if len(dirty) == 1 else
                            language.tr("{n} unsaved changes", n=len(dirty))) if dirty else language.tr("Changes apply when you save"))
 
@@ -487,13 +506,31 @@ class Settings(QtWidgets.QWidget):
         self._refresh()
 
     def go_back(self):
-        """Leaves without saving, back to wherever Settings was opened from."""
+        """Leaves without saving, back to wherever Settings was opened from. With unsaved changes the
+        first press only says so; the second one leaves."""
+        if not self._may_leave():
+            return
         back, self.back_to = getattr(self, "back_to", None), None
         self.close_settings()
         if back:
             back()
 
+    def dismiss(self):
+        """The shortcut or Create pressed while Settings is open: closes it, asking the same way."""
+        if self._may_leave():
+            self.close_settings()
+
+    def _may_leave(self) -> bool:
+        if not self.isVisible() or getattr(self, "_leave_armed", False) or not self.changes():
+            self._leave_armed = False
+            return True
+        self._leave_armed = True          # any change, or a few seconds, and it's asked again
+        self.info.setText(language.tr("Press again to leave without saving your changes"))
+        QtCore.QTimer.singleShot(4000, lambda: self._refresh() if self._leave_armed and self.isVisible() else None)
+        return False
+
     def close_settings(self):
+        self._leave_armed = False
         self.hide()
 
     def paintEvent(self, _):
@@ -515,6 +552,8 @@ class Settings(QtWidgets.QWidget):
         if not changes:
             self.close_settings()
             return
+        if "clips_dir" in changes:
+            changes = dict(changes, library_dirs=self._keep_library(Path(changes["clips_dir"])))
         preferences.save_config(changes)
         if "start_with_windows" in changes:
             windows.set_start_with_windows(bool(changes["start_with_windows"]))
@@ -523,7 +562,20 @@ class Settings(QtWidgets.QWidget):
         self.ctl.cfg.update(changes)
         runtime.log.info("settings saved: %s", ", ".join(changes))
         self.hide()
-        self._restart()
+        if set(changes) <= self.LIVE:      # sounds, rumble, warnings…: used from now on, nothing restarts
+            self.applied.emit(changes)
+            self.ctl.toast.emit(language.tr("Settings saved"), "ok")
+            return
+        # a clip being saved, trimmed or made ready to share is finished first: restarting now would lose it
+        self.ctl.when_idle(self._restart, language.tr("Settings saved · Capture Menu restarts once the clip is saved"))
+
+    def _keep_library(self, new: Path) -> list[str]:
+        """The clips folder changes to `new`: nothing is moved. The folder used until now is noted (the
+        returned library_dirs), so its captures stay in the gallery, with their favorites and titles."""
+        old = self.ctl.clips_dir
+        preferences.rekey_library(old, new)
+        kept = [d for d in [*(self.ctl.cfg.get("library_dirs") or []), str(old)] if Path(d) != new]
+        return list(dict.fromkeys(kept))
 
     def _restart(self):
         if self.restart() is False:        # the new copy didn't start: this one goes on, saved settings and all
@@ -562,7 +614,7 @@ class Settings(QtWidgets.QWidget):
 
     def keyPressEvent(self, e):
         row = self.focusWidget() if isinstance(self.focusWidget(), ui_widgets.SettingRow) else None
-        k = e.key()
+        k = input_devices.latin_key(e)
         if self.focusWidget() in self._head():   # the highlight is on the buttons along the top
             button = self.focusWidget()
             if k in (Qt.Key_Left, Qt.Key_Right):
@@ -594,8 +646,13 @@ class Settings(QtWidgets.QWidget):
                 row.listening = False
                 row.update()
                 return
+            if k in (Qt.Key_Backspace, Qt.Key_Delete) and row.key != "hotkey":   # the extra shortcuts can be off
+                row.listening = False
+                row.set_value("", emit=True)
+                return
             spec = input_devices.hotkey_from_event(e)
-            if spec:
+            taken = {r.value for r in self.rows if r.key.startswith("hotkey") and r is not row}
+            if spec and spec not in taken:       # keys another of our shortcuts has: keep waiting
                 row.listening = False
                 row.set_value(spec, emit=True)
             return
@@ -625,7 +682,7 @@ class Welcome(Settings):
     Which screen and HDR are only asked when there's a choice (two screens, Windows HDR on)."""
 
     LATER = "You can change it later in Settings."
-    READ_AT_START = ("hotkey", "controller_button", "double_press_seconds", "clips_dir")
+    READ_AT_START = ("hotkey", "controller_button", "controller_hold_ms", "double_press_seconds", "clips_dir")
 
     def __init__(self, ctl: capture_controller.Controller, done):
         self.done = done
@@ -689,6 +746,10 @@ class Welcome(Settings):
                   [("create", "Create / View"), ("ps", "PS / Xbox button"), ("touchpad", "Touchpad"),
                    ("mute", "Mute / Share")],
                   lambda v: self._later("Like Create on the PS5."))
+        # a game that uses the same button (View opens the map in many games on an Xbox pad) keeps its tap
+        self._row("controller_hold_ms", "Open it with a press or a hold?", "choice", [(0, "A press"), (400, "A hold")],
+                  lambda v: self._later("Hold keeps a quick tap for the game, if it uses the same button"),
+                  custom=lambda v: language.tr("A hold ({n} ms)", n=v))
 
         self._section("LIBRARY")
         folder = self._row("clips_dir", "Where should your clips go?", "action",

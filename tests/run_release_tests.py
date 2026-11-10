@@ -14,6 +14,7 @@ GATE = (
     "test_translations.py", "test_obs_launch.py", "test_obs_setup.py", "test_buffer_repair.py", "test_keep_recording.py", "test_welcome.py", "test_phone_link.py", "test_save_safety.py",
     "test_follow_screen.py", "test_controller.py", "test_settings.py",
     "test_devices.py", "test_folders_language.py", "test_blocked_folder.py", "test_startup.py",
+    "test_improvements.py",
 )
 # These need a desktop, real OS integration, FFmpeg/GPU, or performance baselines.
 # Keep them visible; a new test must be explicitly classified before a release can pass.

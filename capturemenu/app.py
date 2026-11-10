@@ -23,6 +23,7 @@ from . import (
     ui_settings,
     ui_theme,
     ui_viewer,
+    ui_widgets,
     windows,
 )
 
@@ -55,6 +56,12 @@ def main():
         windows.set_watch_task()
     threading.Thread(target=tasks, daemon=True).start()
     problems: list[str] = []
+    if preferences.CONFIG_PROBLEM == "unreadable":     # a typo in a hand-edited file never stops the app
+        problems.append(language.tr("config.json couldn't be read · the default settings are used, and your file "
+                                    "is kept as config.broken.json"))
+    elif preferences.CONFIG_PROBLEM:
+        problems.append(language.tr("config.json has values that can't be used · the defaults are used for: {names}",
+                                    names=", ".join(preferences.CONFIG_PROBLEM)))
 
     ctl = capture_controller.Controller(cfg)
     # Where captures went instead, said once and calmly: it all works, there's nothing to do.
@@ -81,6 +88,7 @@ def main():
     toast.pad_button = cfg["controller_button"]
     app.installEventFilter(input_devices.input_mode())   # any real key press switches the hints back to the keyboard
     ctl.toast.connect(toast.show_message)
+    ctl.toast.connect(menu.note_problem)       # an error is said again in the bar, the next time it opens
     ctl.captured.connect(toast.show_capture)
     ctl.captured.connect(lambda *_: menu.refresh_recent())
     ctl.shared.connect(toast.show_shared)
@@ -118,14 +126,16 @@ def main():
         except Exception:
             runtime.log.exception("couldn't stop OBS's recording")
             stopped = False
-        if not stopped and QtWidgets.QMessageBox.warning(
-                None, "Capture Menu",
+        if not stopped and not ui_widgets.confirm(
                 language.tr("OBS is still recording the last minutes, and nothing deletes the old ones while "
                             "Capture Menu is closed. Quit anyway?"),
-                QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No, QtWidgets.QMessageBox.No) != QtWidgets.QMessageBox.Yes:
+                language.tr("Quit anyway"), language.tr("Keep running")):
             return                             # keep running: it goes on looking after the files
-        runtime.ALIVE.unlink(missing_ok=True)     # closed on purpose: the watch task leaves it closed
-        app.quit()
+        def finish():
+            runtime.ALIVE.unlink(missing_ok=True)     # closed on purpose: the watch task leaves it closed
+            app.quit()
+        # a clip being saved, trimmed or made ready to share is finished first: closing now would lose it
+        ctl.when_idle(finish, language.tr("Finishing the clip that's being saved · Capture Menu closes right after"))
     tm.addAction(language.tr("Quit"), quit_app)
     tray.setContextMenu(tm)
     tray.activated.connect(lambda r: menu.show_menu()
@@ -136,7 +146,7 @@ def main():
 
     def open_or_close(game: str):
         if settings.isVisible():
-            settings.close_settings()
+            settings.dismiss()
         elif viewer.isVisible():
             viewer.close_viewer()
         elif gallery.isVisible():
@@ -149,7 +159,8 @@ def main():
     quick = int(cfg.get("double_press_seconds") or 0)
     # with "A hold" each press only counts once held, so the second one comes that much later
     presses = input_devices.PressSequencer(
-        350 + int(cfg.get("controller_hold_ms") or 0) if quick else 0, open_or_close,
+        max(150, min(600, int(cfg.get("double_press_ms") or 350))) + int(cfg.get("controller_hold_ms") or 0)
+        if quick else 0, open_or_close,
         lambda game: ctl.save_clip(quick, game),
         lambda: menu.isVisible() or viewer.isVisible() or gallery.isVisible() or settings.isVisible())
 
@@ -168,11 +179,10 @@ def main():
     try:
         gamepad = input_devices.Gamepad(cfg)
         gamepad.activated.connect(lambda: presses.press(windows.foreground_app(cfg)))
-        if cfg.get("rumble", True):
-            # buzz the controller only when it's what the player is using
-            ctl.captured.connect(lambda *_: gamepad.rumble("capture") if input_devices.input_mode().mode != "keyboard" else None)
-            ctl.recording.connect(lambda on: gamepad.rumble("record") if on and input_devices.input_mode().mode != "keyboard"
-                                  else None)
+        # buzz the controller only when it's what the player is using (Rumble is read each time: no restart)
+        buzzes = lambda: cfg.get("rumble", True) and input_devices.input_mode().mode != "keyboard"
+        ctl.captured.connect(lambda *_: gamepad.rumble("capture") if buzzes() else None)
+        ctl.recording.connect(lambda on: gamepad.rumble("record") if on and buzzes() else None)
         gamepad.pressed.connect(pad_press)
         gamepad.used.connect(input_devices.input_mode().set)
         gamepad.connected.connect(lambda name, on: toast.show_message(
@@ -184,21 +194,43 @@ def main():
 
     hotkey = input_devices.Hotkey(cfg["hotkey"], lambda: windows.foreground_app(cfg))
     hotkey.pressed.connect(presses.press)
-    registered = hotkey.start()
-    for _ in range(20 if restarted and runtime.IS_WINDOWS else 0):   # the old copy may still be letting go
+    usable = hotkey.valid()        # keys typed into config.json that aren't a shortcut: said, never a crash
+    registered = usable and hotkey.start()
+    for _ in range(20 if usable and restarted and runtime.IS_WINDOWS else 0):   # the old copy may still be letting go
         if registered:
             break
         time.sleep(0.25)
         registered = hotkey.start()
-    if runtime.IS_WINDOWS and not registered:
+    # optional shortcuts that act right away, without the bar: a screenshot, start / stop a recording
+    extra_keys = []
+    for name, act in (("hotkey_screenshot", menu.shoot), ("hotkey_record", ctl.toggle_record)):
+        spec = cfg.get(name)
+        if not spec:
+            continue
+        extra = input_devices.Hotkey(spec, lambda: windows.foreground_app(cfg))
+        extra.pressed.connect(act)
+        extra_keys.append(extra)       # kept: the shortcut lives as long as its object
+        if not extra.valid():
+            problems.append(language.tr("{keys} isn't a shortcut Capture Menu can use · "
+                                        "pick other keys in Settings", keys=spec.upper()))
+        elif not extra.start() and runtime.IS_WINDOWS:
+            problems.append(language.tr("{keys} is taken by another app · "
+                                        "use the controller or the tray icon, and pick other keys in Settings",
+                                        keys=spec.upper()))
+    app._extra_keys = extra_keys
+    if not usable:
+        problems.append(language.tr("{keys} isn't a shortcut Capture Menu can use · "
+                                    "pick other keys in Settings", keys=cfg["hotkey"].upper()))
+    elif runtime.IS_WINDOWS and not registered:
         problems.append(language.tr("{keys} is taken by another app · "
                            "use the controller or the tray icon, and pick other keys in Settings",
                            keys=cfg["hotkey"].upper()))
     keys = " + ".join(k.upper() if len(k) == 1 or k[0] == "f" and k[1:].isdigit() else k.capitalize()
-                      for k in cfg["hotkey"].split("+"))   # alt+c -> Alt + C
+                      for k in cfg["hotkey"].split("+") if k)   # alt+c -> Alt + C
     pad_name = cfg["controller_button"].replace("+", " + ").title()
     if problems:
         toast.show_message(problems[0], "error")
+        menu.note_problem(problems[0])
     else:
         toast.show_running(language.tr("Settings saved") if restarted else language.tr("Capture Menu is running"),
                            language.tr("Press {keys} or {button} to open", keys=keys, button=pad_name))
@@ -207,6 +239,18 @@ def main():
             toast.show_message(moved_notice, "info")
             preferences.update_state(lambda s: s.update(fallback_told=str(ctl.blocked)))
         QtCore.QTimer.singleShot(7000, tell_moved)   # after the notice above has been read
+    def apply_live(changes: dict):
+        """Settings saved without a restart (Settings.LIVE): what reads them once is told now."""
+        sounds.enabled = bool(cfg.get("sounds", True))
+        if "record_indicator" in changes:
+            rec_dot.set_corner(cfg.get("record_indicator", "top-left"))
+        if "mic_on" in changes:
+            ctl._bg(lambda: ctl.obs.set_mic_muted(not cfg.get("mic_on", True)), exclusive=False)
+        if changes.keys() & {"storage_warn_gb", "low_space_gb"}:
+            ctl.check_storage()
+        ctl.refresh_status()
+    settings.applied.connect(apply_live)
+
     told = set()      # each new version is announced once while the app runs; a click opens Settings on it
     def update_found(rel: dict):
         if rel["version"] not in told:

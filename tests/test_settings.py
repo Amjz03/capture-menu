@@ -56,6 +56,7 @@ key(Qt.Key_F9, Qt.ControlModifier | Qt.ShiftModifier); assert not hk.listening a
 print("hotkey PASS")
 
 # 5) Esc cancels without writing
+key(Qt.Key_Escape); assert s.isVisible() and "Press again" in s.info.text(), "unsaved changes: the first Esc only asks"
 key(Qt.Key_Escape); assert not s.isVisible() and json.loads(preferences.CONFIG_PATH.read_text())["hotkey"] == "alt+c"
 # 6) reopen, change, save: only changed keys written, password kept, app restarts
 s.open((2560, 1440)); assert s.values()["fps"] == 60, "cancel discarded the edits"

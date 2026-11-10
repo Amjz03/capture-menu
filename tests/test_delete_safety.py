@@ -1,6 +1,7 @@
 """Recycling failures must preserve captures, metadata and truthful UI outcomes."""
 import sys
 import tempfile
+import time
 from pathlib import Path
 from unittest.mock import patch
 
@@ -76,7 +77,11 @@ with tempfile.TemporaryDirectory() as folder:
                 return recycle(path)
             return False, ""
         with patch.object(QtCore.QFile, "moveToTrash", side_effect=mixed):
-            gallery.delete_marked()
+            before = len(notices)
+            gallery.delete_marked()          # the files move off the main thread; the notice follows
+            deadline = time.monotonic() + 10
+            while len(notices) == before and time.monotonic() < deadline:
+                app.processEvents(); time.sleep(0.01)
         text, kind = notices[-1]
         assert kind == ("ok" if successes == total else "error"), notices
         assert "freed" not in text and "Deleted" not in text

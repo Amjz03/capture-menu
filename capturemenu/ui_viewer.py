@@ -560,6 +560,12 @@ class Viewer(QtWidgets.QWidget):
         if self.player is not None and self.stage.currentWidget() is self.video:
             self.player.setPosition(max(0, min(self.player.duration(), self.player.position() + ms)))
 
+    def nudge(self, ms: float):
+        """A small, exact step while trimming (a frame, a second): the video stops on that picture."""
+        if self.player is not None and self.stage.currentWidget() is self.video:
+            self.player.pause()
+            self.player.setPosition(round(max(0, min(self.player.duration(), self.player.position() + ms))))
+
     def _on_position(self, pos: int):
         if not self.slider.isSliderDown():
             self.slider.setValue(pos)
@@ -590,8 +596,12 @@ class Viewer(QtWidgets.QWidget):
         self._trim_labels()
         src, slots = self.current, self.timeline.slots
         tag = hashlib.md5(str(src).encode()).hexdigest()
+        self._frame_ms = 1000 / 60       # until the clip's own frame rate is read (below)
 
         def run():  # filmstrip frames, filled in as they arrive
+            fps = media.frame_rate(src)
+            if fps > 0 and self.trimming and self.current == src:
+                self._frame_ms = 1000 / fps
             for i in range(slots):
                 out = self.ctl.thumbs_dir / f"strip_{tag}_{i}.jpg"
                 if media.filmstrip_frame(src, int(duration * (i + 0.5) / slots), out):
@@ -950,9 +960,10 @@ class Viewer(QtWidgets.QWidget):
             items = ([("DPAD_LR", "Move"), ("A", "Select"), ("B", "Back")] if pad
                      else [("k:← →", "Move"), ("k:Enter", "Select"), ("k:Esc", "Back")])
         elif self.trimming:
-            items = ([("X", "Start"), ("Y", "End"), ("L1", "Preview"), ("A", "Save"), ("B", "Cancel")] if pad
-                     else [("k:I", "Start"), ("k:O", "End"), ("k:P", "Preview"), ("k:Enter", "Save"),
-                           ("k:Esc", "Cancel")])
+            items = ([("X", "Start"), ("Y", "End"), ("L1R1", "Frame"), ("DPAD_UD", "1 sec"), ("OPT", "Preview"),
+                      ("A", "Save"), ("B", "Cancel")] if pad
+                     else [("k:I", "Start"), ("k:O", "End"), ("k:, .", "Frame"), ("k:↑ ↓", "1 sec"),
+                           ("k:P", "Preview"), ("k:Enter", "Save"), ("k:Esc", "Cancel")])
         elif pad:
             items = [("DPAD", "Move"), ("A", "Select"), ("L1R1", "Newer/older"), ("B", "Back")]
         elif self.is_video():
@@ -1071,7 +1082,7 @@ class Viewer(QtWidgets.QWidget):
         w.style().polish(w)
 
     def keyPressEvent(self, e):
-        k = e.key()
+        k = input_devices.latin_key(e)
         if self.phone_panel.isVisible():   # the QR on screen: Esc, ◯ / B or Enter puts it away
             if k in (Qt.Key_Escape, Qt.Key_Backspace, Qt.Key_Return, Qt.Key_Enter):
                 self.phone_panel.close_panel()
@@ -1134,6 +1145,11 @@ class Viewer(QtWidgets.QWidget):
                 Qt.Key_I: lambda: self.timeline.set_start(pos),
                 Qt.Key_O: lambda: self.timeline.set_end(pos),
                 Qt.Key_P: self.preview_selection,
+                # exact steps, so the start and end can be set to the frame without the mouse
+                Qt.Key_Comma: lambda: self.nudge(-getattr(self, "_frame_ms", 1000 / 60)),
+                Qt.Key_Period: lambda: self.nudge(getattr(self, "_frame_ms", 1000 / 60)),
+                Qt.Key_Up: lambda: self.nudge(1000),
+                Qt.Key_Down: lambda: self.nudge(-1000),
                 Qt.Key_Return: lambda: self.save_trim(replace=False),
                 Qt.Key_Enter: lambda: self.save_trim(replace=False),
             }
@@ -1154,8 +1170,8 @@ class Viewer(QtWidgets.QWidget):
             }
         handlers.update({
             Qt.Key_Space: self.toggle_play,
-            Qt.Key_Left: lambda: self.seek(-5000),
-            Qt.Key_Right: lambda: self.seek(5000),
+            Qt.Key_Left: lambda: self.seek(-1000 if e.modifiers() & Qt.ShiftModifier else -5000),   # Shift: a second
+            Qt.Key_Right: lambda: self.seek(1000 if e.modifiers() & Qt.ShiftModifier else 5000),
         })
         if k in handlers:
             handlers[k]()

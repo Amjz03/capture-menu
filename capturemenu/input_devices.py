@@ -47,6 +47,13 @@ class Hotkey(QtCore.QObject):
             raise ValueError(f"Unrecognised hotkey: {self.spec}")
         return mods, vk
 
+    def valid(self) -> bool:
+        try:
+            self._parse()
+            return True
+        except ValueError:
+            return False
+
     def start(self) -> bool:
         if not runtime.IS_WINDOWS:
             return False
@@ -267,7 +274,8 @@ def pad_key(button: int, menu: "Menu", viewer: "Viewer", gallery: "Gallery | Non
             keys = {A: Qt.Key_Return, B: Qt.Key_Escape, LEFT: Qt.Key_Left, RIGHT: Qt.Key_Right}
         elif viewer.trimming:
             keys = {A: Qt.Key_Return, B: Qt.Key_Escape, LEFT: Qt.Key_Left, RIGHT: Qt.Key_Right,
-                    X: Qt.Key_I, Y: Qt.Key_O, L1: Qt.Key_P, R1: Qt.Key_P}
+                    X: Qt.Key_I, Y: Qt.Key_O, L1: Qt.Key_Comma, R1: Qt.Key_Period,     # a frame back / on
+                    UP: Qt.Key_Up, DOWN: Qt.Key_Down, OPTIONS: Qt.Key_P}                # a second; Preview
         else:
             keys = {A: Qt.Key_Return, B: Qt.Key_Escape, LEFT: Qt.Key_Left, RIGHT: Qt.Key_Right,
                     UP: Qt.Key_Up, DOWN: Qt.Key_Down, L1: Qt.Key_A, R1: Qt.Key_D, X: Qt.Key_T, Y: Qt.Key_M,
@@ -395,12 +403,33 @@ class Sounds:
         self.effects[name].play()
 
 
+# Windows virtual-key codes of the keys the pages use that aren't letters or digits (those are their own
+# ASCII codes): they name the key itself, whatever the keyboard layout types with it
+_VK_KEYS = {0xDB: Qt.Key_BracketLeft, 0xDD: Qt.Key_BracketRight, 0xBC: Qt.Key_Comma, 0xBE: Qt.Key_Period,
+            0xBF: Qt.Key_Slash}
+
+
+def latin_key(e: QtGui.QKeyEvent, on_windows: bool | None = None) -> int:
+    """The key a press stands for, by where it is on the keyboard: with an Arabic (or any non-Latin)
+    layout the S key types س, and Qt reports that letter, so "S" would never match. The pages' shortcuts
+    (S, T, V, [ ] …) work in every layout this way. Arrows, Enter and Latin letters pass through."""
+    k = e.key()
+    if 0x20 <= k <= 0x7E or k >= 0x01000000:      # already Latin, or a named key (arrows, F-keys, Enter…)
+        return k
+    if runtime.IS_WINDOWS if on_windows is None else on_windows:
+        vk = e.nativeVirtualKey()
+        if 0x41 <= vk <= 0x5A or 0x30 <= vk <= 0x39:
+            return vk
+        return _VK_KEYS.get(vk, k)
+    return k
+
+
 def hotkey_from_event(e: QtGui.QKeyEvent) -> str | None:
     """A key press -> "ctrl+shift+f9" style text for config.json, or None for a lone modifier."""
     names = {Qt.Key_Space: "space", Qt.Key_Tab: "tab", Qt.Key_Pause: "pause", Qt.Key_Insert: "insert",
              Qt.Key_Home: "home", Qt.Key_End: "end", Qt.Key_PageUp: "pageup",
              Qt.Key_PageDown: "pagedown", Qt.Key_Print: "printscreen"}
-    k = e.key()
+    k = latin_key(e)       # the key itself: Alt + C is the same shortcut while an Arabic layout is on
     if Qt.Key_F1 <= k <= Qt.Key_F24:
         key = f"f{k - Qt.Key_F1 + 1}"
     elif k in names:
