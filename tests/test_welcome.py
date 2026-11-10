@@ -29,7 +29,7 @@ def welcome():
 w = welcome()
 keys = [r.key for r in w.rows]
 one_screen = ["language", "start_with_windows", "buffer_minutes", "double_press_seconds", "quality", "resolution",
-              "fps", "mic_on", "hotkey", "controller_button", "clips_dir"]
+              "fps", "mic_on", "hotkey", "controller_button", "controller_hold_ms", "clips_dir"]
 assert keys in (one_screen, one_screen[:7] + ["capture_screen"] + one_screen[7:]), keys
 assert "hdr" not in keys, "HDR is only asked when Windows HDR is on"
 assert all(r.describe(r.value).endswith("You can change it later in Settings.") for r in w.rows), \

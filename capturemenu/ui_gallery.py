@@ -541,7 +541,7 @@ class Gallery(ui_widgets.Grow, QtWidgets.QWidget):
 
     def eventFilter(self, obj, event):
         if obj is self.grid and event.type() == QtCore.QEvent.KeyPress:
-            if event.key() == Qt.Key_A and event.modifiers() & Qt.ControlModifier:
+            if input_devices.latin_key(event) == Qt.Key_A and event.modifiers() & Qt.ControlModifier:
                 self.mark_all()
                 return True
             if event.key() in ui_theme.ARROWS:
@@ -554,9 +554,9 @@ class Gallery(ui_widgets.Grow, QtWidgets.QWidget):
                                          QtCore.QSizeF(rect.size()))
                     self._move(self.grid, event.key(), here)
                 return True
-            return self._key(event.key())
+            return self._key(input_devices.latin_key(event))
         if event.type() == QtCore.QEvent.KeyPress and obj is self.games:
-            k = event.key()
+            k = input_devices.latin_key(event)
             if k in (Qt.Key_Up, Qt.Key_Down):
                 before = self.games.currentRow()
                 QtWidgets.QListWidget.keyPressEvent(self.games, event)
@@ -570,7 +570,7 @@ class Gallery(ui_widgets.Grow, QtWidgets.QWidget):
                 self._key(k)
             return True
         if event.type() == QtCore.QEvent.KeyPress and obj in self._head_nav(all=True):
-            k = event.key()
+            k = input_devices.latin_key(event)
             if k in ui_theme.ARROWS:
                 self._move(obj, k)
             elif k in (Qt.Key_Return, Qt.Key_Enter, Qt.Key_Space):
@@ -583,7 +583,7 @@ class Gallery(ui_widgets.Grow, QtWidgets.QWidget):
         return super().eventFilter(obj, event)
 
     def keyPressEvent(self, e):
-        if not self._key(e.key()):
+        if not self._key(input_devices.latin_key(e)):
             super().keyPressEvent(e)
 
     def _head_nav(self, all: bool = False) -> list[QtWidgets.QWidget]:

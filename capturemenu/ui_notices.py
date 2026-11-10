@@ -43,6 +43,16 @@ class RecIndicator(QtWidgets.QWidget):
         self.show()
         self._tick.start()
 
+    def set_corner(self, corner: str):
+        """Settings changed where it shows (or turned it off): from now on, a recording that's running too."""
+        was, self.corner = self.started, corner
+        if corner == "off":
+            self.started = None
+            self._tick.stop()
+            self.hide()
+        elif was is not None:
+            self._place()
+
     def sync(self, st: dict):
         """From the status poll: catches recordings started in OBS itself, or before a restart."""
         if st.get("online"):

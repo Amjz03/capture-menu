@@ -844,7 +844,9 @@ class SettingRow(HoverFocus, QtWidgets.QWidget):
             return language.tr("Press the new keys…")
         if self.display:
             return self.display(self.value)
-        if self.key == "hotkey":
+        if self.key.startswith("hotkey"):
+            if not self.value:
+                return language.tr("Off")
             return " + ".join(p.upper() if len(p) <= 3 and p[0] == "f" or len(p) == 1 else p.capitalize()
                               for p in str(self.value).split("+"))
         return str(self.value)
@@ -899,10 +901,10 @@ class SettingRow(HoverFocus, QtWidgets.QWidget):
 
     def mousePressEvent(self, e):
         self.keep_focus()
-        if self.kind == "choice" and e.position().x() < self._value_rect().left() + 28:
-            self.step(-1)
-        elif self.kind == "choice":
-            self.step(1)
+        if self.kind == "choice":     # only a click on the value changes it; anywhere else just picks the row
+            v, x = self._value_rect(), e.position().x()
+            if v.left() <= x <= v.right():
+                self.step(-1 if x < v.left() + 28 else 1)
         else:
             self.activate()
 

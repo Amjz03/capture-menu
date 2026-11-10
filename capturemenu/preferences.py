@@ -19,6 +19,8 @@ STATE_PATH = runtime.APP_DIR / "state.json"
 
 DEFAULTS = {
     "hotkey": "alt+c",
+    "hotkey_screenshot": "",    # keys that take a screenshot without the menu ("": none)
+    "hotkey_record": "",        # keys that start / stop a recording without the menu ("": none)
     "obs_host": "localhost",
     "obs_port": 4456,
     "obs_password": "",

@@ -145,7 +145,7 @@ def main():
 
     def open_or_close(game: str):
         if settings.isVisible():
-            settings.close_settings()
+            settings.dismiss()
         elif viewer.isVisible():
             viewer.close_viewer()
         elif gallery.isVisible():
@@ -177,11 +177,10 @@ def main():
     try:
         gamepad = input_devices.Gamepad(cfg)
         gamepad.activated.connect(lambda: presses.press(windows.foreground_app(cfg)))
-        if cfg.get("rumble", True):
-            # buzz the controller only when it's what the player is using
-            ctl.captured.connect(lambda *_: gamepad.rumble("capture") if input_devices.input_mode().mode != "keyboard" else None)
-            ctl.recording.connect(lambda on: gamepad.rumble("record") if on and input_devices.input_mode().mode != "keyboard"
-                                  else None)
+        # buzz the controller only when it's what the player is using (Rumble is read each time: no restart)
+        buzzes = lambda: cfg.get("rumble", True) and input_devices.input_mode().mode != "keyboard"
+        ctl.captured.connect(lambda *_: gamepad.rumble("capture") if buzzes() else None)
+        ctl.recording.connect(lambda on: gamepad.rumble("record") if on and buzzes() else None)
         gamepad.pressed.connect(pad_press)
         gamepad.used.connect(input_devices.input_mode().set)
         gamepad.connected.connect(lambda name, on: toast.show_message(
@@ -200,6 +199,23 @@ def main():
             break
         time.sleep(0.25)
         registered = hotkey.start()
+    # optional shortcuts that act right away, without the bar: a screenshot, start / stop a recording
+    extra_keys = []
+    for name, act in (("hotkey_screenshot", menu.shoot), ("hotkey_record", ctl.toggle_record)):
+        spec = cfg.get(name)
+        if not spec:
+            continue
+        extra = input_devices.Hotkey(spec, lambda: windows.foreground_app(cfg))
+        extra.pressed.connect(act)
+        extra_keys.append(extra)       # kept: the shortcut lives as long as its object
+        if not extra.valid():
+            problems.append(language.tr("{keys} isn't a shortcut Capture Menu can use · "
+                                        "pick other keys in Settings", keys=spec.upper()))
+        elif not extra.start() and runtime.IS_WINDOWS:
+            problems.append(language.tr("{keys} is taken by another app · "
+                                        "use the controller or the tray icon, and pick other keys in Settings",
+                                        keys=spec.upper()))
+    app._extra_keys = extra_keys
     if not usable:
         problems.append(language.tr("{keys} isn't a shortcut Capture Menu can use · "
                                     "pick other keys in Settings", keys=cfg["hotkey"].upper()))
@@ -220,6 +236,18 @@ def main():
             toast.show_message(moved_notice, "info")
             preferences.update_state(lambda s: s.update(fallback_told=str(ctl.blocked)))
         QtCore.QTimer.singleShot(7000, tell_moved)   # after the notice above has been read
+    def apply_live(changes: dict):
+        """Settings saved without a restart (Settings.LIVE): what reads them once is told now."""
+        sounds.enabled = bool(cfg.get("sounds", True))
+        if "record_indicator" in changes:
+            rec_dot.set_corner(cfg.get("record_indicator", "top-left"))
+        if "mic_on" in changes:
+            ctl._bg(lambda: ctl.obs.set_mic_muted(not cfg.get("mic_on", True)), exclusive=False)
+        if changes.keys() & {"storage_warn_gb", "low_space_gb"}:
+            ctl.check_storage()
+        ctl.refresh_status()
+    settings.applied.connect(apply_live)
+
     told = set()      # each new version is announced once while the app runs; a click opens Settings on it
     def update_found(rel: dict):
         if rel["version"] not in told:
