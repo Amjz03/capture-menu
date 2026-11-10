@@ -125,6 +125,7 @@ class Gallery(ui_widgets.Grow, QtWidgets.QWidget):
     """All captures, like the PS5 Media Gallery: games on the left, their captures on the right."""
 
     thumb_ready = QtCore.Signal(str)
+    deleted = QtCore.Signal(int, int)      # how many went to the Recycle Bin, of how many picked
     TW, TH = 256, 144        # set from the grid's width by _fit_tiles()
     PAD = 15                 # room around a tile to grow into when it's the current one
     FAVORITES = "★  Favorites"
@@ -168,6 +169,7 @@ class Gallery(ui_widgets.Grow, QtWidgets.QWidget):
         self._making: set[Path] = set()            # thumbnails being made now (one job per file)
         self.by_size = False
         self.select_mode = False      # Select pressed: a click (or ✕ / Enter) picks instead of opening
+        self._deleting = False        # the picked captures are on their way to the Recycle Bin
 
         lay = QtWidgets.QVBoxLayout(self)
         lay.setContentsMargins(64, 40, 64, 32)
@@ -254,6 +256,7 @@ class Gallery(ui_widgets.Grow, QtWidgets.QWidget):
         lay.addWidget(self.hints)
 
         self.thumb_ready.connect(self._on_thumb)
+        self.deleted.connect(self._on_deleted)
         viewer.closed.connect(self._after_viewer)
         viewer.away.connect(self.close_gallery)
         ctl.captured.connect(lambda *_: self.refresh() if self.isVisible() else None)
@@ -412,7 +415,7 @@ class Gallery(ui_widgets.Grow, QtWidgets.QWidget):
         self.del_btn.setEnabled(bool(self.marked))
         self.all_btn.setText(language.tr("Select none") if self.items and self.marked == set(self.items) else language.tr("Select all"))
         self.update_hints()
-        if not self.del_btn.property("danger"):
+        if not self.del_btn.property("danger") and not self._deleting:
             self.del_btn.setText(language.tr("Delete {n}", n=len(self.marked)))
 
     @classmethod
@@ -452,8 +455,15 @@ class Gallery(ui_widgets.Grow, QtWidgets.QWidget):
         self._update_info()
 
     def delete_marked(self):
-        if not self.marked:
+        if self._deleting:
             return
+        if not self.marked:        # nothing picked: Del means the capture the highlight is on
+            row = self.grid.currentRow()
+            if not (0 <= row < len(self.items)) or not self.grid_lit():
+                return
+            self.marked = {self.items[row]}
+            self.grid.viewport().update()
+            self._update_info()
         if not self.del_btn.property("danger"):   # first press arms, second press deletes
             favs = sum(self.ctl.is_favorite(p) for p in self.marked)
             note = (" " + (language.tr("(incl. 1 favorite)") if favs == 1 else language.tr("(incl. {n} favorites)", n=favs))
@@ -463,8 +473,22 @@ class Gallery(ui_widgets.Grow, QtWidgets.QWidget):
             ui_viewer.Viewer._repolish(self.del_btn)
             self._disarm.start(4000)
             return
-        total = len(self.marked)
-        count, _ = self.ctl.delete_many(sorted(self.marked))
+        paths = sorted(self.marked)
+        self._deleting = True
+        self._disarm.stop()
+        self.del_btn.setText(language.tr("Deleting…"))
+
+        def run():     # the Recycle Bin takes its time with many files: never on the page's own thread
+            try:
+                count, _ = self.ctl.delete_many(paths)
+            except Exception:
+                runtime.log.exception("deleting the selected captures failed")
+                count = sum(not p.exists() for p in paths)
+            runtime.safe_emit(self.deleted, count, len(paths))
+        threading.Thread(target=run, daemon=True).start()
+
+    def _on_deleted(self, count: int, total: int):
+        self._deleting = False
         self.marked = {p for p in self.marked if p.exists()}
         self._reset_delete()
         if count == total:
@@ -510,9 +534,9 @@ class Gallery(ui_widgets.Grow, QtWidgets.QWidget):
                       ("k:Del", "Delete selected"), ("k:Esc", "Done")], input_devices.input_mode().mode)
             return
         self.hints.set_items(
-            [("DPAD", "Move"), ("A", "Open"), ("X", "Select"), ("OPT", "Delete selected"),
+            [("DPAD", "Move"), ("A", "Open"), ("X", "Select"), ("OPT", "Delete"),
              ("L1R1", "Game"), ("Y", "Favorite"), ("B", "Back")] if pad
-            else [("k:← →", "Move"), ("k:Enter", "Open"), ("k:Space", "Select"), ("k:Del", "Delete selected"),
+            else [("k:← →", "Move"), ("k:Enter", "Open"), ("k:Space", "Select"), ("k:Del", "Delete"),
                   ("k:[ ]", "Game"), ("k:S", "Sort"), ("k:F", "Favorite"), ("k:Esc", "Back")], input_devices.input_mode().mode)
 
     def eventFilter(self, obj, event):

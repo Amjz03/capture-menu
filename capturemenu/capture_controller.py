@@ -52,7 +52,18 @@ class Controller(QtCore.QObject):
         # where captures live: the clips folder, plus the screenshots folder when it's somewhere else
         self.roots = [self.clips_dir] + ([self.shots_dir] if self.clips_dir not in
                                          (self.shots_dir, *self.shots_dir.parents) else [])
-        self._busy = threading.Lock()
+        # clips folders used before (Settings notes them when the folder changes): their captures stay where
+        # they are and stay in the gallery. A folder that's gone (an unplugged drive) is skipped for now.
+        for old in (Path(d) for d in cfg.get("library_dirs") or [] if d):
+            try:
+                there = old.is_dir()
+            except OSError:
+                there = False
+            if there and not any(r == old or r in old.parents for r in self.roots):
+                self.roots = [r for r in self.roots if old not in r.parents or r == self.clips_dir] + [old]
+        self._busy = threading.Lock()            # one save of the last minutes at a time
+        self._edits = threading.Lock()           # one trim / sound change at a time; a save never waits on it
+        self._jobs_lock, self._jobs = threading.Lock(), 0          # background work running now (see working())
         self._rec_lock = threading.Lock()        # one Start / Stop at a time: a second Stop can't join the same files
         self._names_lock, self._names = threading.Lock(), set()   # names handed out, before their file exists
         self._saves_lock, self._saves = threading.Lock(), 0        # saves joining the last minutes: no pruning then
@@ -170,7 +181,7 @@ class Controller(QtCore.QObject):
         return 100, 100
 
     def set_mix(self, path: Path, voice: int, game: int):
-        self._bg(self._set_mix, path, voice, game, source=path)
+        self._bg(self._set_mix, path, voice, game, source=path, lock=self._edits)
 
     def _set_mix(self, path: Path, voice: int, game: int):
         tmp = path.with_name(path.name + ".part")   # not a capture, so the gallery never lists it
@@ -318,8 +329,8 @@ class Controller(QtCore.QObject):
         self.captured.emit(text, str(path))
         self.check_storage()
 
-    def delete(self, path: Path) -> bool:
-        """Moves a capture to the Recycle Bin."""
+    def _recycle(self, path: Path) -> bool:
+        moved = False
         for _ in range(3):   # a file just written can be locked for a moment (antivirus, search indexer)
             try:
                 moved = QtCore.QFile.moveToTrash(str(path))
@@ -331,33 +342,57 @@ class Controller(QtCore.QObject):
             if moved or not path.exists():
                 break
             time.sleep(0.3)
-        if not moved:
-            return False  # never turn a failed recycle operation into permanent deletion
+        return bool(moved)  # never turn a failed recycle operation into permanent deletion
+
+    def _forget(self, paths: list[Path]):
+        """What's kept about captures that are gone: favorites, titles, levels, thumbnails and previews.
+        One write of state.json and one library_changed for all of them, however many there are."""
+        gone = set(paths)
+        self.recent = [p for p in self.recent if p not in gone]
         try:
-            if self.is_favorite(path):
-                self.toggle_favorite(path)
-            if self.meta(path):
-                self.set_meta(path, "", "")
-            if t := self.thumb(path):
-                t.unlink(missing_ok=True)
-            self.preview_path(path).unlink(missing_ok=True)
+            keys = {self._fav_key(p) for p in paths}
+            state = preferences.peek_state()
+            if keys & set(state.get("favorites", [])) or any(keys & set(state.get(t, {})) for t in ("meta", "levels", "mix")):
+                def change(st):
+                    if "favorites" in st:
+                        st["favorites"] = [f for f in st["favorites"] if f not in keys]
+                    for table in ("meta", "levels", "mix"):
+                        for key in keys:
+                            st.get(table, {}).pop(key, None)
+                preferences.update_state(change)
+                self.library_changed.emit()
+            for p in paths:
+                if t := self.thumb(p):
+                    t.unlink(missing_ok=True)
+                self.preview_path(p).unlink(missing_ok=True)
+                self.lengths.pop(p, None)
+                self._measured.pop(p, None)
         except Exception:
-            runtime.log.exception("capture recycled, but could not clean up metadata/cache for %s", path)
-        self.recent = [p for p in self.recent if p != path]
+            runtime.log.exception("captures recycled, but could not clean up their metadata/cache")
+
+    def delete(self, path: Path) -> bool:
+        """Moves a capture to the Recycle Bin."""
+        if not self._recycle(path):
+            return False
+        self._forget([path])
         return True
 
     def delete_many(self, paths: list[Path]) -> tuple[int, int]:
-        """Recycle Bin for several captures; returns (how many, bytes moved)."""
-        done = freed = 0
+        """Recycle Bin for several captures; returns (how many, bytes moved). Runs off the main thread
+        (the gallery's Delete): a hundred captures take a while to move."""
+        done, freed, moved = 0, 0, []
         for p in paths:
             size = catalog.file_size(p)
-            if self.delete(p):
+            if self._recycle(p):
                 done, freed = done + 1, freed + size
+                moved.append(p)
+        if moved:
+            self._forget(moved)
         self.check_storage()
         return done, freed
 
     def trim(self, src: Path, start_ms: int, end_ms: int, replace: bool):
-        self._bg(self._trim, src, start_ms, end_ms, replace, source=src)
+        self._bg(self._trim, src, start_ms, end_ms, replace, source=src, lock=self._edits)
 
     def _trim(self, src: Path, start_ms: int, end_ms: int, replace: bool):
         out = self._new_path(src.parent, f"Clip_{self._stamp()}_trim", src.suffix)   # never the clip itself
@@ -390,15 +425,22 @@ class Controller(QtCore.QObject):
         return folder
 
     # OBS calls and trimming run in the background so the menu never freezes
-    def _bg(self, fn, *args, exclusive: bool = True, source: Path | None = None):
+    def _bg(self, fn, *args, exclusive: bool = True, source: Path | None = None, lock: threading.Lock | None = None):
         """source: the clip a trim or sound change is for; job_failed says so if it's turned away or fails,
-        so the viewer waiting on it goes back to the clip."""
+        so the viewer waiting on it goes back to the clip. lock: what the job mustn't run twice at once
+        (saving the last minutes by default; trims and sound changes have their own, so a long trim
+        never turns away a save pressed in the game)."""
+        lock = lock or self._busy
+
         def run():
-            if exclusive and not self._busy.acquire(blocking=False):
-                self.toast.emit(language.tr("Hang on, still saving the last clip…"), "info")
+            if exclusive and not lock.acquire(blocking=False):
+                self.toast.emit(language.tr("Hang on, still saving the last clip…") if lock is self._busy else
+                                language.tr("Hang on, the last trim or sound change is still running…"), "info")
                 if source is not None:
                     self.job_failed.emit(str(source))
                 return
+            with self._jobs_lock:
+                self._jobs += 1
             try:
                 fn(*args)
             except obs_client.ObsOffline:
@@ -409,9 +451,33 @@ class Controller(QtCore.QObject):
                 if source is not None:
                     self.job_failed.emit(str(source))
             finally:
+                with self._jobs_lock:
+                    self._jobs -= 1
                 if exclusive:
-                    self._busy.release()
+                    lock.release()
         threading.Thread(target=run, daemon=True).start()
+
+    def working(self) -> bool:
+        """A save, trim, sound change or share copy is being written right now: closing the app would lose it."""
+        with self._jobs_lock:
+            return self._jobs > 0
+
+    def when_idle(self, then, waiting: str | None = None):
+        """Runs `then` (on the main thread) once nothing is being written; says `waiting` if it has to wait."""
+        if not self.working():
+            then()
+            return
+        if waiting:
+            self.toast.emit(waiting, "info")
+        timer = QtCore.QTimer(self, interval=300)
+
+        def check():
+            if not self.working():
+                timer.stop()
+                timer.deleteLater()
+                then()
+        timer.timeout.connect(check)
+        timer.start()
 
     @staticmethod
     def _stamp() -> str:
@@ -627,6 +693,7 @@ class Controller(QtCore.QObject):
         minutes are deleted, and a drive running out of room is said once. After a repair that
         failed, HEAL_PAUSE goes by before the next."""
         runtime.touch_alive()
+        self._remind_recording()
         if self._healing.locked():
             return
 
@@ -649,6 +716,21 @@ class Controller(QtCore.QObject):
             except Exception:
                 runtime.log.exception("replay buffer check failed")
         threading.Thread(target=run, daemon=True).start()
+
+    REMIND_EVERY = 30     # minutes: a recording left running keeps every minute since it started on the drive
+
+    def _remind_recording(self):
+        """A recording that's still running says so every half hour (and soon after a start that finds one
+        from before): forgotten, it would go on filling the drive, more so with the REC timer turned off."""
+        rec = self._recording()
+        if not rec:
+            self._reminded = 0
+            return
+        minutes = int((time.time() - rec["since"]) // 60)
+        if minutes // self.REMIND_EVERY > getattr(self, "_reminded", 0):
+            self._reminded = minutes // self.REMIND_EVERY
+            self.toast.emit(language.tr("Still recording · {length} so far · open the menu and choose Stop to finish",
+                                        length=language.clock(minutes * 60_000)), "rec")
 
     def _obs_stuck(self) -> str | None:
         """Why OBS records nothing though it says it records: the graphics driver reset under it, or
