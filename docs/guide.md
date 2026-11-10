@@ -51,6 +51,10 @@ Press **Alt + C** in a game or on the desktop. A bar slides up along the bottom 
 
 **Double-press to save.** Press Alt + C or Create twice quickly to save the last 30 seconds without opening the bar.
 
+**Any keyboard layout.** The keys on these pages go by the key itself, so S, T, V and the others work the same while an Arabic (or any other) layout is on.
+
+**If something went wrong.** An error notice stays up for a few seconds and smaller notices wait for it. The bar says it again, in amber next to the game's name, the next time you open it.
+
 **A folder per game.** Captures are saved by the game (or app) on screen when you press the shortcut:
 
 ```
@@ -73,7 +77,9 @@ Press **Create** on a DualSense (the small button left of the touchpad), just li
 | ◯ / B | Back / close | Close | Cancel |
 | ▢ / X | Screenshot | Trim | Set start |
 | △ / Y | View latest | More | Set end |
-| L1 R1 / LB RB | | Newer / older | Preview |
+| L1 R1 / LB RB | | Newer / older | One frame back / forward |
+| D-pad ↑ ↓ | | | One second forward / back |
+| Options / Menu | | Share / Export | Preview |
 
 On-screen hints follow what you're holding: ✕ ◯ ▢ △ for PlayStation, A B X Y for Xbox, keys as soon as you touch the keyboard. Change the button in [Settings](#settings).
 
@@ -84,7 +90,7 @@ Every capture shows a notification with its thumbnail; click it to open the capt
 | Key | In the viewer |
 |---|---|
 | Space | Play / pause |
-| ← → | Skip 5 seconds |
+| ← → | Skip 5 seconds (with Shift: 1 second) |
 | A / D | Newer / older capture |
 | T | Trim |
 | V | Adjust audio: your voice and the game louder or quieter |
@@ -106,6 +112,8 @@ Press **T**. A filmstrip appears with two handles:
 |---|---|
 | Drag the handles | Set start and end (the video shows that frame) |
 | I / O | Set start / end at the playhead |
+| , / . | One frame back / forward |
+| ↑ / ↓ | One second forward / back |
 | P | Preview the selection |
 | Enter | Save as a new clip (the original stays) |
 | Esc | Cancel |
@@ -147,6 +155,8 @@ Copies go into a `Shared` folder in the game's folder and are **copied to the cl
 
 - Arrows move, **Enter** opens the viewer, **[ ]** (L1 / R1) switches game, **F** (△ / Y) stars.
 - **S** sorts by Newest or **Largest**, which also puts the biggest games first.
+- **/** (or Ctrl+F) searches the game you're in by title, note, file name or game; Esc empties it. **T** (or the **Show** button) shows everything, only clips, only screenshots or only recordings.
+- **Del** with nothing picked deletes the capture the highlight is on (press it twice).
 - **Select** (top right) lets you pick captures with a click: every tile shows a circle that fills in when picked, and the top bar becomes **Select all · Delete · Cancel**. **Space** (▢ / X) or Ctrl+click picks one without pressing Select, **Ctrl+A** picks all, and **Del** deletes them to the Recycle Bin after a confirmation that mentions any favorites. Esc (◯ / B) stops selecting.
 
 Titles like "Boss down on the first try" show in the viewer, Recent row and gallery, and name the copies you share; the file keeps its name.
@@ -156,41 +166,44 @@ Titles like "Boss down on the first try" show in the viewer, Recent row and gall
 - **Mic.** The Mic tile (or **M**) mutes your microphone in OBS; it turns red when off.
 - **Your voice on its own track.** Recordings carry 3 audio tracks: everything, game only and mic only. Players use the first, so clips sound normal; *Without my voice* uses the second.
 - **Monitors and TVs.** The bar, notifications and viewer open on the screen of the window in front. When a game fills a screen, OBS switches to record that screen within about 2 seconds, scaled to your recording resolution. Alt-tabbing to another screen doesn't move it. The last minutes keep what was captured at the time, so minutes before a move show the old screen. To always record one screen instead, pick it in Settings → Devices → Recording screen.
-- **REC timer.** A manual recording shows a small red *REC 12:34* in a corner. Clicks go through it.
-- **Storage warning.** Past 200 GB of captures, or under 20 GB free on the drive, you get a notice. Nothing is ever deleted for you.
+- **REC timer.** A manual recording shows a small red *REC 12:34* in a corner. Clicks go through it. A recording left running also says so every 30 minutes, since it keeps every minute on the drive until you stop it.
+- **Storage warning.** Past 200 GB of captures, or under 20 GB free on the drive (once a day), you get a notice. Both amounts are in Settings → Library. Nothing is ever deleted for you.
 - **Sounds and vibration.** A chime when a clip is saved, a shutter click for screenshots and a tone when recording starts; the controller buzzes too while you're using it. Replace the `.wav` files in `assets\sounds` with your own if you like.
 
 ## Settings
 
 ### Settings page
 
-Open it from the **Settings** tile at the end of the bar, **,** on the keyboard, or the tray icon. Move with ↑ ↓, change with ← →, **S** (△ / Y) saves, **Esc** (◯ / B) cancels. **Restore defaults** goes back to the original setup.
+Open it from the **Settings** tile at the end of the bar, **,** on the keyboard, or the tray icon. Move with ↑ ↓, change with ← →, **S** (△ / Y) saves, **Esc** (◯ / B) cancels; with unsaved changes Esc asks once, and a second press leaves without saving. With the mouse, click a value to change it (a click on the row's name only moves the highlight). **Restore defaults** goes back to the original setup.
 
 - **Recording:** resolution (Native, 1440p, 1080p, 720p), frame rate (30, 60, 120), quality (Light, Balanced, High, Max), video format (Auto, AV1, HEVC, H.264), how much to keep (5 to 60 min), voice on its own track, HDR (Auto, Off), REC indicator (top left, top right, off).
 - **Devices:** recording screen (follow the game, or one of your screens by name), microphone (the one Windows uses, or any microphone OBS can record).
-- **Controls:** keyboard shortcut, controller button, press or hold, double-press to save, rumble, sounds.
-- **Library:** clips folder, screenshots folder (the clips folder unless you pick another), storage warning.
+- **Controls:** keyboard shortcut, optional shortcuts that take a screenshot or start / stop a recording without the bar, controller button, press or hold, double-press to save, rumble, sounds.
+- **Library:** clips folder, screenshots folder (the clips folder unless you pick another), storage warning, low-space warning. Changing the clips folder moves nothing: the captures in the old folder stay there and stay in the gallery, with their favorites and titles.
 - **General:** start with Windows, language (Default, which follows Windows, English or العربية), updates.
 
-The page shows how much drive space the last minutes take. Saving restarts Capture Menu; a changed recording setting also updates OBS and restarts it once. The video format never asks for more than your graphics card can do (AV1 on an older card falls back to HEVC).
+The page shows how much drive space the last minutes take. Saving restarts Capture Menu (after a clip that's being saved or trimmed is finished); a changed recording setting also updates OBS and restarts it once. Sounds, rumble, the warnings, the REC indicator, *Record your microphone* and *Start with Windows* apply at once, with no restart. The video format never asks for more than your graphics card can do (AV1 on an older card falls back to HEVC).
 
 ### `config.json`
 
-The Settings page writes to `config.json` in the install folder. You can also edit it while Capture Menu is closed.
+The Settings page writes to `config.json` in the install folder. You can also edit it while Capture Menu is closed. A typo in it never stops Capture Menu: the defaults are used, a notice says so, and your file is kept as `config.broken.json`; a single value that can't be used falls back to its default.
 
 | Setting | What it does |
 |---|---|
 | `resolution` / `fps` / `quality` / `video_codec` | Recording settings, as on the Settings page |
 | `buffer_minutes` | How many minutes it keeps |
 | `hotkey` | The shortcut, e.g. `alt+c`, `ctrl+shift+f8` or `f9` |
+| `hotkey_screenshot` / `hotkey_record` | Shortcuts that take a screenshot, or start / stop a recording, without the bar. Empty = none |
 | `durations_seconds` | The lengths shown in Save recent, in seconds |
 | `clips_dir` | Where clips and recordings go. Empty = `Videos\Capture Menu Clips` (captures in the old `Videos\Clips` move there by themselves) |
 | `screenshots_dir` | Where screenshots go. Empty = the clips folder |
+| `library_dirs` | Clips folders you used before, still shown in the gallery. Settings adds the old folder when you change the clips folder; remove one here to stop showing it |
 | `language` | `auto` (same as Windows), `en` or `ar` |
 | `game_names` | Fix a game's folder name (see below) |
 | `controller_button` | `create`, `ps`, `options`, `touchpad`, `mute`, `share` (Xbox Series), `view`, or a combo like `l1+r1` (both on one controller; games use those buttons too) |
 | `controller_hold_ms` | Hold time before the bar opens; `0` = on press. Use `400` if your game uses the same button |
 | `double_press_seconds` | Seconds saved by a double press; `0` = off |
+| `double_press_ms` | How soon the second press must come, 150 to 600 (default `350`). The bar waits this long after one press, so lower opens it sooner |
 | `capture_screen` | `follow`: OBS records the screen your game is on; or one screen, as picked in Settings |
 | `mic_device` | `default`: Windows' microphone; or a microphone's id, as picked in Settings |
 | `obs_display_source` | The OBS Display Capture source to switch. Empty = the first one |
@@ -198,6 +211,7 @@ The Settings page writes to `config.json` in the install folder. You can also ed
 | `voice_track` | Record your voice on its own audio track |
 | `sounds` / `rumble` | Sound cues / controller vibration |
 | `storage_warn_gb` | Warn past this many GB of captures; `0` = never |
+| `low_space_gb` | Warn when the clips drive has less than this many GB free; `0` = never |
 | `start_with_windows` | Start Capture Menu when you sign in |
 
 **Fixing a game's folder name.** The name comes from the game's exe. If a game shows up as something odd (like `Shipping`), map its exe name; find it in Task Manager → right-click the game → **Go to details**:

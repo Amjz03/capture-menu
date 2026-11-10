@@ -235,3 +235,69 @@ gallery.grid.setFocus(); gallery.delete_marked()
 assert gallery.marked == {gallery.items[0]} and gallery.del_btn.property("danger"), "Del picks the capture and asks"
 gallery.close_gallery()
 print("trim steps, screenshot shortcut, Del in the gallery PASS")
+
+# ---- 10) the gallery: search, "Show", sizes from one walk of the folders
+ctl = controller()
+game = ctl.clips_dir / "Elden Ring"
+game.mkdir(parents=True, exist_ok=True)
+boss, shot, rec = game / "Clip_2026-01-01_10-00-00_30s.mp4", game / "Screenshot_2026-01-01.png", game / "Recording_2026.mp4"
+for f, size in ((boss, 3000), (shot, 2000), (rec, 1000)):
+    f.write_bytes(b"x" * size)
+ctl.set_meta(boss, "Boss down", "first try")
+assert set(ctl.all_captures()) >= {boss, shot, rec} and ctl.size_of(boss) == 3000 and ctl.modified_of(shot) > 0
+assert not any(".thumbs" in p.parts or "Shared" in p.parts for p in ctl.all_captures())
+with patch.object(Path, "stat", side_effect=AssertionError("the walk already knows the sizes")):
+    assert ctl.size_of(rec) == 1000
+gallery = ui_gallery.Gallery(ctl, ui_viewer.Viewer(ctl))
+gallery.resize(1600, 900); gallery.open("Elden Ring"); app.processEvents()
+assert set(gallery.items) == {boss, shot, rec}
+gallery.search.setText("boss"); assert gallery.items == [boss], "by title"
+gallery.search.setText("FIRST try"); assert gallery.items == [boss], "by note, any case"
+gallery.search.setText("elden screenshot"); assert gallery.items == [shot], "game and file name, every word"
+gallery.search.setText("nothing like it"); assert gallery.items == [] and "0" in gallery.info.text()
+gallery.search.setText("")
+seen = []
+for _ in range(4):
+    gallery.next_kind(); seen.append((gallery.kind, set(gallery.items)))
+assert seen == [("clips", {boss}), ("shots", {shot}), ("recordings", {rec}), ("all", {boss, shot, rec})], seen
+gallery.search.setText("boss"); gallery.close_gallery(); assert gallery.search.text() == ""
+print("gallery search and Show PASS")
+
+# ---- 11) notices: an error isn't covered by a smaller notice, and the bar says it again once
+from capturemenu import ui_notices
+toast = ui_notices.Toast()
+toast.ERROR_MS = 400
+toast.show_message("OBS can't start recording · open OBS to see why", "error")
+toast.show_message("Controller connected · DualSense", "ok")
+assert "OBS can't start recording" in toast.title.text(), "the error stays"
+assert wait(lambda: "Controller connected" in toast.title.text(), 3), "the smaller notice follows it"
+menu = ui_menu.Menu(ctl, ui_viewer.Viewer(ctl))
+menu.note_problem("Saved", "ok"); menu._show_problem(); assert menu.problem_label.isHidden()
+menu.note_problem("OBS can't start recording · open OBS to see why", "error")
+menu.show_menu("Game"); app.processEvents()
+assert not menu.problem_label.isHidden() and "OBS can't start recording" in menu.problem_label.text()
+menu.hide_menu(); menu.show_menu("Game"); app.processEvents()
+assert menu.problem_label.isHidden(), "said once"
+menu.hide_menu()
+print("errors stay and are repeated in the bar PASS")
+
+# ---- 12) the low-space notice follows its setting, once a day
+ctl = controller(low_space_gb=0)
+notices = []
+ctl.toast.connect(lambda text, kind: notices.append(text))
+del ctl.check_storage                      # the real one
+with patch("shutil.disk_usage", return_value=type("U", (), {"free": 3 * 1024 ** 3})()):
+    ctl.check_storage(); assert wait(lambda: ctl.last_storage) and ctl.last_storage["low"] is False and notices == []
+    ctl.cfg["low_space_gb"] = 20
+    ctl.check_storage(); assert wait(lambda: ctl.last_storage["low"] and len(notices) == 1), notices
+    again = controller(low_space_gb=20); del again.check_storage
+    again.toast.connect(lambda text, kind: notices.append(text))
+    again.check_storage(); assert wait(lambda: again.last_storage.get("low")) and len(notices) == 1, "once a day"
+print("low-space warning PASS")
+
+# ---- 13) a long explanation gets a second line instead of being cut
+from capturemenu import ui_widgets
+row = ui_widgets.SettingRow("x", "Name", "bool", describe=lambda v: "short" if v else "a very long explanation " * 8)
+row.resize(700, row.H); row.set_value(True); assert row.height() == row.H
+row.set_value(False); assert row.height() > row.H
+print("two-line explanations PASS")

@@ -449,5 +449,19 @@
   "Press again to leave without saving your changes": "اضغط مرة أخرى للخروج بدون حفظ تغييراتك",
   "Open it with a press or a hold?": "تفتحها بضغطة أم بضغطة مطوّلة؟",
   "Frame": "فريم",
-  "1 sec": "ثانية"
+  "1 sec": "ثانية",
+  "A notice once a day while the clips drive is this low": "تنبيه مرة في اليوم ما دامت المساحة في قرص المقاطع بهذا القدر",
+  "No notice when the clips drive runs low": "بدون تنبيه عند انخفاض مساحة قرص المقاطع",
+  "Warn me when the drive has less than": "نبّهني عندما تقل مساحة القرص عن",
+  "5 GB": "5 جيجابايت",
+  "10 GB": "10 جيجابايت",
+  "20 GB": "20 جيجابايت",
+  "Keep running": "إبقاء البرنامج يعمل",
+  "Quit anyway": "خروج على أي حال",
+  "Search": "بحث",
+  "Show": "عرض",
+  "Show: Everything": "عرض: الكل",
+  "Show: Clips": "عرض: المقاطع",
+  "Show: Screenshots": "عرض: لقطات الشاشة",
+  "Show: Recordings": "عرض: التسجيلات"
 }

@@ -23,6 +23,7 @@ from . import (
     ui_settings,
     ui_theme,
     ui_viewer,
+    ui_widgets,
     windows,
 )
 
@@ -87,6 +88,7 @@ def main():
     toast.pad_button = cfg["controller_button"]
     app.installEventFilter(input_devices.input_mode())   # any real key press switches the hints back to the keyboard
     ctl.toast.connect(toast.show_message)
+    ctl.toast.connect(menu.note_problem)       # an error is said again in the bar, the next time it opens
     ctl.captured.connect(toast.show_capture)
     ctl.captured.connect(lambda *_: menu.refresh_recent())
     ctl.shared.connect(toast.show_shared)
@@ -124,11 +126,10 @@ def main():
         except Exception:
             runtime.log.exception("couldn't stop OBS's recording")
             stopped = False
-        if not stopped and QtWidgets.QMessageBox.warning(
-                None, "Capture Menu",
+        if not stopped and not ui_widgets.confirm(
                 language.tr("OBS is still recording the last minutes, and nothing deletes the old ones while "
                             "Capture Menu is closed. Quit anyway?"),
-                QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No, QtWidgets.QMessageBox.No) != QtWidgets.QMessageBox.Yes:
+                language.tr("Quit anyway"), language.tr("Keep running")):
             return                             # keep running: it goes on looking after the files
         def finish():
             runtime.ALIVE.unlink(missing_ok=True)     # closed on purpose: the watch task leaves it closed
@@ -158,7 +159,8 @@ def main():
     quick = int(cfg.get("double_press_seconds") or 0)
     # with "A hold" each press only counts once held, so the second one comes that much later
     presses = input_devices.PressSequencer(
-        350 + int(cfg.get("controller_hold_ms") or 0) if quick else 0, open_or_close,
+        max(150, min(600, int(cfg.get("double_press_ms") or 350))) + int(cfg.get("controller_hold_ms") or 0)
+        if quick else 0, open_or_close,
         lambda game: ctl.save_clip(quick, game),
         lambda: menu.isVisible() or viewer.isVisible() or gallery.isVisible() or settings.isVisible())
 
@@ -228,6 +230,7 @@ def main():
     pad_name = cfg["controller_button"].replace("+", " + ").title()
     if problems:
         toast.show_message(problems[0], "error")
+        menu.note_problem(problems[0])
     else:
         toast.show_running(language.tr("Settings saved") if restarted else language.tr("Capture Menu is running"),
                            language.tr("Press {keys} or {button} to open", keys=keys, button=pad_name))

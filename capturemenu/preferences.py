@@ -41,6 +41,8 @@ DEFAULTS = {
     "sounds": True,
     "rumble": True,
     "storage_warn_gb": 200,
+    "low_space_gb": 20,         # warn when the clips drive has less free than this; 0 = never
+    "double_press_ms": 350,     # how soon the second press of a double press must come (150 to 600)
     "voice_track": True,
     "mic_on": True,             # the microphone is recorded (the menu's Mic button turns it off until the next start)
     "hdr": "auto",              # auto: HDR clips while Windows HDR is on for the game's screen / off
