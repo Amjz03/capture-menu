@@ -167,6 +167,10 @@
   "2026-11-13": {
    "count": 14,
    "uniques": 9
+  },
+  "2026-11-14": {
+   "count": 14,
+   "uniques": 10
   }
  },
  "downloads": {
@@ -1025,6 +1029,20 @@
    "total": 12
   },
   "2026-11-14": {
+   "by_release": {
+    "v0.0.41": {
+     "CaptureMenu-Setup.exe": 5,
+     "CaptureMenu.zip": 3
+    },
+    "v0.0.42": {
+     "CaptureMenu-Setup.exe": 3,
+     "CaptureMenu.zip": 1
+    }
+   },
+   "setup_exe": 8,
+   "total": 12
+  },
+  "2026-11-15": {
    "by_release": {
     "v0.0.41": {
      "CaptureMenu-Setup.exe": 5,
@@ -2712,6 +2730,68 @@
     "title": "/tree/main/.github/ISSUE_TEMPLATE",
     "uniques": 1
    }
+  ],
+  "2026-11-15": [
+   {
+    "count": 4,
+    "path": "/Amjz03/capture-menu",
+    "title": "Overview",
+    "uniques": 3
+   },
+   {
+    "count": 4,
+    "path": "/Amjz03/capture-menu/releases/tag/v0.0.41",
+    "title": "/releases/tag/v0.0.41",
+    "uniques": 1
+   },
+   {
+    "count": 2,
+    "path": "/Amjz03/capture-menu/releases",
+    "title": "/releases",
+    "uniques": 2
+   },
+   {
+    "count": 1,
+    "path": "/Amjz03/capture-menu/blob/main/.github/ISSUE_TEMPLATE/config.yml",
+    "title": "/blob/main/.github/ISSUE_TEMPLATE/config.yml",
+    "uniques": 1
+   },
+   {
+    "count": 1,
+    "path": "/Amjz03/capture-menu/blob/main/.github/workflows/pages.yml",
+    "title": "/blob/main/.github/workflows/pages.yml",
+    "uniques": 1
+   },
+   {
+    "count": 1,
+    "path": "/Amjz03/capture-menu/blob/main/.github/workflows/release.yml",
+    "title": "/blob/main/.github/workflows/release.yml",
+    "uniques": 1
+   },
+   {
+    "count": 1,
+    "path": "/Amjz03/capture-menu/blob/main/tools/render_bar_viewer.py",
+    "title": "/blob/main/tools/render_bar_viewer.py",
+    "uniques": 1
+   },
+   {
+    "count": 1,
+    "path": "/Amjz03/capture-menu/tree/main",
+    "title": "/tree/main",
+    "uniques": 1
+   },
+   {
+    "count": 1,
+    "path": "/Amjz03/capture-menu/tree/main/.github",
+    "title": "/tree/main/.github",
+    "uniques": 1
+   },
+   {
+    "count": 1,
+    "path": "/Amjz03/capture-menu/tree/main/.github/ISSUE_TEMPLATE",
+    "title": "/tree/main/.github/ISSUE_TEMPLATE",
+    "uniques": 1
+   }
   ]
  },
  "referrers": {
@@ -3023,6 +3103,13 @@
     "referrer": "amjz03.github.io",
     "uniques": 1
    }
+  ],
+  "2026-11-15": [
+   {
+    "count": 1,
+    "referrer": "amjz03.github.io",
+    "uniques": 1
+   }
   ]
  },
  "repo": {
@@ -3030,7 +3117,7 @@
   "stars": 2,
   "watchers": 0
  },
- "updated": "2026-11-14T10:35:04+00:00",
+ "updated": "2026-11-15T11:03:56+00:00",
  "views": {
   "2026-10-03": {
    "count": 0,
@@ -3197,6 +3284,10 @@
    "uniques": 0
   },
   "2026-11-13": {
+   "count": 0,
+   "uniques": 0
+  },
+  "2026-11-14": {
    "count": 0,
    "uniques": 0
   }
