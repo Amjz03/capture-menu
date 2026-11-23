@@ -199,6 +199,10 @@
   "2026-11-21": {
    "count": 25,
    "uniques": 17
+  },
+  "2026-11-22": {
+   "count": 4,
+   "uniques": 4
   }
  },
  "downloads": {
@@ -1169,6 +1173,20 @@
    "total": 15
   },
   "2026-11-22": {
+   "by_release": {
+    "v0.0.41": {
+     "CaptureMenu-Setup.exe": 5,
+     "CaptureMenu.zip": 3
+    },
+    "v0.0.42": {
+     "CaptureMenu-Setup.exe": 5,
+     "CaptureMenu.zip": 2
+    }
+   },
+   "setup_exe": 10,
+   "total": 15
+  },
+  "2026-11-23": {
    "by_release": {
     "v0.0.41": {
      "CaptureMenu-Setup.exe": 5,
@@ -3322,6 +3340,38 @@
     "title": "/releases",
     "uniques": 1
    }
+  ],
+  "2026-11-23": [
+   {
+    "count": 4,
+    "path": "/Amjz03/capture-menu",
+    "title": "Overview",
+    "uniques": 4
+   },
+   {
+    "count": 3,
+    "path": "/Amjz03/capture-menu/releases/tag/v0.0.42",
+    "title": "/releases/tag/v0.0.42",
+    "uniques": 1
+   },
+   {
+    "count": 1,
+    "path": "/Amjz03/capture-menu/commits",
+    "title": "/commits",
+    "uniques": 1
+   },
+   {
+    "count": 1,
+    "path": "/Amjz03/capture-menu/deployments/github-pages",
+    "title": "/deployments/github-pages",
+    "uniques": 1
+   },
+   {
+    "count": 1,
+    "path": "/Amjz03/capture-menu/releases",
+    "title": "/releases",
+    "uniques": 1
+   }
   ]
  },
  "referrers": {
@@ -3704,6 +3754,13 @@
     "referrer": "github.com",
     "uniques": 3
    }
+  ],
+  "2026-11-23": [
+   {
+    "count": 3,
+    "referrer": "github.com",
+    "uniques": 3
+   }
   ]
  },
  "repo": {
@@ -3711,7 +3768,7 @@
   "stars": 2,
   "watchers": 0
  },
- "updated": "2026-11-22T11:34:09+00:00",
+ "updated": "2026-11-23T12:58:41+00:00",
  "views": {
   "2026-10-03": {
    "count": 0,
@@ -3910,6 +3967,10 @@
    "uniques": 1
   },
   "2026-11-21": {
+   "count": 0,
+   "uniques": 0
+  },
+  "2026-11-22": {
    "count": 0,
    "uniques": 0
   }
