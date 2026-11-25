@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.0.44 · 2026-11-25
+
+- **Nothing lights up by itself.** When the bar, Settings, the gallery or the viewer opens, or you come back to it, no button is highlighted until you use the keys or the controller. Enter still does what it did. The first arrow only shows where you are (in Settings it no longer changes a value by accident), the next one moves. The mouse lights up only what it's on.
 ## 0.0.43 · 2026-11-25
 
 - **A recording is just what you recorded.** It starts when you choose Record and ends when you open the bar to stop it (or press the recording shortcut), so nothing from before Start and nothing from the time spent in the bar gets in. A recording already running when you update ends the old way.
