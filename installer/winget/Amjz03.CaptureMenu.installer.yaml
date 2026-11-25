@@ -1,7 +1,7 @@
 # yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.12.0.schema.json
 
 PackageIdentifier: Amjz03.CaptureMenu
-PackageVersion: 0.0.43
+PackageVersion: 0.0.44
 InstallerType: inno
 Scope: user
 InstallModes:
@@ -17,7 +17,7 @@ ProductCode: '{6E0C2D4B-7A51-4C8E-9B3F-CA9E3D1F2A60}_is1'
 ReleaseDate: 2026-11-25
 Installers:
 - Architecture: x64
-  InstallerUrl: https://github.com/Amjz03/capture-menu/releases/download/v0.0.43/CaptureMenu-Setup.exe
-  InstallerSha256: 8A8F21EEC17D9AEA159DF29391FB46199CE60EB10BBAF0168E420968D51E0DFD
+  InstallerUrl: https://github.com/Amjz03/capture-menu/releases/download/v0.0.44/CaptureMenu-Setup.exe
+  InstallerSha256: 556FFF9BC1D1FF1AA7317F803D78AF3982D9F2135FF95AD71B7F1637F308FD92
 ManifestType: installer
 ManifestVersion: 1.12.0
