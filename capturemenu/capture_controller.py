@@ -859,18 +859,33 @@ class Controller(QtCore.QObject):
         keep = [s for s in segs if since is None or s[2] > since]
         return [s[0] for s in keep], max(0.0, since - keep[0][1]) if keep and since else 0.0
 
-    def _finished_segments(self) -> list:
-        """Has OBS close the file it's writing (it goes on in a new one at the next keyframe), so
-        everything up to now can be read. Returns the finished files."""
+    @staticmethod
+    def _between(segs: list, since: float, until: float, fresh: bool) -> tuple[list[Path], float, float | None]:
+        """A recording's files, how far into the first it starts and where in the last it ends (None:
+        the whole file). fresh: Start had OBS begin a new file, so the recording is that file on, whole;
+        older recordings start `since` into a file, which a lossless cut can only do from a keyframe earlier."""
+        keep = [s for s in segs if (s[1] >= since - 0.05 if fresh else s[2] > since) and s[1] < until] or segs[-1:]
+        inpoint = 0.0 if fresh else max(0.0, since - keep[0][1])
+        outpoint = until - keep[-1][1]
+        return [s[0] for s in keep], inpoint, (outpoint if until < keep[-1][2] - 0.1
+                                               and outpoint > (inpoint if len(keep) == 1 else 0) + 0.5 else None)
+
+    def _split(self) -> list:
+        """Has OBS close the file it's writing and go on in a new one (at the next keyframe). Returns
+        every file, the new one last."""
         asked = time.time()
         self.obs.split()
         deadline = time.monotonic() + 10
         while time.monotonic() < deadline:
             segs = self._segments()
             if len(segs) > 1 and segs[-1][1] >= asked - 0.5:
-                return segs[:-1]
+                return segs
             time.sleep(0.2)
         raise TimeoutError("OBS didn't start a new file")
+
+    def _finished_segments(self) -> list:
+        """Everything up to now, in files OBS has finished writing."""
+        return self._split()[:-1]
 
     def _prune(self):
         """Deletes the files older than the longest clip (and than a recording that's running)."""
@@ -1005,21 +1020,22 @@ class Controller(QtCore.QObject):
         self._done(detail, out)
 
     # ---- manual recording
-    def toggle_record(self, game: str = windows.DESKTOP):
-        self._bg(self._toggle_record, game, exclusive=False)
+    def toggle_record(self, game: str = windows.DESKTOP, at: float | None = None):
+        """at: when the player asked (the bar opening), so a Stop leaves out the time spent in the bar."""
+        self._bg(self._toggle_record, game, at, exclusive=False)
 
-    def _toggle_record(self, game: str):
+    def _toggle_record(self, game: str, at: float | None = None):
         if not self._rec_lock.acquire(blocking=False):
             self.toast.emit(language.tr("Hang on, still saving the last clip…"), "info")
             return
         try:
-            self._start_stop(game)
+            self._start_stop(game, at)
         finally:
             self._rec_lock.release()
 
-    def _start_stop(self, game: str):
-        """Recording uses the same files as the last minutes: Start notes the time, Stop joins
-        everything since then (kept until then)."""
+    def _start_stop(self, game: str, at: float | None = None):
+        """Recording uses the same files as the last minutes: Start has OBS begin a new file and the
+        recording is that file on; Stop cuts at `at` (else now) and joins them (kept until then)."""
         rec = self._recording()
         if not rec:
             if not self.obs.buffer_active() and not self.heal_buffer():
@@ -1027,12 +1043,19 @@ class Controller(QtCore.QObject):
             preferences.update_state(lambda s: s.update(recording={"since": time.time(), "game": game}))
             self.recording.emit(True)
             self.toast.emit(language.tr("Recording started · open the menu and choose Stop to finish"), "rec")
+            try:
+                started = self._split()[-1][1]
+            except TimeoutError:
+                runtime.log.warning("OBS didn't start a new file: the recording starts from a keyframe before Start")
+                return
+            preferences.update_state(lambda s: s.get("recording", {}).update(since=started, fresh=True))
             return
+        until = min(at or time.time(), time.time())
         with self._saving():
             segs = self._finished_segments()
-            files, inpoint = self._since(segs, rec["since"])
+            files, inpoint, outpoint = self._between(segs, rec["since"], until, bool(rec.get("fresh")))
             dest = self._new_path(self.folder_for(rec.get("game") or game), f"Recording_{self._stamp()}", files[0].suffix)
-            media.join(files, inpoint, dest)
+            media.join(files, inpoint, dest, outpoint=outpoint)
         preferences.update_state(lambda s: s.pop("recording", None))
         self.recording.emit(False)
         length = media.media_duration(dest) or 0

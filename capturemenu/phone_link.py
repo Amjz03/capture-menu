@@ -51,8 +51,8 @@ def phone_copy(src: Path, out: Path, fps: bool, sdr: bool, on_progress=None, gam
     hdr = media.is_hdr(src) and not sdr          # a clip only slowed down keeps its HDR
     bt2020 = ["-color_primaries", "bt2020", "-color_trc", "smpte2084", "-colorspace", "bt2020nc"]
     tries = []                                   # the graphics card first; FFmpeg lists NVENC even with no NVIDIA card
-    if media.has_encoder("hevc_nvenc"):
-        tries.append((["-c:v", "hevc_nvenc", "-preset", "p5", "-rc", "vbr", "-cq", "17", "-b:v", "0", "-maxrate", "80M",
+    if media.has_encoder("hevc_nvenc"):   # p3: a minute of 1440p120 in 11 s (p5: 18 s), about 8% bigger
+        tries.append((["-c:v", "hevc_nvenc", "-preset", "p3", "-rc", "vbr", "-cq", "17", "-b:v", "0", "-maxrate", "80M",
                        "-g", str(PHONE_FPS * 2)] + (["-profile:v", "main10", "-pix_fmt", "p010le", *bt2020] if hdr
                                                     else ["-pix_fmt", "yuv420p"]), "hvc1", vf))
     if media.has_encoder("libx265"):

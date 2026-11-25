@@ -81,7 +81,8 @@ class Menu(QtWidgets.QWidget):
         self.mic_card.clicked.connect(self.ctl.toggle_mic)
         self.save_card.clicked.connect(self.open_picker)
         self.shot_card.clicked.connect(self._screenshot)
-        self.rec_card.clicked.connect(lambda: self._act(self.ctl.toggle_record, self.game))
+        self.opened_at: float | None = None    # when the bar opened: a Stop ends the recording there
+        self.rec_card.clicked.connect(lambda: self._act(self.ctl.toggle_record, self.game, self.opened_at))
         for c in (self.save_card, self.shot_card, self.rec_card, self.mic_card):
             row.addWidget(c, 0, Qt.AlignTop)
         row.addSpacing(28)
@@ -178,6 +179,8 @@ class Menu(QtWidgets.QWidget):
     def show_menu(self, game: str | None = None, fresh: bool = True):
         """fresh: opened from outside (the game's screen is picked again); False when coming Back."""
         self.game = game or windows.foreground_app(self.ctl.cfg)
+        if fresh:
+            self.opened_at = time.time()
         if self.viewer.isVisible():
             self.viewer.close_viewer()
         g = windows.ui_screen(fresh).geometry()   # the screen the game is on, TV or monitor

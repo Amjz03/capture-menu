@@ -40,7 +40,7 @@ ctl._finished_segments = lambda: [a, b]
 # ---- QA03-01: a second Stop while the first joins is turned away; it can't join (or delete) the same files
 preferences.update_state(lambda s: s.update(recording={"since": now - 350, "game": "Game"}))
 release, joins = threading.Event(), []
-def slow_join(files, inpoint, out):
+def slow_join(files, inpoint, out, outpoint=None):
     joins.append(out); release.wait(5); out.write_bytes(b"rec")
 real_join, media.join = media.join, slow_join
 first = threading.Thread(target=ctl._toggle_record, args=("Game",)); first.start()
