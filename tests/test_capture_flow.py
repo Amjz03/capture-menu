@@ -22,6 +22,10 @@ for i in range(3):
     p = obs_client.BUFFER_DIR / f"seg{i}.mp4"
     subprocess.run(["ffmpeg", "-v", "error", "-ss", str(i * 40), "-t", "40", "-i", str(master), "-c", "copy", str(p)], check=True)
     pieces.append(p)
+cut = tmp / "cut.mp4"
+media.join([pieces[0], pieces[1]], 5, cut, outpoint=12)    # 5 s into the first to 12 s into the last
+assert 46 <= media.media_duration(cut) <= 48, media.media_duration(cut)
+print("join cuts at its out point PASS")
 clock = [1000.0]
 segs = [(pieces[0], clock[0] - 120, clock[0] - 80), (pieces[1], clock[0] - 80, clock[0] - 40)]
 capture_controller.Controller._segments = classmethod(lambda cls: list(segs))

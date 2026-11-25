@@ -82,9 +82,9 @@ def media_duration(path: Path) -> float | None:
         return None
 
 
-def join(parts: list[Path], inpoint: float, out: Path):
-    """Joins the files OBS split its recording into, from `inpoint` seconds into the first, into
-    out without re-encoding (every track kept)."""
+def join(parts: list[Path], inpoint: float, out: Path, outpoint: float | None = None):
+    """Joins the files OBS split its recording into, from `inpoint` seconds into the first (to
+    `outpoint` seconds into the last), into out without re-encoding (every track kept)."""
     ffmpeg = find_tool("ffmpeg")
     if not ffmpeg:
         raise FileNotFoundError("ffmpeg is not installed")
@@ -95,6 +95,8 @@ def join(parts: list[Path], inpoint: float, out: Path):
         lines.append("file '" + str(p).replace("\\", "/").replace("'", "'\\''") + "'")
         if i == 0 and inpoint > 0:
             lines.append(f"inpoint {inpoint:.3f}")
+        if i == len(parts) - 1 and outpoint:
+            lines.append(f"outpoint {outpoint:.3f}")
     listing.write_text("\n".join(lines) + "\n", encoding="utf-8")
     try:
         r = run_quiet([ffmpeg, "-y", "-hide_banner", "-loglevel", "error", "-f", "concat", "-safe", "0",

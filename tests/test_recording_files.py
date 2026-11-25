@@ -46,6 +46,11 @@ assert C._last_run([a, b, c, d]) == [b, c, d], "OBS restarted between a and b: a
 assert C._since([b, c], now - 30) == ([c[0]], 10.0)
 assert C._since([b, c], now - 70) == ([b[0], c[0]], 30.0)
 assert C._since([b, c], None) == ([b[0], c[0]], 0.0)
+# a recording: from the file Start began (whole), to the moment Stop was asked for
+assert C._between([b, c, d], now - 40, now, True) == ([c[0], d[0]], 0.0, None), "ends with the last file"
+assert C._between([b, c, d], now - 40, now - 10, True) == ([c[0]], 0.0, 30.0), "cut where Stop was asked"
+assert C._between([b, c, d], now - 100, now - 60, True) == ([b[0]], 0.0, 40.0), "b ends at now-40: cut inside it"
+assert C._between([b, c], now - 70, now - 20, False) == ([b[0], c[0]], 30.0, 20.0), "an older recording: since into b"
 print("which files hold the last seconds PASS")
 
 class FakeObs:
@@ -56,7 +61,7 @@ with patch.object(C, "_remake_hdr_thumbs"):
     ctl = C(dict(preferences.DEFAULTS, clips_dir=str(tmp / "Clips"), buffer_minutes=5))
 ctl.obs = FakeObs(); ctl.check_storage = lambda: None; ctl._done = lambda text, path: done.append((text, path))
 joined, done = [], []
-media.join = lambda files, inpoint, out: joined.append((files, inpoint, out.name))
+media.join = lambda files, inpoint, out, outpoint=None: joined.append((files, inpoint, out.name, outpoint))
 media.media_duration = lambda p: 30.0
 segments = [[a, b, c], [a, b, c, d]]     # the split: OBS starts d once c is finished
 C._segments = classmethod(lambda cls: segments.pop(0) if len(segments) > 1 else segments[0])
@@ -68,12 +73,13 @@ print("a clip joins finished files only PASS")
 
 segments = [[a, b, c, d]]
 ctl._toggle_record("Game")
-assert preferences.load_state()["recording"] == {"since": now, "game": "Game"} and not joined[1:]
+assert preferences.load_state()["recording"] == {"since": d[1], "game": "Game", "fresh": True} and not joined[1:],     "the recording is the file OBS began at Start, nothing from before"
 capture_controller.time.time = lambda: now + 90
 d2 = (d[0], d[1], now + 89.5)          # d went on until the split
 segments = [[a, b, c, d2], [a, b, c, d2, seg("e.mp4", now + 89.6, now + 90)]]
-ctl._toggle_record("Desktop")
-assert joined[-1][0] == [d[0]] and abs(joined[-1][1] - 0.4) < 1e-6 and joined[-1][2].startswith("Recording_"), joined
+ctl._toggle_record("Desktop", now + 60)     # the bar opened at +60; Stop chosen at +90
+assert joined[-1][0] == [d[0]] and joined[-1][1] == 0.0 and abs(joined[-1][3] - 60.4) < 1e-6, joined
+assert joined[-1][2].startswith("Recording_"), joined
 assert "recording" not in preferences.load_state() and done[-1][0] == "Length 00:30" and done[-1][1].parent.name == "Game", done
 print("a recording is everything since Start, in the game it started in PASS")
 
