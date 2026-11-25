@@ -85,5 +85,6 @@ def run_update_installer(exe: Path, *, size: int, digest: str):
     verify_update(exe, size, digest)
     # before Setup starts, so nothing after it can fail: the watch task mustn't start it mid-install
     runtime.ALIVE.unlink(missing_ok=True)     # (it comes back with the next heartbeat if the launch fails)
-    windows.launch_outside([str(exe), "/SILENT", "/SUPPRESSMSGBOXES", "/NORESTART"], flags=0x00000008)
+    # VERYSILENT: no Setup window, an update isn't a first install (Setup still says if something went wrong)
+    windows.launch_outside([str(exe), "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART"], flags=0x00000008)
     QtWidgets.QApplication.quit()
