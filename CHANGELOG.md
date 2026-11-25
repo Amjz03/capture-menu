@@ -1,7 +1,11 @@
 # Changelog
 
-## Unreleased
+## 0.0.43 · 2026-11-25
 
+- **A recording is just what you recorded.** It starts when you choose Record and ends when you open the bar to stop it (or press the recording shortcut), so nothing from before Start and nothing from the time spent in the bar gets in. A recording already running when you update ends the old way.
+- **Updates install in the background.** After the download, Capture Menu closes, installs and opens again, without Setup's window. (Updating to this version still shows it one last time.)
+- **Sending to the phone is quicker:** a clip recorded at more than 60 FPS is made ready about 40% faster, a minute in about 11 seconds on an RTX 4070 Ti SUPER.
+- **Check where a download came from:** every release file has a signed build attestation, `gh attestation verify CaptureMenu-Setup.exe --repo Amjz03/capture-menu`.
 - **A save is never turned away by a trim.** A long trim or sound change no longer answers a save pressed in the game with "still saving".
 - **A typo in `config.json` no longer stops Capture Menu.** The defaults are used, a notice says so, your file is kept as `config.broken.json`, and OBS is still reached. Keys that aren't a shortcut are said instead of crashing.
 - **Keys work in any keyboard layout.** S, T, V, [ ] and the others, and picking a shortcut, go by the key itself: an Arabic layout no longer disables them.
