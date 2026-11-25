@@ -394,6 +394,59 @@ def grown(r: QtCore.QRectF, amount: float) -> QtCore.QRectF:
     return r.adjusted(-dx, -dy, dx, dy)
 
 
+class FocusShown(QtCore.QObject):
+    """The focus highlight shows only once a key or the controller is used, never just because a page
+    opened: a window that opens or comes back starts with nothing lit (Enter still acts on its focus).
+    The first arrow on a tile that shows it (REVEAL_FIRST) only lights it up, the next one moves."""
+
+    ARROWS = (Qt.Key_Left, Qt.Key_Right, Qt.Key_Up, Qt.Key_Down)
+
+    def __init__(self):
+        super().__init__()
+        self.on = False
+
+    @staticmethod
+    def _repaint(window: QtWidgets.QWidget):
+        for w in (window, *window.findChildren(QtWidgets.QWidget)):
+            QtWidgets.QWidget.update(w)       # not w.update: Settings keeps its update status by that name
+
+    def eventFilter(self, obj, event):
+        kind = event.type()
+        if kind == QtCore.QEvent.WindowActivate and isinstance(obj, QtWidgets.QWidget) and obj.isWindow():
+            if self.on:
+                self.on = False
+                self._repaint(obj)
+        elif kind == QtCore.QEvent.KeyPress and not self.on:
+            self.on = True
+            focus = QtWidgets.QApplication.focusWidget()
+            if focus is not None:
+                self._repaint(focus.window())
+                if getattr(focus, "REVEAL_FIRST", False) and event.key() in self.ARROWS:
+                    return True
+        return False
+
+
+_focus_shown: FocusShown | None = None
+
+
+def focus_watch() -> FocusShown:
+    """The shared filter (app.main installs it on the application)."""
+    global _focus_shown
+    if _focus_shown is None:
+        _focus_shown = FocusShown()
+    return _focus_shown
+
+
+def focus_on() -> bool:
+    """A key or the controller was used since this window opened (always, where nothing watches)."""
+    return _focus_shown is None or _focus_shown.on
+
+
+def focus_shown(w: QtWidgets.QWidget, hovered: bool | None = None) -> bool:
+    """w has the focus and it's drawn: a key moved it there, or the mouse is on it."""
+    return w.hasFocus() and (focus_on() or (w.underMouse() if hovered is None else hovered))
+
+
 def paint_focus(p: QtGui.QPainter, r: QtCore.QRectF, radius: float, t: float = 1.0, ring: bool = True):
     """The PS5's focus frame around r: a soft white glow and, for pictures, a white ring.
     t fades it in (0-1) as the item grows."""

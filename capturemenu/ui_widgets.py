@@ -106,6 +106,7 @@ class Grow:
 
 class Card(Grow, HoverFocus, QtWidgets.QAbstractButton):
     """Base for the bar's focusable tiles: hover, and the focus that grows the tile and rings it."""
+    REVEAL_FIRST = True     # ui_theme.FocusShown: the first arrow only lights it up
 
     RADIUS = 16
     PAD = 12                                  # room around the tile to grow into, with its ring and glow
@@ -128,8 +129,11 @@ class Card(Grow, HoverFocus, QtWidgets.QAbstractButton):
                              self.height() - 2 * self.PAD - self.BELOW)
 
     def lit(self) -> float:
-        """How focused it looks, 0-1: it grows into focus, and stays lit while its popover is open."""
-        return 1.0 if self.active else self.grow
+        """How focused it looks, 0-1: it grows into focus (once the focus shows, ui_theme.focus_on),
+        and stays lit while its popover is open."""
+        if self.active:
+            return 1.0
+        return self.grow if ui_theme.focus_on() or self.underMouse() else 0.0
 
     def shown(self) -> QtCore.QRectF:
         """Where the tile is drawn: grown as far as its focus has come."""
@@ -196,7 +200,7 @@ class ActionCard(Card):
         p = QtGui.QPainter(self)
         p.setRenderHint(QtGui.QPainter.Antialiasing)
         r, t, radius = self.shown(), self.lit(), self.radius()
-        focused = self.hasFocus() or self.active
+        focused = ui_theme.focus_shown(self) or self.active
         ui_theme.paint_focus(p, r, radius, t, ring=False)
         p.setPen(Qt.NoPen)
         p.setBrush(self.tint if self.tint is not None else QtGui.QColor(255, 255, 255, 34 if self.underMouse() else 20))
@@ -298,7 +302,7 @@ class ThumbCard(Card):
 
     def paintEvent(self, _):
         p = QtGui.QPainter(self)
-        focused = self.hasFocus() or self.active
+        focused = ui_theme.focus_shown(self) or self.active
         dim = int((50 if self.underMouse() else 100) * (1 - self.lit()))   # quieter until focused, like the PS5
         draw_capture_tile(p, self.shown(), self.pixmap, self.path, self.length, self.favorite, dim, self.radius())
         self.paint_ring(p)
@@ -326,6 +330,7 @@ def chip_label(seconds: int | None) -> str:
 
 class Chip(Grow, HoverFocus, QtWidgets.QAbstractButton):
     """A pill in the Save recent gameplay row; the focused one grows and turns white, like the PS5."""
+    REVEAL_FIRST = True     # ui_theme.FocusShown: the first arrow only lights it up
 
     H = 44
     PAD = 9           # room to grow into
@@ -377,17 +382,17 @@ class Chip(Grow, HoverFocus, QtWidgets.QAbstractButton):
     def paintEvent(self, _):
         p = QtGui.QPainter(self)
         p.setRenderHint(QtGui.QPainter.Antialiasing)
-        g = self.grow
+        g = self.grow if ui_theme.focus_on() or self.underMouse() else 0.0
         r = QtCore.QRectF(self.rect()).adjusted(self.PAD - 4 * g, self.PAD - 2 * g, 4 * g - self.PAD, 2 * g - self.PAD)
         radius = r.height() / 2
-        focused = self.hasFocus()
-        ui_theme.paint_focus(p, r, radius, self.grow, ring=False)
+        focused = ui_theme.focus_shown(self)
+        ui_theme.paint_focus(p, r, radius, g, ring=False)
         p.setPen(QtGui.QPen(QtGui.QColor(255, 105, 97, 150) if self.danger else QtGui.QColor(255, 255, 255, 46), 1))
         p.setBrush(QtGui.QColor(255, 255, 255, 34 if self.underMouse() else 14))
         p.drawRoundedRect(r.adjusted(0.5, 0.5, -0.5, -0.5), radius, radius)
-        if self.grow > 0.01:
+        if g > 0.01:
             fill = QtGui.QColor("#ff6961" if self.danger else ui_theme.INK)
-            fill.setAlphaF(self.grow)
+            fill.setAlphaF(g)
             p.setPen(Qt.NoPen)
             p.setBrush(fill)
             p.drawRoundedRect(r, radius, radius)
@@ -449,18 +454,18 @@ class ActionButton(QtWidgets.QAbstractButton):
             p.setBrush(QtGui.QColor("#ffffff" if hover else ui_theme.INK))
             p.drawRoundedRect(r, 20, 20)
             ink = QtGui.QColor(ui_theme.DARK)
-            if self.hasFocus():   # a dark ring inside the white
+            if ui_theme.focus_shown(self):   # a dark ring inside the white
                 p.setPen(QtGui.QPen(ink, 3))
                 p.setBrush(Qt.NoBrush)
                 p.drawRoundedRect(r.adjusted(4.5, 4.5, -4.5, -4.5), 16, 16)
         elif self.danger:
-            p.setPen(QtGui.QPen(QtGui.QColor(ui_theme.INK), 2) if self.hasFocus() else
+            p.setPen(QtGui.QPen(QtGui.QColor(ui_theme.INK), 2) if ui_theme.focus_shown(self) else
                      QtGui.QPen(QtGui.QColor(255, 105, 97, 150), 1))
             p.setBrush(QtGui.QColor(255, 69, 58, 46))
             p.drawRoundedRect(r.adjusted(.5, .5, -.5, -.5), 20, 20)
             ink = QtGui.QColor("#ff8a82")
         else:
-            ui_theme.paint_card(p, r, self.hasFocus(), hover, 20)
+            ui_theme.paint_card(p, r, ui_theme.focus_shown(self), hover, 20)
             ink = QtGui.QColor(ui_theme.INK)
         p.setFont(self.font())
         text_w, glyph_w, total = self._parts()
@@ -595,12 +600,13 @@ class LevelRow(QtWidgets.QWidget):
     def paintEvent(self, _):
         p = QtGui.QPainter(self)
         p.setRenderHint(QtGui.QPainter.Antialiasing)
-        ui_theme.paint_card(p, QtCore.QRectF(self.rect()), self.slider.hasFocus(), self.underMouse())
+        ui_theme.paint_card(p, QtCore.QRectF(self.rect()), ui_theme.focus_shown(self.slider, self.underMouse()), self.underMouse())
 
 
 class OptionCard(QtWidgets.QAbstractButton):
     """A Share setting as a card: a name, what it does, and its choices side by side.
     Enter / ✕ moves to the next choice; a click picks one."""
+    REVEAL_FIRST = True     # ui_theme.FocusShown: the first arrow only lights it up
 
     picked = QtCore.Signal(object)
 
@@ -651,7 +657,7 @@ class OptionCard(QtWidgets.QAbstractButton):
         p.setRenderHint(QtGui.QPainter.Antialiasing)
         if not self.isEnabled():
             p.setOpacity(0.45)
-        ui_theme.paint_card(p, QtCore.QRectF(self.rect()), self.hasFocus(), self.underMouse() and self.isEnabled())
+        ui_theme.paint_card(p, QtCore.QRectF(self.rect()), ui_theme.focus_shown(self), self.underMouse() and self.isEnabled())
         badge = ui_theme.mirror(self, QtCore.QRectF(20, 20, 40, 40))
         p.setPen(Qt.NoPen)
         p.setBrush(QtGui.QColor(255, 255, 255, 16))
@@ -675,9 +681,9 @@ class OptionCard(QtWidgets.QAbstractButton):
             chosen = i == self.index
             if chosen:
                 p.setPen(Qt.NoPen)
-                p.setBrush(QtGui.QColor(ui_theme.INK) if self.hasFocus() else QtGui.QColor(255, 255, 255, 44))
+                p.setBrush(QtGui.QColor(ui_theme.INK) if ui_theme.focus_shown(self) else QtGui.QColor(255, 255, 255, 44))
                 p.drawRoundedRect(seg, 7, 7)
-            p.setPen(QtGui.QColor(ui_theme.DARK) if chosen and self.hasFocus()
+            p.setPen(QtGui.QColor(ui_theme.DARK) if chosen and ui_theme.focus_shown(self)
                      else QtGui.QColor(ui_theme.INK) if chosen else QtGui.QColor(236, 240, 250, 185))
             p.drawText(seg, Qt.AlignCenter, p.fontMetrics().elidedText(self.choices[i][1], Qt.ElideRight,
                                                                          int(seg.width()) - 12))
@@ -823,6 +829,7 @@ def confirm(text: str, yes: str, no: str) -> bool:
 class SettingRow(HoverFocus, QtWidgets.QWidget):
     """One line in Settings: name and explanation on the left, its value on the right.
     Choices change with ← → (or a click), switches flip, actions (folder, shortcut) open with Enter."""
+    REVEAL_FIRST = True     # ui_theme.FocusShown: the first arrow only lights it up
 
     changed = QtCore.Signal()
     H = 72
@@ -955,7 +962,7 @@ class SettingRow(HoverFocus, QtWidgets.QWidget):
     def paintEvent(self, _):
         p = QtGui.QPainter(self)
         p.setRenderHint(QtGui.QPainter.Antialiasing)
-        focused = self.hasFocus()
+        focused = ui_theme.focus_shown(self)
         r = QtCore.QRectF(self.rect()).adjusted(0, 2, 0, -2)
         if focused:
             p.setPen(Qt.NoPen)
@@ -1082,6 +1089,6 @@ class SettingsCard(QtWidgets.QWidget):
         rows = [self.rows.itemAt(i).widget() for i in range(self.rows.count())]
         p.setPen(QtGui.QPen(QtGui.QColor(255, 255, 255, 16), 1))
         for above, below in zip(rows, rows[1:]):
-            if not (above.hasFocus() or below.hasFocus()):
+            if not (ui_theme.focus_shown(above) or ui_theme.focus_shown(below)):
                 y = below.geometry().top() + 0.5
                 p.drawLine(QtCore.QPointF(24, y), QtCore.QPointF(self.width() - 24, y))

@@ -301,3 +301,30 @@ row = ui_widgets.SettingRow("x", "Name", "bool", describe=lambda v: "short" if v
 row.resize(700, row.H); row.set_value(True); assert row.height() == row.H
 row.set_value(False); assert row.height() > row.H
 print("two-line explanations PASS")
+
+# ---- 14) no focus highlight a page puts there by itself: only a key or the controller shows it
+from PySide6 import QtGui
+from capturemenu import ui_theme, ui_widgets
+watch = ui_theme.focus_watch(); app.installEventFilter(watch); ui_theme.MOTION_MS = 0   # no growing in between
+activate = lambda w: watch.eventFilter(w, QtCore.QEvent(QtCore.QEvent.WindowActivate))   # what Windows sends when it comes forward
+key = lambda k: (QtWidgets.QApplication.sendEvent(QtWidgets.QApplication.focusWidget(),
+                 QtGui.QKeyEvent(QtCore.QEvent.KeyPress, k, Qt.NoModifier)), app.processEvents())
+menu = ui_menu.Menu(ctl, ui_viewer.Viewer(ctl))
+menu.show_menu("Game"); menu.activateWindow(); app.processEvents(); activate(menu)
+lit = lambda w: ui_theme.focus_shown(w) and (not isinstance(w, ui_widgets.Card) or w.lit() > 0)
+assert menu.save_card.hasFocus() and not lit(menu.save_card), "the bar opens with nothing lit"
+key(Qt.Key_Right)
+assert menu.save_card.hasFocus() and lit(menu.save_card), "the first arrow shows where you are, doesn't move"
+key(Qt.Key_Right)
+assert menu.shot_card.hasFocus() and lit(menu.shot_card), "then it moves"
+menu.settings = ui_settings.Settings(ctl)
+menu.open_settings(); app.processEvents(); activate(menu.settings)
+row = QtWidgets.QApplication.focusWidget()
+assert isinstance(row, ui_widgets.SettingRow) and row.window() is menu.settings and not lit(row), "Settings opens with nothing lit"
+key(Qt.Key_Down); assert lit(QtWidgets.QApplication.focusWidget()), "a key shows it there too"
+menu.settings.hide(); menu.show_menu("Game", fresh=False); menu.activateWindow(); app.processEvents(); activate(menu)
+focused = QtWidgets.QApplication.focusWidget()
+assert focused is not None and not lit(focused), "and coming back from Settings, nothing lit again"
+menu.settings.hide(); menu.hide_menu()
+app.removeEventFilter(watch)
+print("no focus highlight until a key PASS")

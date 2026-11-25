@@ -104,7 +104,7 @@ class CategoryDelegate(QtWidgets.QStyledItemDelegate):
             p.setPen(Qt.NoPen)
             p.setBrush(QtGui.QColor(ui_theme.INK))
             p.drawRoundedRect(pill, 19, 19)
-            if option.widget is not None and option.widget.hasFocus():   # the controller's highlight is here
+            if option.widget is not None and ui_theme.focus_shown(option.widget):   # the controller's highlight is here
                 p.setPen(QtGui.QPen(QtGui.QColor(ui_theme.DARK), 2.5))
                 p.setBrush(Qt.NoBrush)
                 p.drawRoundedRect(pill.adjusted(3.5, 3.5, -3.5, -3.5), 15.5, 15.5)
