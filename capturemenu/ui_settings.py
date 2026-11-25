@@ -371,7 +371,7 @@ class Settings(QtWidgets.QWidget):
         if state == "error":
             return language.tr("Update failed · nothing was installed. Press Enter to try again")
         if state in ("downloading", "ready"):
-            return language.tr("Capture Menu closes and installs it when the download finishes")
+            return language.tr("When the download finishes, Capture Menu closes, installs it in the background and opens again")
         if state == "checking":
             return ""
         return language.tr("Press Enter to look for a new version. Nothing is installed unless you say so")

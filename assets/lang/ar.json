@@ -66,7 +66,7 @@
   "The QR code will appear in a moment": "سوف يظهر الباركود خلال لحظات",
   "Cancel": "إلغاء",
   "Capture Menu and OBS start when you sign in": "يبدأ Capture Menu وOBS عند تسجيل الدخول إلى ويندوز",
-  "Capture Menu closes and installs it when the download finishes": "عند انتهاء التنزيل يُغلق Capture Menu ويثبّت التحديث ثم يعود",
+  "When the download finishes, Capture Menu closes, installs it in the background and opens again": "عند انتهاء التنزيل يُغلق Capture Menu ويثبّت التحديث في الخلفية ثم يفتح من جديد",
   "Capture Menu is running": "Capture Menu يعمل",
   "Capture Menu is running · {keys} to open": "Capture Menu يعمل · {keys} لفتحه",
   "Capture Menu restarts in the new language when you save": "يعيد Capture Menu تشغيل نفسه باللغة الجديدة عند الحفظ",
