@@ -39,6 +39,10 @@ jobs:
   release:
     needs: tests
     runs-on: windows-latest
+    permissions:
+      contents: write
+      id-token: write      # build attestation
+      attestations: write
     env:
       SIGN: ${{ secrets.SIGNPATH_API_TOKEN != '' && vars.SIGNPATH_ORGANIZATION_ID != '' }}
     defaults:
@@ -156,6 +160,14 @@ jobs:
                 installer/Setup.cmd installer/setup.ps1 installer/Uninstall.cmd installer/uninstall.ps1 out/CaptureMenu/
           cd out && 7z a -bso0 ../CaptureMenu.zip CaptureMenu
 
+      - name: Attest where the release files came from
+        if: steps.version.outputs.skip != 'true'
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            Output/CaptureMenu-Setup.exe
+            CaptureMenu.zip
+
       - name: Publish the release
         if: steps.version.outputs.skip != 'true'
         env:
@@ -168,6 +180,8 @@ jobs:
           It installs Capture Menu, plus OBS Studio and FFmpeg if you don't have them, connects OBS and starts Capture Menu with Windows. No Python needed. Already installed? Run the new Setup to update; your settings are kept. To remove it: Windows Settings → Apps → Capture Menu → Uninstall.
 
           If Windows shows "Windows protected your PC", choose **More info → Run anyway**.
+
+          To check this file was built here from this repository's code: `gh attestation verify CaptureMenu-Setup.exe --repo Amjz03/capture-menu`
 
           Press **Alt + C** (or **Create** on the controller) to open the menu.
 

@@ -92,6 +92,14 @@ Releases are not code-signed yet. The [release workflow](.github/workflows/relea
 
 Release files are built only by that workflow on GitHub Actions, from the code in this repository, and only after `tests/run_release_tests.py` passes. Nothing built on a personal computer is published.
 
+Every release file carries a signed [build attestation](https://docs.github.com/actions/security-for-github-actions/using-artifact-attestations) that records which commit and workflow run built it. To check a download yourself, with the [GitHub CLI](https://cli.github.com/):
+
+```powershell
+gh attestation verify CaptureMenu-Setup.exe --repo Amjz03/capture-menu
+```
+
+It fails if the file was changed after GitHub Actions built it, or was built anywhere else.
+
 The updater checks every download against the SHA-256 that GitHub lists for the release, and won't run a file that doesn't match. That catches a broken or swapped download, not a compromised GitHub account.
 
 - Committers and reviewers: [Amjz03](https://github.com/Amjz03)
