@@ -19,7 +19,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&family=IBM+Plex+Sans+Arabic:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=55">
+  <link rel="stylesheet" href="style.css?v=56">
 </head>
 <body>
   <a class="skip" href="#main" data-i18n="skip">Skip to content</a>
@@ -101,7 +101,10 @@
         <h2 data-i18n="try_h">Try the menu</h2>
         <p data-i18n="try_p">This is the real menu, rebuilt in the page. Press Alt + C once to open it, then move with the arrows or the mouse and pick with Enter. Press twice to save the last 30 seconds. A controller plugged into this computer works too.</p>
       </div>
+      <button class="btn try-full-btn" id="try-full" type="button" data-i18n="try_full">Try it full screen</button>
       <div class="stage-wrap reveal">
+        <button class="try-exit" id="try-exit" type="button" aria-label="Close" data-i18n-aria="try_exit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+        <div class="try-zoom" id="try-zoom"><button type="button" data-z="-1" aria-label="Zoom out">−</button><button type="button" data-z="1" aria-label="Zoom in">+</button></div>
         <span class="stage-light" aria-hidden="true"></span>
       <div class="try-stage" id="stage" tabindex="0" aria-label="Demo: press Alt + C">
         <div class="pc" id="pc">
@@ -245,7 +248,7 @@
 
   <script src="pages.js?v=7"></script>
 <script src="demo.js?v=52"></script>
-  <script src="app.js?v=48"></script>
+  <script src="app.js?v=49"></script>
   <script data-goatcounter="https://capturemenu.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
 </body>
 </html>

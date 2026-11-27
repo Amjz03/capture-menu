@@ -769,3 +769,25 @@ html[dir="rtl"] .st-val span { direction: rtl; }
   .dl-guide[open] { animation: dl-in .28s var(--ease); }
   @keyframes dl-in { from { opacity: 0; transform: translateY(10px) scale(.98); } }
 }
+
+/* ------------------------------------------------------------- the demo on a phone (html.phone only) */
+/* A large window over the page, the 1920 screen zoomed in it (app.js moves it with --tx, --ty and --zk) */
+.try-full-btn, .try-exit, .try-zoom { display: none; }
+html.phone .keys-legend, html.phone .pad-status { display: none; }
+html.phone .try-full-btn { display: inline-flex; margin-bottom: 14px; }
+html.phone .try.full { position: fixed; inset: 0; z-index: 100; width: auto; margin: 0; padding: 0; background: #000; }
+html.phone .try.full .section-head, html.phone .try.full .try-full-btn, html.phone .try.full .on-phone, html.phone .try.full .stage-light { display: none; }
+html.phone .try.full .stage-wrap { position: fixed; left: 0; right: 0; top: calc(60px + env(safe-area-inset-top)); bottom: calc(92px + env(safe-area-inset-bottom)); width: auto; opacity: 1; transform: none; }
+html.phone .try.full .try-stage { width: 100%; height: 100%; aspect-ratio: auto; border-radius: 0; border: 0; touch-action: none; background: #05060a; }
+html.phone .try.full .pc { transform: translate(var(--tx, 0px), var(--ty, 0px)) scale(var(--zk, .5)); transition: none; }
+html.phone .try.full .try-hint { display: none; }
+html.phone .try.full .try-exit, html.phone .try.full .try-zoom button { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 50%;
+  border: 1px solid var(--line-2); background: rgba(21, 23, 30, .9); color: var(--ink); font: 600 22px/1 var(--sans); }
+html.phone .try.full .try-exit { position: fixed; z-index: 3; top: calc(9px + env(safe-area-inset-top)); inset-inline-end: max(12px, env(safe-area-inset-right)); }
+html.phone .try.full .try-exit svg { width: 18px; height: 18px; }
+html.phone .try.full .try-zoom { display: flex; gap: 8px; position: fixed; z-index: 3; top: calc(9px + env(safe-area-inset-top)); inset-inline-start: max(12px, env(safe-area-inset-left)); }
+html.phone .try.full .try-bar { position: fixed; z-index: 3; left: 0; right: 0; bottom: 0; margin: 0; padding: 12px max(12px, env(safe-area-inset-right)) calc(14px + env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+  background: rgba(13, 14, 19, .96); border-top: 1px solid var(--line); opacity: 1; transform: none; }
+html.phone .try.full .try-buttons { width: 100%; gap: 10px; }
+html.phone .try.full .try-buttons .btn { flex: 1; height: 52px; font-size: 16px; justify-content: center; }
+html.phone .try.full #press-once { background: var(--ink); color: var(--bg); border-color: var(--ink); }

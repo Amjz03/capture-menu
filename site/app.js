@@ -64,6 +64,7 @@ const T = {
     buf_q: "How much do you want to keep?",
     try_hint: "Press Alt + C, or click here",
     press_once: "Press once", press_twice: "Press twice",
+    try_full: "Try it full screen", try_exit: "Close",
     pad_none: "No controller found. Plug one in and press any button.",
     pad_on: "Controller found: {name}. Press Create / View.",
     j_h: "Save it. Trim it. Share it.",
@@ -155,6 +156,7 @@ const T = {
     buf_q: "كم تريد أن تحفظ؟",
     try_hint: "اضغط Alt + C، أو اضغط هنا",
     press_once: "اضغط مرة", press_twice: "اضغط مرتين",
+    try_full: "جرّبه بالشاشة كاملة", try_exit: "إغلاق",
     pad_none: "لا يوجد كنترولر. وصّل واحدًا واضغط أي زر.",
     pad_on: "الكنترولر جاهز: {name}. اضغط Create / View.",
     j_h: "احفظها. قصّها. شاركها.",
@@ -213,6 +215,7 @@ function applyLang() {
   document.querySelectorAll("[data-i18n]").forEach((el) => { if (t[el.dataset.i18n]) el.textContent = t[el.dataset.i18n]; });
   document.querySelectorAll("[data-i18n-html]").forEach((el) => { el.innerHTML = t[el.dataset.i18nHtml]; });
   document.querySelectorAll("[data-i18n-alt]").forEach((el) => { el.alt = t[el.dataset.i18nAlt]; });
+  document.querySelectorAll("[data-i18n-aria]").forEach((el) => { el.setAttribute("aria-label", t[el.dataset.i18nAria]); });
   // the app's own screens, in the same language
   document.querySelectorAll("img[data-src-lang]").forEach((img) => { img.src = img.src.replace(/-(en|ar)\.jpg$/, `-${lang}.jpg`); });
   DEMO.setLang(lang);
@@ -307,6 +310,87 @@ document.addEventListener("keydown", (e) => {
 document.getElementById("press-once").addEventListener("click", () => now(DEMO.toggle));
 document.getElementById("press-twice").addEventListener("click", () => now(DEMO.saveLast30));
 stage.addEventListener("click", () => { if (!DEMO.isOpen()) now(DEMO.toggle); });
+
+// ---------------------------------------------------------------- the demo on a phone (html.phone only)
+// The 1920 × 1080 screen is a fifth of its size on a phone, so a phone opens it in a large window, zoomed in like
+// a magnifier: it follows what's lit (or the open bar, or the notice), a finger drags it around, two fingers
+// or − / + zoom it. None of this runs on a computer: the button is hidden there and the window never opens.
+{
+  const trySec = document.getElementById("try"), pc = document.getElementById("pc");
+  let on = false, zk = 0.5, tx = 0, ty = 0, manualUntil = 0;
+  const view = () => { const r = stage.getBoundingClientRect(); return { w: r.width, h: r.height }; };
+  const levels = () => { const v = view(), fit = Math.min(v.w / 1920, v.h / 1080); return [fit, Math.max(fit, Math.min(0.62, v.h / 1080)), Math.max(fit, 0.9)]; };
+  const clampK = (k) => { const l = levels(); return Math.min(l[2] * 1.3, Math.max(l[0], k)); };
+  function keepIn() {
+    const v = view(), W = 1920 * zk, H = 1080 * zk;
+    tx = W <= v.w ? (v.w - W) / 2 : Math.min(0, Math.max(v.w - W, tx));
+    ty = H <= v.h ? (v.h - H) / 2 : Math.min(0, Math.max(v.h - H, ty));
+  }
+  // what to keep in view: the lit tile or row, else the bar's first tile (Save recent), else the notice
+  function target() {
+    const el = pc.querySelector(".cm-menu .focus, #pg .on, #pg .focus") || (DEMO.isOpen() ? pc.querySelector(".cm-menu [data-id]") : null)
+      || pc.querySelector(".cm-toast.in");
+    if (!el) return null;
+    const a = el.getBoundingClientRect(), p = pc.getBoundingClientRect(), k = p.width / 1920;
+    return { x: (a.left - p.left + a.width / 2) / k, y: (a.top - p.top + a.height / 2) / k };
+  }
+  function paint() {
+    pc.style.setProperty("--tx", tx.toFixed(1) + "px"); pc.style.setProperty("--ty", ty.toFixed(1) + "px"); pc.style.setProperty("--zk", zk.toFixed(4));
+  }
+  function frame() {
+    if (!on) return;
+    const v = view(), tg = Date.now() > manualUntil ? target() : null;
+    if (tg) { tx += (v.w / 2 - tg.x * zk - tx) * 0.16; ty += (v.h / 2 - tg.y * zk - ty) * 0.16; }
+    keepIn(); paint(); requestAnimationFrame(frame);
+  }
+  function zoomTo(k, cx, cy) {          // keep the point under (cx, cy) where it is
+    const v = view(); cx = cx ?? v.w / 2; cy = cy ?? v.h / 2;
+    const wx = (cx - tx) / zk, wy = (cy - ty) / zk;
+    zk = clampK(k); tx = cx - wx * zk; ty = cy - wy * zk; keepIn(); paint();
+  }
+  const enter = () => {
+    trySec.classList.add("full"); on = true;
+    const fs = trySec.requestFullscreen || trySec.webkitRequestFullscreen;
+    if (fs) Promise.resolve(fs.call(trySec)).catch(() => {});
+    requestAnimationFrame(() => { zk = levels()[1]; const v = view(); tx = (v.w - 1920 * zk) / 2; ty = v.h - 1080 * zk; keepIn(); paint(); frame(); });
+  };
+  const exit = () => {
+    on = false; trySec.classList.remove("full");
+    if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {});
+  };
+  document.getElementById("try-full").addEventListener("click", enter);
+  document.getElementById("try-exit").addEventListener("click", (e) => { e.stopPropagation(); exit(); });
+  document.addEventListener("fullscreenchange", () => { if (!document.fullscreenElement && on) exit(); });
+  document.getElementById("try-zoom").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-z]"); if (!b) return;
+    e.stopPropagation(); zoomTo(zk * (b.dataset.z === "1" ? 1.35 : 1 / 1.35)); manualUntil = Date.now() + 1500;
+  });
+  // one finger drags the view (a tap stays a click); two fingers zoom it
+  let drag = null;
+  stage.addEventListener("touchstart", (e) => {
+    if (!on) return;
+    const t = [...e.touches].map((p) => ({ x: p.clientX, y: p.clientY }));
+    drag = t.length === 1 ? { x: t[0].x, y: t[0].y, tx, ty, moved: false }
+      : { pinch: Math.hypot(t[0].x - t[1].x, t[0].y - t[1].y), k: zk, cx: (t[0].x + t[1].x) / 2, cy: (t[0].y + t[1].y) / 2, moved: true };
+  }, { passive: true });
+  stage.addEventListener("touchmove", (e) => {
+    if (!on || !drag) return;
+    e.preventDefault();
+    const r = stage.getBoundingClientRect();
+    if (drag.pinch && e.touches.length > 1) {
+      const a = e.touches[0], b = e.touches[1];
+      zoomTo(drag.k * Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY) / drag.pinch, drag.cx - r.left, drag.cy - r.top);
+    } else if (!drag.pinch) {
+      const p = e.touches[0], dx = p.clientX - drag.x, dy = p.clientY - drag.y;
+      if (!drag.moved && Math.hypot(dx, dy) < 8) return;
+      drag.moved = true; tx = drag.tx + dx; ty = drag.ty + dy; keepIn(); paint();
+    }
+    manualUntil = Date.now() + 2500;      // it follows again a moment after the finger lets go
+  }, { passive: false });
+  stage.addEventListener("touchend", () => { if (drag && drag.moved) stage.dataset.dragged = "1"; drag = null; }, { passive: true });
+  // a drag isn't a tap: the click that ends it does nothing
+  stage.addEventListener("click", (e) => { if (stage.dataset.dragged) { delete stage.dataset.dragged; e.stopPropagation(); e.preventDefault(); } }, true);
+}
 
 // controllers: the browser's Gamepad API, standard layout. 8 is Create (PlayStation) / View (Xbox);
 // the rest drive the bar the way they do in the app.
