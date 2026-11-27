@@ -278,8 +278,8 @@ def pad_key(button: int, menu: "Menu", viewer: "Viewer", gallery: "Gallery | Non
                     UP: Qt.Key_Up, DOWN: Qt.Key_Down, OPTIONS: Qt.Key_P}                # a second; Preview
         else:
             keys = {A: Qt.Key_Return, B: Qt.Key_Escape, LEFT: Qt.Key_Left, RIGHT: Qt.Key_Right,
-                    UP: Qt.Key_Up, DOWN: Qt.Key_Down, L1: Qt.Key_A, R1: Qt.Key_D, X: Qt.Key_T, Y: Qt.Key_M,
-                    OPTIONS: Qt.Key_E, 7: Qt.Key_V}   # 7 = L3: Sound, Y: the small buttons
+                    UP: Qt.Key_Up, DOWN: Qt.Key_Down, L1: Qt.Key_A, R1: Qt.Key_D, X: Qt.Key_T, Y: Qt.Key_F,
+                    OPTIONS: Qt.Key_E, 7: Qt.Key_V}   # 7 = L3: Sound, △: Favorite
         return keys.get(button)
     if gallery is not None and gallery.isVisible():
         keys = {A: Qt.Key_Return, B: Qt.Key_Escape, UP: Qt.Key_Up, DOWN: Qt.Key_Down,

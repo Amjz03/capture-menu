@@ -69,16 +69,21 @@ key(viewer, Qt.Key_Escape); assert not viewer.sharing and viewer.isVisible()
 print("viewer share/favorite PASS")
 
 # the controller moves a highlight over everything on screen, like a mouse, and ✕ presses it
-assert not hasattr(viewer, "more_btn") and viewer.del_btn.isVisible() and not viewer.del_btn.text()
+viewer.resize(1920, 1080); app.processEvents(); viewer._fit_actions()
+assert not hasattr(viewer, "more_btn") and viewer.del_btn.isVisible() and viewer.del_btn.text() == "Delete", "every button says what it is"
 viewer.show_item(); app.processEvents()
 assert viewer.focusWidget() is viewer.play_btn, "a clip starts on Play"
 pad(input_devices.RIGHT); assert viewer.focusWidget() is viewer.fwd5_btn, "+5 s after Play"
 pad(input_devices.RIGHT); assert viewer.focusWidget() is viewer.slider
 pad(input_devices.RIGHT); assert viewer.focusWidget() is viewer.slider, "on the seek bar → moves through the video"
-pad(input_devices.DOWN); assert viewer.focusWidget() in (viewer.trim_btn, viewer.sound_btn, viewer.share_btn)
+pad(input_devices.DOWN); assert viewer.focusWidget() in (viewer.trim_btn, viewer.sound_btn, viewer.share_btn, viewer.fav_btn,
+                                                          viewer.folder_chip, viewer.external_chip, viewer.del_btn)
 pad(input_devices.UP); pad(input_devices.UP)
 assert viewer.focusWidget() in (viewer.back_btn, viewer.rename_btn, viewer.prev_btn, viewer.next_btn, viewer.close_btn)
-pad(input_devices.Y); pad(input_devices.RIGHT); assert viewer.focusWidget() is viewer.folder_chip
+fav_before = ctl.is_favorite(viewer.current)
+pad(input_devices.Y); assert ctl.is_favorite(viewer.current) != fav_before, "△ is Favorite"
+pad(input_devices.Y)
+key(viewer, Qt.Key_M); pad(input_devices.RIGHT); assert viewer.focusWidget() is viewer.folder_chip
 if runtime.IS_WINDOWS:   # Explorer needs /select,"path": with quotes around it all, a folder with spaces opens Documents
     sent = []; real_launch, windows.launch_outside = windows.launch_outside, lambda cmd, **k: sent.append(cmd)
     capture_controller.Controller.reveal(Path(r"C:\Clips\Red Dead Redemption 2\Clip_1.mp4")); windows.launch_outside = real_launch
@@ -87,7 +92,7 @@ revealed = []; ctl.reveal = lambda p: revealed.append(p.name)
 pad(input_devices.A); assert revealed == [c.name] and viewer.isVisible(), "Show in folder: the folder opens over the viewer, which stays"
 key(viewer, Qt.Key_Delete)               # Delete armed, nothing deleted yet
 assert viewer.del_btn.danger and viewer.focusWidget() is viewer.del_btn and c.exists()
-pad(input_devices.B); assert not viewer.del_btn.danger and not viewer.del_btn.text() and c.exists() and viewer.isVisible()
+pad(input_devices.B); assert not viewer.del_btn.danger and viewer.del_btn.text() == "Delete" and c.exists() and viewer.isVisible()
 input_devices.input_mode().set("keyboard"); app.processEvents()
 assert viewer.focusWidget() is viewer, "with the keyboard the viewer keeps the keys for its shortcuts"
 viewer.close_viewer()

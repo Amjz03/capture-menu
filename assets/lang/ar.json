@@ -474,5 +474,6 @@
   "ends {time} ago": "ينتهي قبل {time}",
   "about {size}": "حوالي {size}",
   "Clip starts {time} ago": "المقطع يبدأ قبل {time}",
-  "Pictures show up once a minute is recorded": "تظهر الصور بعد تسجيل أول دقيقة"
+  "Pictures show up once a minute is recorded": "تظهر الصور بعد تسجيل أول دقيقة",
+  "Open in player": "فتح في المشغّل"
 }

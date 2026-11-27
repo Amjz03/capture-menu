@@ -607,12 +607,13 @@ class ActionButton(QtWidgets.QAbstractButton):
     H = 64
 
     def __init__(self, text: str, icon: str, pad: str | None = None, key: str | None = None,
-                 primary: bool = False):
+                 primary: bool = False, compact: bool = False):
         super().__init__()
         self.icon_name, self.tokens, self.primary, self.danger = icon, (pad, key), primary, False
         self.icon_color: str | None = None     # e.g. a filled-in yellow star
+        self.quiet_danger = False              # Delete: red words before it's armed, all red once it is
         self.setText(text)
-        self.setFont(ui_theme.font(17, QtGui.QFont.DemiBold))
+        self.setFont(ui_theme.font(15 if compact else 17, QtGui.QFont.DemiBold))
         self.setFixedHeight(self.H)
         self.setCursor(Qt.PointingHandCursor)
         self.setAttribute(Qt.WA_Hover)
@@ -663,7 +664,7 @@ class ActionButton(QtWidgets.QAbstractButton):
             ink = QtGui.QColor("#ff8a82")
         else:
             ui_theme.paint_card(p, r, ui_theme.focus_shown(self), hover, 20)
-            ink = QtGui.QColor(ui_theme.INK)
+            ink = QtGui.QColor("#ff8a82" if self.quiet_danger else ui_theme.INK)
         p.setFont(self.font())
         text_w, glyph_w, total = self._parts()
         x, cy = (self.width() - total) / 2, self.height() / 2

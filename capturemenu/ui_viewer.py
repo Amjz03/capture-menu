@@ -264,13 +264,13 @@ class Viewer(QtWidgets.QWidget):
                       (self.share_btn, self.enter_share)):
             b.clicked.connect(fn)
             act.addWidget(b)
-        act.addSpacing(18)
-        self.tools_hint = ui_widgets.HintBar()             # △ / M: the button that walks the small ones
-        act.addWidget(self.tools_hint, 0, Qt.AlignVCenter)
-        self.fav_btn = ui_widgets.ActionButton("", "star", None, "k:F")
-        self.folder_chip = ui_widgets.ActionButton("", "folder")
-        self.external_chip = ui_widgets.ActionButton("", "external")
-        self.del_btn = ui_widgets.ActionButton("", "trash", None, "k:Del")
+        # the rest say what they are too (a controller can't hover for a tooltip); Delete stands apart
+        self.fav_btn = ui_widgets.ActionButton(language.tr("Favorite"), "star", "Y", "k:F", compact=True)
+        self.folder_chip = ui_widgets.ActionButton(language.tr("Show in folder"), "folder", compact=True)
+        self.external_chip = ui_widgets.ActionButton(language.tr("Open in player"), "external", compact=True)
+        self.del_btn = ui_widgets.ActionButton(language.tr("Delete"), "trash", None, "k:Del", compact=True)
+        self.del_gap = QtWidgets.QWidget()
+        self.del_gap.setFixedWidth(26)
         for b, fn, tip in ((self.fav_btn, self.toggle_favorite, language.tr("Favorite")),
                            (self.folder_chip, self._show_in_folder, language.tr("Show in folder")),
                            (self.external_chip, lambda: self._step_out(self.ctl.open_external),
@@ -279,8 +279,12 @@ class Viewer(QtWidgets.QWidget):
             b.clicked.connect(fn)
             b.setToolTip(tip)
             b.setFocusPolicy(Qt.TabFocus)       # walked with ← →, chosen with ✕; a click leaves the keys alone
+            if b is self.del_btn:
+                act.addWidget(self.del_gap)
+                b.quiet_danger = True           # red text from the start, all red once armed
             act.addWidget(b)
         act.addStretch()
+        self._named = True                      # the small buttons show their names (dropped when too narrow)
         lay.addWidget(self.actions_row)
 
         # ---- footer: what the buttons do on the left, the open panel's buttons on the right
@@ -499,7 +503,22 @@ class Viewer(QtWidgets.QWidget):
             self.image.clear()
             self._show_msg("This picture can't be shown here. Use “Show in folder” to find it.")
             return
+        self._fit_card(pm.width() / max(1, pm.height()))
         self.image.setPixmap(pm.scaled(self.stage.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation))
+
+    def _fit_card(self, aspect: float | None = None):
+        """The frame is as wide as the picture in it, no black bars at the sides. aspect: the picture's
+        width / height (None: the current capture's thumbnail says it, else 16:9)."""
+        if aspect is None:
+            thumb = self.ctl.thumb(self.current) if self.items else None
+            img = QtGui.QImageReader(str(thumb)).size() if thumb else QtCore.QSize()
+            aspect = img.width() / img.height() if img.isValid() and img.height() else 16 / 9
+        lay = self.layout()
+        room = self.width() - lay.contentsMargins().left() - lay.contentsMargins().right()
+        stage_h = self.card.height() - (self.controls.height() if self.controls.isVisible() else 0) - 2
+        width = room if self.full or stage_h <= 0 else min(room, int(stage_h * aspect) + 2)
+        self.card.setFixedWidth(max(320, width))
+        lay.setAlignment(self.card, Qt.AlignHCenter)
 
     def _show_msg(self, text: str):
         self.controls.hide()
@@ -512,6 +531,20 @@ class Viewer(QtWidgets.QWidget):
         self.layout().setContentsMargins(side, 24 if self.full else 36, side, 24)
         if self.items and self.stage.currentWidget() is self.image:
             QtCore.QTimer.singleShot(0, self._fit_image)    # once the layout has settled
+        elif self.items:
+            QtCore.QTimer.singleShot(0, self._fit_card)
+        QtCore.QTimer.singleShot(0, self._fit_actions)
+
+    def _fit_actions(self):
+        """The small buttons keep their names while the row fits; on a narrow window they're icons again."""
+        small = (self.fav_btn, self.folder_chip, self.external_chip, self.del_btn)
+        names = (language.tr("Favorite"), language.tr("Show in folder"), language.tr("Open in player"), language.tr("Delete"))
+        for b, n in zip(small, names):
+            b.setText(n)
+        room = self.actions_row.width() or self.width() - 128
+        if self.actions_row.sizeHint().width() > room:
+            for b in small:
+                b.setText("")
 
     def _on_error(self, *_):
         path = self.current if self.items else None
@@ -627,9 +660,11 @@ class Viewer(QtWidgets.QWidget):
         self.title.setTextFormat(Qt.RichText)
         star = '<span style="color:#ffd34d">★</span>&nbsp;' if fav else ""
         meta = self.ctl.meta(path)
-        name = meta.get("title") or path.stem      # the file's name, as the folder shows it
+        name = meta.get("title") or catalog.capture_kind(path)   # its title, else what it is (the file name is the tooltip)
         self.title.setText(star + name.replace("&", "&amp;").replace("<", "&lt;"))
-        self.sub.setText(f"{path.parent.name}  ·  {catalog.capture_kind(path)}  ·  {catalog.time_ago(path.stat().st_mtime)}")
+        self.title.setToolTip(path.name)
+        self.sub.setText(f"{path.parent.name}  ·  {catalog.time_ago(path.stat().st_mtime)}"
+                         f"  ·  {catalog.human_size(catalog.file_size(path))}")
         self.note.setText(meta.get("note", ""))
         self.note.setVisible(bool(meta.get("note")))
         self.fav_btn.setToolTip(language.tr("Favorited") if fav else language.tr("Favorite"))
@@ -965,14 +1000,13 @@ class Viewer(QtWidgets.QWidget):
                      else [("k:I", "Start"), ("k:O", "End"), ("k:, .", "Frame"), ("k:↑ ↓", "1 sec"),
                            ("k:P", "Preview"), ("k:Enter", "Save"), ("k:Esc", "Cancel")])
         elif pad:
-            items = [("DPAD", "Move"), ("A", "Select"), ("L1R1", "Newer/older"), ("B", "Back")]
+            items = [("DPAD", "Move"), ("A", "Select"), ("L1R1", "Newer/older"), ("Y", "Favorite"), ("B", "Back")]
         elif self.is_video():
             items = [("k:Space", "Play/pause"), ("k:A D", "Newer/older"), ("k:F", "Favorite"),
                      ("k:N", "Rename"), ("k:Esc", "Back")]
         else:
             items = [("k:A D", "Newer/older"), ("k:F", "Favorite"), ("k:N", "Rename"), ("k:Esc", "Back")]
         self.keys_hint.set_items(items, mode)
-        self.tools_hint.set_items([("Y" if pad else "k:M", "")], mode)
 
     def _timeline_seek(self, ms: int):
         if self.player:
@@ -1074,7 +1108,7 @@ class Viewer(QtWidgets.QWidget):
 
     def _reset_delete(self):
         self.del_btn.danger = False
-        self.del_btn.setText("")
+        self._fit_actions()            # back to "Delete" (or to its icon on a narrow window)
 
     @staticmethod
     def _repolish(w):
