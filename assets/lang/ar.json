@@ -487,5 +487,17 @@
   "{n} GB left before the limit": "باقي {n} جيجابايت على الحد",
   "Start OBS": "تشغيل OBS",
   "Restart OBS": "إعادة تشغيل OBS",
-  "{n} captures saved": "حُفظ {n} ملفات"
+  "{n} captures saved": "حُفظ {n} ملفات",
+  "Discord": "ديسكورد",
+  "WhatsApp & apps": "واتساب والتطبيقات",
+  "An MP4 that plays everywhere, full quality": "ملف MP4 يشتغل في كل مكان، بجودة كاملة",
+  "Copied, paste it with Ctrl+V": "منسوخ، الصقه بـ Ctrl+V",
+  "Scan a code with your phone. It downloads over your Wi-Fi": "امسح الكود بجوالك، وينزل عبر الواي فاي",
+  "No cable, no app": "بدون كيبل ولا تطبيق",
+  "Copy the file": "نسخ الملف",
+  "Paste it anywhere": "الصقه في أي مكان",
+  "Made to fit Discord's size, copied ready to paste": "بحجم يناسب ديسكورد، منسوخ وجاهز للصق",
+  "Full quality, {size}, exactly as it was saved": "بجودة كاملة، {size}، كما حُفظ تمامًا",
+  "Copy for Discord": "نسخ لديسكورد",
+  "Show the code": "عرض الكود"
 }

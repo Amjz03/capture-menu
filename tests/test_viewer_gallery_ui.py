@@ -42,20 +42,21 @@ def pad(btn):
 # viewer: share a 3-track clip at 10 MB without the voice, via the controller
 viewer.open(ctl.all_captures(), 0); app.processEvents()
 pad(6)                                   # Options -> Share / Export
-assert viewer.sharing and viewer.voice_card.isEnabled() and viewer.share_panel.isVisible()
-assert viewer.focusWidget() is viewer.share_go, "starts on Export, so ✕ shares right away"
-pad(input_devices.LEFT); pad(input_devices.LEFT); pad(input_devices.LEFT); pad(input_devices.A)    # To your phone, Cancel -> Size limit, next choice
-assert viewer.size_card.value == 10
-pad(input_devices.LEFT); pad(input_devices.A)                  # Your voice: leave it out
-assert viewer.without_voice
-for _ in range(4): pad(input_devices.RIGHT)         # Size limit, Cancel, To your phone, Export
+assert viewer.sharing and viewer.dest == "discord" and viewer.voice_card.isEnabled() and viewer.share_panel.isVisible()
+assert viewer.focusWidget() is viewer.share_go, "starts on its button, so ✕ shares right away"
+for _ in range(3): pad(input_devices.LEFT)          # Cancel, Size limit, Your voice
+pad(input_devices.A); assert viewer.without_voice    # leave it out
+pad(input_devices.RIGHT); pad(input_devices.A); assert viewer.size_card.value == 50
+pad(input_devices.A); pad(input_devices.A); assert viewer.size_card.value == 10, "Discord's sizes only, round again"
+for _ in range(2): pad(input_devices.RIGHT)         # Cancel, Copy for Discord
 pad(input_devices.A)
 assert calls[-1] == ("share", a.name, "discord10", True) and not viewer.sharing, calls
-viewer.enter_share()
-for _ in range(5): pad(input_devices.LEFT)          # To your phone, Cancel, voice, size, Format
-pad(input_devices.A)                                # Format: original
-assert viewer.format_card.value == "copy" and not viewer.size_card.isEnabled() and not viewer.voice_card.isEnabled()
-for _ in range(3): pad(input_devices.RIGHT)         # past the cards it turned off and To your phone, to Copy file
+viewer.enter_share(); assert viewer.dest == "discord", "starts where it went last time"
+for _ in range(4): pad(input_devices.LEFT)          # Cancel, size, voice, Copy the file
+pad(input_devices.A)                                # Copy the file: the original
+assert viewer.dest == "file" and viewer.format_card.value == "copy"
+assert not viewer.size_card.isVisible() and not viewer.voice_card.isVisible(), "nothing to choose for the original"
+for _ in range(2): pad(input_devices.RIGHT)         # Cancel, Copy file
 pad(input_devices.A)
 assert calls[-1] == ("copy", a.name) and not viewer.sharing, calls
 input_devices.input_mode().set("playstation"); app.processEvents()

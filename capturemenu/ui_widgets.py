@@ -801,6 +801,56 @@ class LevelRow(QtWidgets.QWidget):
         ui_theme.paint_card(p, QtCore.QRectF(self.rect()), ui_theme.focus_shown(self.slider, self.underMouse()), self.underMouse())
 
 
+class DestCard(QtWidgets.QAbstractButton):
+    """Share: a place the capture can go, as a big card with what happens there. The chosen one is white.
+    Enter / ✕ / a click chooses it."""
+    REVEAL_FIRST = True
+
+    def __init__(self, key: str, icon: str, title: str, detail: str, foot: str = ""):
+        super().__init__()
+        self.key, self.icon_name, self.title, self.detail, self.foot = key, icon, title, detail, foot
+        self.chosen = False
+        self.setFixedHeight(176)
+        self.setMinimumWidth(220)
+        self.setCursor(Qt.PointingHandCursor)
+        self.setAttribute(Qt.WA_Hover)
+        self.setFocusPolicy(Qt.StrongFocus)
+
+    def keyPressEvent(self, e):
+        e.ignore()        # the viewer moves between cards and chooses with Enter
+
+    def paintEvent(self, _):
+        p = QtGui.QPainter(self)
+        p.setRenderHint(QtGui.QPainter.Antialiasing)
+        r = QtCore.QRectF(self.rect()).adjusted(1, 1, -1, -1)
+        focused = ui_theme.focus_shown(self)
+        if self.chosen:
+            p.setPen(Qt.NoPen)
+            p.setBrush(QtGui.QColor("#ffffff" if self.underMouse() else ui_theme.INK))
+            p.drawRoundedRect(r, 20, 20)
+            if focused:    # a dark ring inside the white
+                p.setPen(QtGui.QPen(QtGui.QColor(ui_theme.DARK), 3))
+                p.setBrush(Qt.NoBrush)
+                p.drawRoundedRect(r.adjusted(5, 5, -5, -5), 16, 16)
+            ink, soft = QtGui.QColor(ui_theme.DARK), QtGui.QColor(13, 17, 32, 175)
+        else:
+            ui_theme.paint_card(p, r, focused, self.underMouse(), 20)
+            ink, soft = QtGui.QColor(ui_theme.INK), QtGui.QColor(236, 240, 250, 190)
+        icon = ui_theme.mirror(self, QtCore.QRectF(22, 22, 30, 30))
+        p.drawPixmap(icon.toRect(), ui_theme.icon_pixmap(self.icon_name, 30, ink.name()))
+        flags = Qt.AlignLeft | Qt.AlignTop | Qt.TextWordWrap
+        p.setPen(ink)
+        p.setFont(ui_theme.font(19, QtGui.QFont.DemiBold))
+        p.drawText(ui_theme.mirror(self, QtCore.QRectF(22, 62, r.width() - 40, 28)), flags, language.tr(self.title))
+        p.setPen(soft)
+        p.setFont(ui_theme.font(14))
+        p.drawText(ui_theme.mirror(self, QtCore.QRectF(22, 94, r.width() - 40, 44)), flags, self.detail)
+        if self.foot:
+            p.setFont(ui_theme.font(13, QtGui.QFont.DemiBold))
+            p.drawText(ui_theme.mirror(self, QtCore.QRectF(22, r.height() - 30, r.width() - 40, 20)),
+                       Qt.AlignLeft | Qt.AlignVCenter, self.foot)
+
+
 class OptionCard(QtWidgets.QAbstractButton):
     """A Share setting as a card: a name, what it does, and its choices side by side.
     Enter / ✕ moves to the next choice; a click picks one."""

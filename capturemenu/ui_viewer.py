@@ -15,6 +15,7 @@ from . import (
     language,
     media,
     phone_link,
+    preferences,
     runtime,
     ui_theme,
     ui_widgets,
@@ -230,6 +231,24 @@ class Viewer(QtWidgets.QWidget):
         sl.setContentsMargins(0, 4, 0, 0)
         sl.setSpacing(2)
         self.share_caption = panel_head(sl, "Share / Export")
+        # where it goes, as big cards; then the choices that apply there
+        dests = QtWidgets.QHBoxLayout()
+        dests.setSpacing(16)
+        self.dest_cards = {
+            "discord": ui_widgets.DestCard("discord", "share", "Discord", "", language.tr("Copied, paste it with Ctrl+V")),
+            "apps": ui_widgets.DestCard("apps", "phone", "WhatsApp & apps", language.tr("An MP4 that plays everywhere, full quality"),
+                                        language.tr("Copied, paste it with Ctrl+V")),
+            "phone": ui_widgets.DestCard("phone", "phone", "To your phone",
+                                         language.tr("Scan a code with your phone. It downloads over your Wi-Fi"),
+                                         language.tr("No cable, no app")),
+            "file": ui_widgets.DestCard("file", "copy", "Copy the file", "", language.tr("Paste it anywhere")),
+        }
+        for c in self.dest_cards.values():
+            c.clicked.connect(lambda _=False, k=c.key: self._choose_dest(k))
+            dests.addWidget(c, 1)
+        sl.addLayout(dests)
+        sl.addSpacing(10)
+        self.dest = "discord"
         share_cards = QtWidgets.QHBoxLayout()
         share_cards.setSpacing(16)
         self.format_card = ui_widgets.OptionCard("file-video", language.tr("Format"),
@@ -247,6 +266,8 @@ class Viewer(QtWidgets.QWidget):
                                     else language.tr("Made to fit, quality drops as needed"))
         for c in (self.format_card, self.voice_card, self.size_card):
             share_cards.addWidget(c, 1)
+        self.format_card.hide()           # the destination says it now: Copy the file is the original
+        self.size_card.choices = [(mb, f"{mb} {language.tr('MB')}") for mb in (10, 50, 500)]   # Discord's sizes
         self.format_card.picked.connect(lambda _: self._share_cards_state())
         sl.addLayout(share_cards)
         lay.addWidget(self.share_panel)
@@ -316,6 +337,7 @@ class Viewer(QtWidgets.QWidget):
         shrow.setSpacing(10)
         self.share_cancel = button(shrow, "Cancel", lambda: self._set_sharing(False))
         self.phone_go = button(shrow, "To your phone", self.send_to_phone, "phone")   # the original file, by QR
+        self.phone_go.hide()                  # now a card of its own
         self.share_go = button(shrow, "Export & copy", self._do_share, "copy", "primary")
         for w in (self.trim_buttons, self.sound_buttons, self.share_buttons):
             foot.addWidget(w)
@@ -834,19 +856,37 @@ class Viewer(QtWidgets.QWidget):
             # leaving your voice out needs the separate game-only track (voice_track in OBS)
             split = video and media.audio_tracks(self.current) >= 3
             self._share_hdr = video and media.is_hdr(self.current)   # its "original" goes in normal colours
-            for card in (self.format_card, self.voice_card, self.size_card):
-                card.setVisible(video)
-            self.format_card.set_value("mp4")
             self.voice_card.set_value(True)
-            self.size_card.set_value(None)
+            self.size_card.set_value(10)
             self._split = split
-            self.share_caption.setText(language.tr("Makes a file that plays everywhere and copies it, ready to paste")
-                                       if video else language.tr("Copies the screenshot so you can paste it anywhere"))
-            self._share_cards_state()
+            path = self.current
+            size = catalog.human_size(catalog.file_size(path))
+            name = self.ctl.title_of(path) or catalog.capture_kind(path)
+            self.share_caption.setText("  ·  ".join(x for x in (name, path.parent.name, size) if x))
+            self.dest_cards["discord"].detail = language.tr("Made to fit Discord's size, copied ready to paste")
+            self.dest_cards["file"].detail = (language.tr("Full quality, {size}, exactly as it was saved", size=size)
+                                              if not self._share_hdr else
+                                              language.tr("HDR goes over in normal colours, so apps don't show it grey"))
+            for k, c in self.dest_cards.items():
+                c.setVisible(video or k in ("file", "phone"))
+            last = preferences.load_state().get("share_dest", "discord")
+            self._choose_dest(last if last in self.dest_cards and (video or last in ("file", "phone")) else "file")
             self.share_go.setFocus()
         self._sync()
         if not on:
             self._pick_focus()
+
+    def _choose_dest(self, key: str):
+        """Where the capture goes; the choices that apply there show under the cards."""
+        self.dest = key
+        for k, c in self.dest_cards.items():
+            c.chosen = k == key
+            c.update()
+        self.format_card.set_value("copy" if key in ("file", "phone") else "mp4")
+        video = self.is_video()
+        self.voice_card.setVisible(video and key != "file")
+        self.size_card.setVisible(video and key == "discord")
+        self._share_cards_state()
 
     def _share_cards_state(self):
         """The original file is copied as it is: your voice and the size don't apply to it."""
@@ -860,8 +900,13 @@ class Viewer(QtWidgets.QWidget):
         self.size_card.note = language.tr("Not needed for the original file") if original else ""
         for card in (self.voice_card, self.size_card):
             card.update()
-        self.share_go.setText("  " + (language.tr("Copy") if not self.is_video() else
-                                      language.tr("Copy file") if original else language.tr("Export & copy")).replace("&", "&&"))
+        if getattr(self, "dest", None) == "phone":     # the phone takes the original, with or without the voice
+            self.voice_card.setEnabled(split)
+            self.voice_card.note = "" if split else language.tr("This clip has your voice and the game together")
+            self.voice_card.update()
+        label = {"discord": language.tr("Copy for Discord"), "apps": language.tr("Export & copy"),
+                 "phone": language.tr("Show the code"), "file": language.tr("Copy file") if self.is_video() else language.tr("Copy")}
+        self.share_go.setText("  " + label.get(getattr(self, "dest", "file"), language.tr("Copy")).replace("&", "&&"))
 
     def _toggle_voice(self):
         self.voice_card.next()
@@ -871,27 +916,31 @@ class Viewer(QtWidgets.QWidget):
         return self.voice_card.isEnabled() and self.voice_card.value is False
 
     def _do_share(self, *_):
-        path = self.current
-        copy_only = not self.is_video() or self.format_card.value == "copy"
+        path, dest = self.current, self.dest
         size, without_voice = self.size_card.value, self.without_voice
+        preferences.update_state(lambda st: st.update(share_dest=dest))     # next time it starts there
         self._set_sharing(False)
-        if copy_only:
+        if dest == "phone":
+            self.send_to_phone(without_voice)
+        elif dest == "file" or not self.is_video():
             self.ctl.copy(path)
         else:
-            self.ctl.share(path, "phone" if size is None else f"discord{size}", without_voice)
+            self.ctl.share(path, f"discord{size}" if dest == "discord" else "phone", without_voice)
 
-    def send_to_phone(self):
+    def send_to_phone(self, without_voice: bool | None = None):
         """A link to this capture, as it is, for a phone on the same Wi-Fi: shown as a QR code."""
         if not self.items:
             return
         if self.player is not None:
             self.player.pause()               # the phone plays it now
-        self.phone_panel.show_link(phone_link.PhoneLink(self.items[self.index],
-                                                        without_voice=self.is_video() and self.without_voice))
+        if without_voice is None:
+            without_voice = self.is_video() and self.without_voice
+        self.phone_panel.show_link(phone_link.PhoneLink(self.items[self.index], without_voice=without_voice))
 
     def _share_nav(self) -> list[QtWidgets.QWidget]:
-        cards = [c for c in (self.format_card, self.voice_card, self.size_card) if c.isVisible() and c.isEnabled()]
-        return cards + [self.share_cancel, self.phone_go, self.share_go]
+        dests = [c for c in self.dest_cards.values() if c.isVisible()]
+        cards = [c for c in (self.voice_card, self.size_card) if c.isVisible() and c.isEnabled()]
+        return dests + cards + [self.share_cancel, self.share_go]
 
     def _all_nav(self) -> list[QtWidgets.QWidget]:
         return [self.back_btn, self.rename_btn, self.prev_btn, self.next_btn, self.close_btn,
@@ -1152,7 +1201,8 @@ class Viewer(QtWidgets.QWidget):
                 nav[max(0, min(len(nav) - 1, i + language.forward(k)))].setFocus()
             elif k in (Qt.Key_Return, Qt.Key_Enter, Qt.Key_Space) and nav:
                 item = nav[i]
-                item.next() if isinstance(item, ui_widgets.OptionCard) else item.click()
+                (item.next() if isinstance(item, ui_widgets.OptionCard) else
+                 self._choose_dest(item.key) if isinstance(item, ui_widgets.DestCard) else item.click())
             elif k in (Qt.Key_Escape, Qt.Key_Backspace):
                 self.go_back()
             return
