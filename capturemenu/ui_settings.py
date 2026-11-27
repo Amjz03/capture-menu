@@ -29,6 +29,7 @@ class Settings(QtWidgets.QWidget):
 
     encoder_ready = QtCore.Signal(str)
     mics_ready = QtCore.Signal(object)       # Obs.mic_devices(), or None
+    gpu_ready = QtCore.Signal(str)           # the graphics card's name, for the panel
     update_event = QtCore.Signal(dict)       # what the update check / download is doing
     update_found = QtCore.Signal(dict)       # the background check saw a newer release
     applied = QtCore.Signal(dict)            # settings saved that need no restart: main() applies them
@@ -50,9 +51,32 @@ class Settings(QtWidgets.QWidget):
         self.setFont(ui_theme.font(13))
         ui_theme.dress(self)
 
-        lay = QtWidgets.QVBoxLayout(self)
-        lay.setContentsMargins(48, 36, 48, 28)
+        # Settings fills the screen in three columns: the sections, their settings, and what they add up
+        # to. The first-start page (no tabs) is the middle column alone, along the side of the screen.
+        outer = QtWidgets.QHBoxLayout(self)
+        outer.setContentsMargins(40, 40, 40, 40) if self.TABS else outer.setContentsMargins(48, 36, 48, 28)
+        outer.setSpacing(40)
+        self.side = QtWidgets.QFrame(objectName="sidePanel")
+        self.side.setFixedWidth(320)
+        sl = QtWidgets.QVBoxLayout(self.side)
+        sl.setContentsMargins(20, 28, 20, 22)
+        sl.setSpacing(6)
+        page_title = QtWidgets.QLabel(language.tr("Settings"), objectName="vTitle")
+        page_title.setContentsMargins(8, 0, 0, 18)
+        sl.addWidget(page_title)
+        self.tabs_row = QtWidgets.QVBoxLayout()
+        self.tabs_row.setSpacing(6)
+        sl.addLayout(self.tabs_row)
+        sl.addStretch()
+        outer.addWidget(self.side)
+        middle = QtWidgets.QWidget()
+        lay = QtWidgets.QVBoxLayout(middle)
+        lay.setContentsMargins(0, 0, 0, 0)
         lay.setSpacing(18)
+        outer.addWidget(middle, 1)
+        self.panel = QtWidgets.QFrame(objectName="sidePanel")
+        self.panel.setFixedWidth(620)
+        outer.addWidget(self.panel)
         head = QtWidgets.QHBoxLayout()
         head.setSpacing(6)
         self.back_btn = ui_widgets.back_button(self.go_back)
@@ -74,14 +98,17 @@ class Settings(QtWidgets.QWidget):
             b.setFocusPolicy(Qt.NoFocus)
             b.setCursor(Qt.PointingHandCursor)
             b.clicked.connect(fn)
-            head.addWidget(b, 0, Qt.AlignTop)
-        self.defaults_btn.hide()          # far from Save now: a row at the end of the list
+            if b is not self.defaults_btn:
+                head.addWidget(b, 0, Qt.AlignTop)
+        # Restore defaults: at the foot of the sections, far from Save
+        self.defaults_btn.setIcon(ui_theme.qicon("back5"))
+        self.defaults_btn.setIconSize(QtCore.QSize(18, 18))
+        self.save_btn.setIcon(ui_theme.qicon("check", ui_theme.DARK))
+        self.save_btn.setIconSize(QtCore.QSize(18, 18))
+        sl.addWidget(self.defaults_btn, 0, Qt.AlignLeft)
         lay.addLayout(head)
-        # the sections as tabs: a press jumps there (the page still scrolls through all of them)
-        self.tabs_row = QtWidgets.QHBoxLayout()
-        self.tabs_row.setSpacing(8)
+        # the sections, down the left: a press shows that one
         self.tabs: list[tuple[QtWidgets.QPushButton, QtWidgets.QWidget, ui_widgets.SettingsCard]] = []
-        lay.addLayout(self.tabs_row)
         for b in self._head():
             b.installEventFilter(self)          # the D-pad reaches them from the first row
 
@@ -120,6 +147,14 @@ class Settings(QtWidgets.QWidget):
         foot.addStretch()
         lay.addLayout(foot)
 
+        if self.TABS:
+            self._build_panel()
+            self.details.hide()         # each row explains itself; the panel adds them up
+            self.back_btn.hide()        # ◯ / Esc, and Cancel
+        else:
+            self.side.hide()
+            self.panel.hide()
+
         self.rows: list[ui_widgets.SettingRow] = []
         self.update: dict = {"state": "idle"}
         self.mics: tuple | None | str = "checking"   # Obs.mic_devices() once OBS has answered
@@ -131,26 +166,126 @@ class Settings(QtWidgets.QWidget):
         self.update_found.connect(self._on_update_found)
         self.encoder_ready.connect(self._on_encoder)
         self.mics_ready.connect(self._on_mics)
+        self.gpu_ready.connect(self._on_gpu)
         input_devices.input_mode().changed.connect(lambda _: self.update_hints())
         self.update_hints()
+
+    # ---- what the recording settings add up to, beside the list
+    def _build_panel(self):
+        pl = QtWidgets.QVBoxLayout(self.panel)
+        pl.setContentsMargins(28, 30, 28, 28)
+        pl.setSpacing(18)
+        pl.addWidget(QtWidgets.QLabel(language.tr("What you'll get"), objectName="panelTitle"))
+        self.preview = ui_widgets.ClipPreview()
+        self.preview.RADIUS = 16
+        self.preview.setFixedHeight(320)
+        pl.addWidget(self.preview)
+        stats = QtWidgets.QFrame(objectName="details")
+        grid = QtWidgets.QGridLayout(stats)
+        grid.setContentsMargins(20, 14, 20, 14)
+        grid.setVerticalSpacing(22)
+        self.stat_labels: list[tuple[QtWidgets.QLabel, QtWidgets.QLabel]] = []
+        for i in range(3):
+            name, value = QtWidgets.QLabel(objectName="statName"), QtWidgets.QLabel(objectName="statValue")
+            value.setTextFormat(Qt.RichText)
+            grid.addWidget(name, i, 0)
+            grid.addWidget(value, i, 1, Qt.AlignRight if not language.is_rtl() else Qt.AlignLeft)
+            self.stat_labels.append((name, value))
+        pl.addWidget(stats)
+        pl.addWidget(self.memory)       # the same, said in one line
+        self.memory.hide()
+        pl.addWidget(QtWidgets.QLabel(language.tr("THIS PC"), objectName="capsTitle"))
+        self.pc_rows = QtWidgets.QVBoxLayout()
+        self.pc_rows.setSpacing(10)
+        pl.addLayout(self.pc_rows)
+        pl.addStretch()
+        self._pc_shown = None
+
+    def _fill_panel(self, cfg: dict, enc: str):
+        saved = dict(self.ctl.cfg)
+        saved_enc = obs_client.choose_encoder(self.encoder or "nvenc_av1", saved.get("video_codec", "auto"))
+        w, h = obs_client.output_size(*self.screen_px, cfg["resolution"])
+        codec = obs_client.codec_of(enc).upper().replace("H264", "H.264")
+        quality = dict(next(r.choices for r in self.rows if r.key == "quality")).get(cfg["quality"], "")
+        self.preview.tag = f"{h}p  ·  {cfg['fps']} FPS  ·  {quality}  ·  {codec}"
+        if self.preview.pixmap.isNull():
+            shot = next((t for t in (self.ctl.thumb(p) for p in self.ctl.recent_items()[:12]) if t), None)
+            self.preview.set_picture(shot)
+        self.preview.update()
+
+        def mb(c, e):
+            return obs_client.buffer_memory_mb(c, *self.screen_px, e)
+
+        def badge(new, old):
+            pct = round((new / old - 1) * 100) if old else 0
+            if not pct:
+                return ""
+            return (f'&nbsp;&nbsp;<span style="background:{ui_theme.AMBER}; color:{ui_theme.DARK}; '
+                    f'font-size:13px">&nbsp;{pct:+d}%&nbsp;</span>')
+        now, before = mb(cfg, enc), mb(saved, saved_enc)
+        minute = now / max(1, int(cfg["buffer_minutes"]))
+        minute_before = before / max(1, int(saved["buffer_minutes"]))
+        rows = [(language.tr("{n} min kept on the drive", n=cfg["buffer_minutes"]),
+                 language.tr("up to {gb} GB", gb=f"{now / 1024:.1f}") + badge(now, before)),
+                (language.tr("A 1 min clip"), language.tr("about {mb} MB", mb=f"{minute:.0f}") + badge(minute, minute_before)),
+                (language.tr("Discord copy"), language.tr("under 10 MB, 1080p"))]
+        for (name, value), (n, v) in zip(self.stat_labels, rows):
+            name.setText(n)
+            value.setText(v)
+        shown = (self.encoder, self._gpu)
+        if shown != self._pc_shown:          # what this PC can do: the graphics card, the formats, HDR
+            self._pc_shown = shown
+            while self.pc_rows.count():
+                item = self.pc_rows.takeAt(0)
+                lay = item.layout()
+                while lay is not None and lay.count():
+                    lay.takeAt(0).widget().deleteLater()
+            best = obs_client.codec_of(self.encoder or "x264")
+            codecs = {"av1": ["AV1", "HEVC", "H.264"], "hevc": ["HEVC", "H.264"]}.get(best, ["H.264"])
+            extra = ["HDR"] if runtime.IS_WINDOWS and windows.windows_hdr() else []
+            for chips in ([("monitor", self._gpu)] if self._gpu else [], [("check", c) for c in codecs + extra]):
+                if not chips:
+                    continue
+                line = QtWidgets.QHBoxLayout()
+                line.setSpacing(8)
+                for icon, text in chips:
+                    chip = QtWidgets.QPushButton(" " + text, objectName="pcChip")
+                    chip.setIcon(ui_theme.qicon(icon, ui_theme.GREEN if icon == "check" else ui_theme.INK))
+                    chip.setIconSize(QtCore.QSize(16, 16))
+                    chip.setFocusPolicy(Qt.NoFocus)
+                    line.addWidget(chip)
+                line.addStretch()
+                self.pc_rows.addLayout(line)
+
+    _gpu = ""
+
+    def _on_gpu(self, name: str):
+        self._gpu = name
+        self._refresh()
 
     # ---- the rows
     def _row(self, *args, **kw) -> ui_widgets.SettingRow:
         row = ui_widgets.SettingRow(*args, **kw)
+        row.stacked = self.TABS
+        if self.TABS:
+            row.before_focus = lambda r: self._show_section(r.parent()) if self.tabs and r.parent().isHidden() else None
         row.changed.connect(self._refresh)
         self.card.rows.addWidget(row)
         self.rows.append(row)
         return row
 
-    TABS = True            # the sections as tabs along the top (the first-start page is short enough without)
-    TAB_NAMES = {"RECORDING": "Recording", "DEVICES": "Devices", "CONTROLS": "Controls", "LIBRARY": "Library",
-                 "GENERAL": "General"}
+    TABS = True            # the sections down the side, one shown at a time (the first-start page lists them all)
+    TAB_NAMES = {"RECORDING": "Recording", "DEVICES": "Screen & microphone", "CONTROLS": "Controls & shortcuts",
+                 "LIBRARY": "Saving & storage", "GENERAL": "General"}
+    TAB_ICONS = {"RECORDING": "video", "DEVICES": "monitor", "CONTROLS": "gamepad", "LIBRARY": "drive",
+                 "GENERAL": "settings"}
 
     def _section(self, title: str):
         """A title, then a card that the next rows go into."""
         heading = ui_widgets.SectionTitle(title)
-        self.rows_layout.addWidget(heading)
-        self.card = ui_widgets.SettingsCard()
+        self.card = ui_widgets.SettingsCard(plain=self.TABS)
+        if not self.TABS:       # with tabs, the section's name is the page's title
+            self.rows_layout.addWidget(heading)
         self.rows_layout.addWidget(self.card)
         self._sections = getattr(self, "_sections", []) + [(title, heading, self.card)]
 
@@ -158,29 +293,40 @@ class Settings(QtWidgets.QWidget):
         if not self.TABS:
             return
         for title, heading, card in getattr(self, "_sections", []):
-            b = QtWidgets.QPushButton(language.tr(self.TAB_NAMES.get(title, title)), objectName="kind")
+            name = language.tr(self.TAB_NAMES.get(title, title))
+            b = QtWidgets.QPushButton("  " + name.replace("&", "&&"), objectName="sideTab")
+            b.setProperty("name", name)
+            b.setIcon(ui_theme.qicon(self.TAB_ICONS.get(title, "settings")))
+            b.setIconSize(QtCore.QSize(22, 22))
             b.setFocusPolicy(Qt.NoFocus)
             b.setCursor(Qt.PointingHandCursor)
             b.clicked.connect(lambda _=False, h=heading, c=card: self.jump_to(h, c))
             self.tabs_row.addWidget(b)
             self.tabs.append((b, heading, card))
-        self.tabs_row.addStretch()
+        self._show_section(self.tabs[0][2])
+
+    def _show_section(self, card: ui_widgets.SettingsCard):
+        """With tabs: only that section's settings, its name as the title."""
+        for b, heading, c in self.tabs:
+            c.setVisible(c is card)
+            b.setProperty("on", c is card)
+            b.style().unpolish(b)
+            b.style().polish(b)
+            if c is card:
+                self.title.setText(b.property("name"))
+        self.scroll.verticalScrollBar().setValue(0)
 
     def jump_to(self, heading: QtWidgets.QWidget, card: ui_widgets.SettingsCard):
-        """A tab: the page scrolls to that section's title and the highlight goes to its first row."""
-        self.scroll.verticalScrollBar().setValue(heading.y())
+        """A tab: that section, and the highlight on its first row."""
+        self._show_section(card)
         first = next((r for r in self.rows if r.parent() is card), None)
         if first is not None:
             first.setFocus(Qt.MouseFocusReason)
-            self._on_focus_changed(None, first)     # the tab and the box follow at once
+            self._on_focus_changed(None, first)     # the box follows at once
 
     def _on_focus_changed(self, _old, new):
         if not isinstance(new, ui_widgets.SettingRow) or new.window() is not self:
             return
-        for b, _, card in self.tabs:          # the tab of the section the highlight is in
-            b.setProperty("on", new.parent() is card)
-            b.style().unpolish(b)
-            b.style().polish(b)
         self._explain(new)
 
     def _explain(self, row: ui_widgets.SettingRow | None):
@@ -513,10 +659,13 @@ class Settings(QtWidgets.QWidget):
         mb = obs_client.buffer_memory_mb(cfg, *self.screen_px, enc)
         self.memory.setText(language.tr("Recording {w}×{h} at {fps} FPS  ·  the last {minutes} min take up to {gb} GB on the drive",
                                w=w, h=h, fps=cfg["fps"], minutes=cfg["buffer_minutes"], gb=f"{mb / 1024:.1f}"))
+        if self.TABS:
+            self._fill_panel(cfg, enc)
         focused = self.focusWidget()
         self._explain(focused if isinstance(focused, ui_widgets.SettingRow) else None)
         dirty = self.changes()
         self._leave_armed = False
+        self.info.setStyleSheet(f"color: {ui_theme.AMBER};" if dirty and self.TABS else "")
         self.info.setText((language.tr("1 unsaved change") if len(dirty) == 1 else
                            language.tr("{n} unsaved changes", n=len(dirty))) if dirty else language.tr("Changes apply when you save"))
 
@@ -547,6 +696,15 @@ class Settings(QtWidgets.QWidget):
                 found = "offline"
             runtime.safe_emit(self.mics_ready, found)
         threading.Thread(target=ask_obs, daemon=True).start()
+        if self.TABS and not self._gpu and not getattr(self, "_gpu_asked", False):
+            self._gpu_asked = True
+
+            def ask_gpu():
+                names = obs_client.gpu_names()
+                found = next((n for n in names if any(k in n.lower() for k in ("nvidia", "geforce", "radeon", "arc"))),
+                             names[0] if names else "")
+                runtime.safe_emit(self.gpu_ready, found)
+            threading.Thread(target=ask_gpu, daemon=True).start()
         if self.encoder is None:
             self.encoder = getattr(self.ctl, "best_encoder", None)
         if self.encoder is None:
@@ -565,6 +723,9 @@ class Settings(QtWidgets.QWidget):
         """A panel along the side of the screen (the right; the left in Arabic), above the taskbar: the
         rest of the screen stays visible and usable, the game or desktop keeps running beside it."""
         g = screen.availableGeometry()
+        if self.TABS:        # Settings: the whole screen, in three columns
+            self.setGeometry(g)
+            return
         w = min(self.PANEL_W, g.width())
         self.setGeometry(g.left() if language.is_rtl() else g.right() - w + 1, g.top(), w, g.height())
 
@@ -704,7 +865,7 @@ class Settings(QtWidgets.QWidget):
             self._row_before_head = row
             self.scroll.ensureWidgetVisible(row, 0, 40)   # so the buttons are above it on screen
             # Back first, as it always was; the narrow panel would otherwise land on the nearest button
-            nxt = self.back_btn if self.back_btn.isVisible() else ui_theme.toward(row, [b for b in self._head() if b.isVisible()], k)
+            nxt = next((b for b in (self.back_btn, self.cancel_btn, self.save_btn) if b.isVisible()), None)
             if nxt is not None:
                 nxt.setFocus()
             return

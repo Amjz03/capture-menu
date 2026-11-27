@@ -101,6 +101,7 @@ def main():
     ctl.shared.connect(toast.show_shared)
 
     toast.open_capture.connect(menu.view_capture)
+    toast.share_capture.connect(lambda path: (menu.view_capture(path), viewer.enter_share()))
     ctl.storage.connect(menu.show_storage)
     ctl.library_changed.connect(menu.refresh_recent)
 

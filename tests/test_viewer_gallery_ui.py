@@ -44,15 +44,15 @@ viewer.open(ctl.all_captures(), 0); app.processEvents()
 pad(6)                                   # Options -> Share / Export
 assert viewer.sharing and viewer.dest == "discord" and viewer.voice_card.isEnabled() and viewer.share_panel.isVisible()
 assert viewer.focusWidget() is viewer.share_go, "starts on its button, so ✕ shares right away"
-for _ in range(3): pad(input_devices.LEFT)          # Cancel, Size limit, Your voice
+for _ in range(4): pad(input_devices.LEFT)          # Cancel, Trim first, Size, Your voice
 pad(input_devices.A); assert viewer.without_voice    # leave it out
 pad(input_devices.RIGHT); pad(input_devices.A); assert viewer.size_card.value == 50
 pad(input_devices.A); pad(input_devices.A); assert viewer.size_card.value == 10, "Discord's sizes only, round again"
-for _ in range(2): pad(input_devices.RIGHT)         # Cancel, Copy for Discord
+for _ in range(3): pad(input_devices.RIGHT)         # Trim first, Cancel, Share to Discord
 pad(input_devices.A)
 assert calls[-1] == ("share", a.name, "discord10", True) and not viewer.sharing, calls
 viewer.enter_share(); assert viewer.dest == "discord", "starts where it went last time"
-for _ in range(4): pad(input_devices.LEFT)          # Cancel, size, voice, Copy the file
+for _ in range(5): pad(input_devices.LEFT)          # Cancel, trim, size, voice, Copy the file
 pad(input_devices.A)                                # Copy the file: the original
 assert viewer.dest == "file" and viewer.format_card.value == "copy"
 assert not viewer.size_card.isVisible() and not viewer.voice_card.isVisible(), "nothing to choose for the original"
@@ -70,7 +70,7 @@ key(viewer, Qt.Key_Escape); assert not viewer.sharing and viewer.isVisible()
 print("viewer share/favorite PASS")
 
 # the controller moves a highlight over everything on screen, like a mouse, and ✕ presses it
-viewer.resize(1920, 1080); app.processEvents(); viewer._fit_actions()
+viewer.resize(1920, 1080); app.processEvents()
 assert not hasattr(viewer, "more_btn") and viewer.del_btn.isVisible() and viewer.del_btn.text() == "Delete", "every button says what it is"
 viewer.show_item(); app.processEvents()
 assert viewer.focusWidget() is viewer.play_btn, "a clip starts on Play"

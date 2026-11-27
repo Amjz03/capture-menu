@@ -58,11 +58,17 @@ class RecIndicator(QtWidgets.QWidget):
     def sync(self, st: dict):
         """From the status poll: catches recordings started in OBS itself, or before a restart."""
         if st.get("online"):
+            if st.get("mic_muted") is not None and st["mic_muted"] != self.mic_muted:
+                self.mic_muted = st["mic_muted"]
+                self.update()
             self.set_recording(bool(st.get("recording")), int(st.get("record_ms") or 0))
+
+    mic_muted: bool | None = None          # a green mic, or a red one crossed out; none while unknown
 
     def _place(self):
         long = self.started is not None and time.monotonic() - self.started >= 3600
         w = self.fontMetrics().horizontalAdvance("REC  0:00:00" if long else "REC  00:00") + 52  # steady width
+        w += 26 if self.mic_muted is not None else 0
         self.resize(w, 34)
         g = windows.game_screen().geometry()      # follows the game to the TV and back
         x = g.left() + 16 if self.corner == "top-left" else g.left() + g.width() - w - 16
@@ -90,6 +96,9 @@ class RecIndicator(QtWidgets.QWidget):
         p.drawEllipse(QtCore.QPointF(18, r.center().y()), 5.5, 5.5)
         p.setPen(QtGui.QColor(ui_theme.INK))
         p.drawText(r.adjusted(32, 0, -12, 0), Qt.AlignLeft | Qt.AlignVCenter, self.text())
+        if self.mic_muted is not None:      # is your voice going in
+            icon = ("mic-off", ui_theme.RED) if self.mic_muted else ("mic", ui_theme.GREEN)
+            p.drawPixmap(QtCore.QPointF(r.right() - 30, r.center().y() - 9), ui_theme.icon_pixmap(icon[0], 18, icon[1]))
 
 
 class Toast(QtWidgets.QWidget):
@@ -97,6 +106,7 @@ class Toast(QtWidgets.QWidget):
     A capture's notice can be clicked to view it, or its Trim button to trim it."""
 
     open_capture = QtCore.Signal(str, bool)    # path, straight into trim
+    share_capture = QtCore.Signal(str)         # path: the viewer on it, its Share window open
 
     DOTS = {"ok": ui_theme.GREEN, "error": ui_theme.RED, "info": ui_theme.INK, "rec": ui_theme.RED}
     TITLES = {"Clip": "Clip saved", "Screenshot": "Screenshot saved",
@@ -159,21 +169,33 @@ class Toast(QtWidgets.QWidget):
             w.setMaximumWidth(380)
             w.setWordWrap(True)          # long notices wrap instead of being cut off
             col.addWidget(w)
+        # a capture's notice: View, Trim and Share under its name
+        self.actions = QtWidgets.QWidget()
+        acts = QtWidgets.QHBoxLayout(self.actions)
+        acts.setContentsMargins(0, 8, 0, 0)
+        acts.setSpacing(8)
+        style = (f"QPushButton {{ background: rgba(255,255,255,22); color: {ui_theme.INK}; border: none; border-radius: 17px;"
+                 f" padding: 0 14px; min-height: 34px; font-size: 14px; font-weight: 600; }}"
+                 f"QPushButton:hover {{ background: rgba(255,255,255,44); }}")
+        self.view_btn, self.trim_btn, self.share_btn = (
+            QtWidgets.QPushButton(" " + language.tr(text)) for text in ("View", "Trim", "Share"))
+        for b, icon, fn in ((self.view_btn, "play", lambda: self._open(trim=False)),
+                            (self.trim_btn, "scissors", lambda: self._open(trim=True)),
+                            (self.share_btn, "share", self._share)):
+            b.setIcon(ui_theme.qicon(icon))
+            b.setCursor(Qt.PointingHandCursor)
+            b.setStyleSheet(style)
+            b.clicked.connect(fn)
+            acts.addWidget(b)
+        acts.addStretch()
+        col.addWidget(self.actions)
+        self.actions.hide()
         col.addStretch()
         lay.addLayout(col)
-        self.trim_btn = QtWidgets.QPushButton(" " + language.tr("Trim"))
-        self.trim_btn.setIcon(ui_theme.qicon("scissors"))
-        self.trim_btn.setCursor(Qt.PointingHandCursor)
-        self.trim_btn.setStyleSheet(
-            f"QPushButton {{ background: rgba(255,255,255,22); color: {ui_theme.INK}; border: none; border-radius: 15px;"
-            f" padding: 8px 16px; font-size: 13px; font-weight: 600; }}"
-            f"QPushButton:hover {{ background: rgba(255,255,255,44); }}")
-        self.trim_btn.clicked.connect(lambda: self._open(trim=True))
-        lay.addWidget(self.trim_btn, 0, Qt.AlignVCenter)
-        self.trim_btn.hide()
         self.fix_btn = QtWidgets.QPushButton()      # an error's own way out: "Start OBS"
         self.fix_btn.setCursor(Qt.PointingHandCursor)
-        self.fix_btn.setStyleSheet(self.trim_btn.styleSheet())
+        self.fix_btn.setStyleSheet(style.replace("min-height: 34px", "min-height: 44px").replace("17px", "22px"))
+        self.fix_btn.setIcon(ui_theme.qicon("external"))
         self.fix_btn.clicked.connect(self._run_fix)
         lay.addWidget(self.fix_btn, 0, Qt.AlignVCenter)
         self.fix_btn.hide()
@@ -233,6 +255,7 @@ class Toast(QtWidgets.QWidget):
     def _plain(self):
         """Back to an ordinary notice before showing a new one."""
         self._spinner.stop()
+        self.actions.hide()
         self.fix_btn.hide()
         self._fix = None
         self._frame()
@@ -241,6 +264,11 @@ class Toast(QtWidgets.QWidget):
         if self.path:
             self.hide()
             self.open_capture.emit(self.path, trim)
+
+    def _share(self):
+        if self.path:
+            self.hide()
+            self.share_capture.emit(self.path)
 
     def mousePressEvent(self, e):
         action, self.action = self.action, None
@@ -261,6 +289,7 @@ class Toast(QtWidgets.QWidget):
         self._plain()
         self.path, self.action = path, None
         self.setCursor(Qt.PointingHandCursor)
+        self.actions.show()
         self.trim_btn.setVisible(capture.suffix.lower() != ".png")
         kind = capture.stem.split("_")[0]
         if kind == "Clip" and catalog.capture_kind(capture) == "Trimmed clip":
@@ -272,21 +301,7 @@ class Toast(QtWidgets.QWidget):
                            else language.tr("{n} captures saved", n=self._burst))
         self.sub.setText("  ·  ".join(x for x in (detail, capture.parent.name) if x))
         self.sub.show()
-        if input_devices.input_mode().mode == "keyboard":
-            keys = [f"keyboard-{ui_theme.KEY_NAMES.get(k.capitalize(), k.lower())}"
-                    for k in self.hotkey.replace(" ", "").split("+")]
-            open_html, view_html = ui_theme.glyph_html(keys, 22), ui_theme.glyph_html(["keyboard-v"], 22)
-        else:
-            try:
-                combo = sorted(input_devices.parse_pad_combo(self.pad_button))
-            except ValueError:
-                combo = []
-            names = ui_theme.PAD_GLYPHS[input_devices.input_mode().mode]
-            open_html = ui_theme.glyph_html([names.get(b, input_devices.PAD_NAMES[input_devices.input_mode().mode].get(b, "?"))
-                                             for b in combo], 22)
-            view_html = ui_theme.glyph_html([names[3]], 22)
-        self.hint.setText(language.tr("{open}&nbsp; then &nbsp;{view}&nbsp; to view", open=open_html, view=view_html))
-        self.hint.show()
+        self.hint.hide()          # View, Trim and Share under it say what it does
         self._present(6000)
 
     def show_running(self, title: str, detail: str):

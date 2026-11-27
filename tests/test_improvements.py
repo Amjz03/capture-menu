@@ -182,15 +182,15 @@ rows = {r.key: r for r in s.rows}
 fps = rows["fps"]
 
 
-def click(row, x):
-    pos = QtCore.QPointF(x, row.height() / 2)
+def click(row, x, y=None):
+    pos = QtCore.QPointF(x, row.height() / 2 if y is None else y)
     QtWidgets.QApplication.sendEvent(row, QtGui.QMouseEvent(QtCore.QEvent.MouseButtonPress, pos, row.mapToGlobal(pos),
                                                             Qt.LeftButton, Qt.LeftButton, Qt.NoModifier))
 
 
-click(fps, 60)
+click(fps, 60, 24)
 assert fps.value == 60, "a click on the name leaves the value alone"
-click(fps, fps._segments()[2].center().x())
+click(fps, fps._segments()[2].center().x(), fps._segments()[2].center().y())   # the choices sit under the name
 assert fps.value == 120, "a click on a choice picks it"
 fps.set_value(60, emit=True)
 rows["sounds"].activate(); rows["storage_warn_gb"].step(1)

@@ -91,9 +91,17 @@ class Menu(QtWidgets.QWidget):
         self.shot_card.clicked.connect(self._screenshot)
         self.opened_at: float | None = None    # when the bar opened: a Stop ends the recording there
         self.rec_card.clicked.connect(lambda: self._act(self.ctl.toggle_record, self.game, self.opened_at))
+        def divider():       # a thin line between the actions, the recent captures, and the rest
+            line = QtWidgets.QFrame()
+            pad = ui_widgets.Card.PAD      # level with the tiles, not their focus room
+            line.setFixedSize(1, ui_widgets.ActionCard.SIZE + pad)
+            line.setStyleSheet(f"background: rgba(255,255,255,40); margin-top: {pad}px;")
+            row.addSpacing(14)
+            row.addWidget(line, 0, Qt.AlignTop)
+            row.addSpacing(14)
         for c in (self.save_card, self.shot_card, self.rec_card, self.mic_card):
             row.addWidget(c, 0, Qt.AlignTop)
-        row.addSpacing(28)
+        divider()
         self.thumbs = [ui_widgets.ThumbCard() for _ in range(8)]
         for i, t in enumerate(self.thumbs):
             t.clicked.connect(lambda _=False, i=i: self._view(i))
@@ -101,7 +109,7 @@ class Menu(QtWidgets.QWidget):
         self.empty_label = QtWidgets.QLabel(language.tr("Your captures will show up here"), objectName="focusInfo")
         self.empty_label.setFixedHeight(ui_widgets.ActionCard.SIZE + 2 * ui_widgets.Card.PAD)
         row.addWidget(self.empty_label, 0, Qt.AlignTop)
-        row.addSpacing(4)
+        divider()
         self.all_card = ui_widgets.ActionCard("gallery", "All captures")
         self.all_card.clicked.connect(self.open_gallery)
         row.addWidget(self.all_card, 0, Qt.AlignTop)
@@ -459,7 +467,7 @@ class Menu(QtWidgets.QWidget):
     def refresh_recent(self):
         items = self.ctl.recent_items()
         tile = self.save_card.width()
-        room = self.width() - 128 - 4 * tile - 40 - 2 * tile if self.width() > 0 else 1200
+        room = self.width() - 128 - 4 * tile - 66 - 2 * tile if self.width() > 0 else 1200
         count = max(1, min(len(self.thumbs), room // self.thumbs[0].width()))
         for i, card in enumerate(self.thumbs):
             path = items[i] if i < len(items) and i < count else None

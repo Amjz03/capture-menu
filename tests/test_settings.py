@@ -76,9 +76,8 @@ menu = ui_menu.Menu(ctl, ui_viewer.Viewer(ctl)); s.open((2560, 1440))
 assert input_devices.pad_key(input_devices.Y, menu, ui_viewer.Viewer(ctl), None, s) == Qt.Key_S and input_devices.pad_key(input_devices.A, menu, ui_viewer.Viewer(ctl), None, s) == Qt.Key_Return
 # 10) ↑ from the first row reaches the buttons along the top, ← → walk them, ↓ comes back
 s.rows[0].setFocus(); app.processEvents()
-key(Qt.Key_Up); assert s.focusWidget() is s.back_btn, s.focusWidget()
-key(Qt.Key_Right); assert s.focusWidget() is s.cancel_btn, "Restore defaults isn't next to Save any more"
-key(Qt.Key_Right); assert s.focusWidget() is s.save_btn
+key(Qt.Key_Up); assert s.focusWidget() is s.cancel_btn, s.focusWidget()   # no Back: ◯ / Esc and Cancel
+key(Qt.Key_Right); assert s.focusWidget() is s.save_btn, "Restore defaults isn't next to Save any more"
 key(Qt.Key_Down); assert s.focusWidget() is s.rows[0]
 # 11) near the end, a row shares the app: Enter opens the website, and nothing of it is saved
 opened = []
