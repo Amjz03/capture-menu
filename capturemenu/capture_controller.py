@@ -30,6 +30,8 @@ class Controller(QtCore.QObject):
     storage = QtCore.Signal(dict)          # {"used_gb", "free_gb", "over", "low"}
     library_changed = QtCore.Signal()
     status = QtCore.Signal(dict)
+    buffer_frames = QtCore.Signal(list)    # [(started, ended, picture or None)]: the last minutes, file by file
+    buffer_preview = QtCore.Signal(float, str)   # (wall-clock time, picture) asked for by buffer_picture_at
 
     def __init__(self, cfg: dict):
         super().__init__()
@@ -68,6 +70,8 @@ class Controller(QtCore.QObject):
         self._names_lock, self._names = threading.Lock(), set()   # names handed out, before their file exists
         self._saves_lock, self._saves = threading.Lock(), 0        # saves joining the last minutes: no pruning then
         self._healing = threading.Lock()       # one replay-buffer repair at a time
+        self._framing = threading.Lock()       # one pass making pictures of the last minutes at a time
+        self._preview_ask: float | None = None
         self._heal_failed_at = -1e9
         self._gpu_restart_at = -1e9
         obs_client.BUFFER_DIR.mkdir(parents=True, exist_ok=True)
@@ -887,6 +891,59 @@ class Controller(QtCore.QObject):
         """Everything up to now, in files OBS has finished writing."""
         return self._split()[:-1]
 
+    # ---- pictures of the last minutes, for Save recent's strip and preview
+    def buffer_frames_dir(self) -> Path:
+        folder = self.thumbs_dir / "buffer"
+        folder.mkdir(parents=True, exist_ok=True)
+        return folder
+
+    def load_buffer_frames(self):
+        """One picture from the start of each file of the last minutes (made once, kept with the
+        thumbnails), sent with buffer_frames as they come. The file OBS is still writing has none yet."""
+        if not self._framing.acquire(blocking=False):
+            return
+
+        def run():
+            try:
+                segs = self._last_run(self._segments())
+                items = [(started, ended, None) for _, started, ended in segs]
+                self.buffer_frames.emit(list(items))
+                folder, keep = self.buffer_frames_dir(), set()
+                for i, (path, _, _) in enumerate(segs[:-1]):
+                    out = folder / (path.stem + ".jpg")
+                    keep.add(out.name)
+                    if out.exists() or media.buffer_frame(path, 0.0, out):
+                        items[i] = (items[i][0], items[i][1], out)
+                        if i % 4 == 3:
+                            self.buffer_frames.emit(list(items))
+                self.buffer_frames.emit(list(items))
+                for old in folder.glob("*.jpg"):       # pictures of files that are gone
+                    if old.name not in keep and not old.name.startswith("at_"):
+                        old.unlink(missing_ok=True)
+            except Exception:
+                runtime.log.exception("couldn't make pictures of the last minutes")
+            finally:
+                self._framing.release()
+        threading.Thread(target=run, daemon=True).start()
+
+    def buffer_picture_at(self, when: float):
+        """A picture of the moment `when` (wall-clock), sent with buffer_preview. Only the newest ask runs."""
+        self._preview_ask = when
+
+        def run():
+            if self._preview_ask != when:
+                return
+            segs = self._last_run(self._segments())[:-1]
+            seg = next((s for s in segs if s[1] <= when < s[2]), segs[0] if segs and when < segs[0][1] else None)
+            if seg is None:
+                return
+            path, started, _ = seg
+            at = max(0.0, when - started)
+            out = self.buffer_frames_dir() / f"at_{path.stem}_{int(at)}.jpg"
+            if out.exists() or media.buffer_frame(path, at, out, height=540):
+                self.buffer_preview.emit(when, str(out))
+        threading.Thread(target=run, daemon=True).start()
+
     def _prune(self):
         """Deletes the files older than the longest clip (and than a recording that's running)."""
         keep_from = time.time() - int(self.cfg["buffer_minutes"]) * 60
@@ -997,10 +1054,11 @@ class Controller(QtCore.QObject):
         self._buffer_watch.start()
 
     # ---- save what just happened
-    def save_clip(self, seconds: int | None, game: str = windows.DESKTOP):
-        self._bg(self._save_clip, seconds, game)
+    def save_clip(self, seconds: int | None, game: str = windows.DESKTOP, until: float | None = None):
+        """until: when the clip ends (wall-clock), for a clip moved earlier in Save recent; None: now."""
+        self._bg(self._save_clip, seconds, game, *([] if until is None else [until]))
 
-    def _save_clip(self, seconds: int | None, game: str):
+    def _save_clip(self, seconds: int | None, game: str, until: float | None = None):
         if not self.obs.buffer_active():
             if self.heal_buffer():
                 self.toast.emit(language.tr("The replay buffer was off, so I turned it on. "
@@ -1009,10 +1067,14 @@ class Controller(QtCore.QObject):
         self.toast.emit(language.tr("Saving…"), "info")
         with self._saving():
             segs = self._last_run(self._finished_segments())
-            files, inpoint = self._since(segs, None if seconds is None else segs[-1][2] - seconds)
             suffix = "all" if seconds is None else f"{seconds}s"
+            if until is not None and seconds is not None and until < segs[-1][2] - 0.5:
+                files, inpoint, outpoint = self._between(segs, max(segs[0][1], until - seconds), until, False)
+            else:
+                files, inpoint = self._since(segs, None if seconds is None else segs[-1][2] - seconds)
+                outpoint = None
             out = self._new_path(self.folder_for(game), f"Clip_{self._stamp()}_{suffix}", files[0].suffix)
-            media.join(files, inpoint, out)
+            media.join(files, inpoint, out, outpoint=outpoint)
         length = media.media_duration(out) or float(seconds or 0)
         detail = (language.tr("Everything · {length}", length=language.clock(int(length * 1000)))
                   if seconds is None or length < seconds - 1

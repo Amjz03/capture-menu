@@ -47,13 +47,12 @@ menu.show_menu("Elden Ring"); app.processEvents()
 assert menu.focusWidget() is menu.save_card
 press(input_devices.RIGHT); assert menu.focusWidget() is menu.shot_card
 press(input_devices.LEFT);  assert menu.focusWidget() is menu.save_card
-press(input_devices.A);     assert menu.picking and menu.focusWidget() is menu.chips[3], "Cross opens the row on Last 1m"
-assert [c.text() for c in menu.chips] == ["Full video", "Last 15s", "Last 30s", "Last 1m", "Last 3m",
-                                          "Last 5m", "Last 15m", "Last 30m"]
+press(input_devices.A);     assert menu.picking and menu.focusWidget() is menu.chips[2], "Cross opens the row on 1 min"
+assert [c.text() for c in menu.chips] == ["15 sec", "30 sec", "1 min", "3 min", "5 min", "15 min", "30 min", "Everything"]
 press(input_devices.RIGHT); press(input_devices.RIGHT)                         # 1m -> 3m -> 5m
 press(input_devices.A);     assert saved == [(300, "Elden Ring")] and not menu.isVisible(), saved
 menu.show_menu("Elden Ring"); press(input_devices.A)
-assert menu.focusWidget() is menu.chips[5], "remembers the last choice"
+assert menu.focusWidget() is menu.chips[4], "remembers the last choice"
 press(input_devices.B)
 assert not menu.picking and menu.isVisible() and menu.focusWidget() is menu.save_card, "Circle goes back first"
 press(input_devices.B);     assert not menu.isVisible(), "then Circle closes the bar"
@@ -62,7 +61,7 @@ menu.show_menu("Elden Ring"); menu.open_picker()
 menu._on_status({"online": True, "buffer": True, "buffer_seconds": 1800, "buffered_ms": 200_000,
                  "recording": False, "record_ms": 0})
 assert "03:20" in menu.pick_caption.text() and "30:00" in menu.pick_caption.text()
-assert [c.dimmed for c in menu.chips] == [False, False, False, False, False, True, True, True]
+assert [c.dimmed for c in menu.chips] == [False, False, False, False, True, True, True, False]
 menu.hide_menu()
 menu.show_menu("Elden Ring"); press(input_devices.X); app.processEvents()
 end = time.time() + 1

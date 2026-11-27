@@ -465,5 +465,14 @@
   "Show: Screenshots": "عرض: لقطات الشاشة",
   "Show: Recordings": "عرض: التسجيلات",
   "Mic": "المايك",
-  "This game: {n} captures · {size}": "هذه اللعبة: {n} ملف · {size}"
+  "This game: {n} captures · {size}": "هذه اللعبة: {n} ملف · {size}",
+  "Not recorded yet": "لم يُسجَّل بعد",
+  "Now": "الآن",
+  "Save clip": "حفظ المقطع",
+  "Length": "المدة",
+  "Earlier / later": "أبكر / أحدث",
+  "ends {time} ago": "ينتهي قبل {time}",
+  "about {size}": "حوالي {size}",
+  "Clip starts {time} ago": "المقطع يبدأ قبل {time}",
+  "Pictures show up once a minute is recorded": "تظهر الصور بعد تسجيل أول دقيقة"
 }

@@ -287,7 +287,7 @@ def glyph(name: str) -> str:
 
 KEY_NAMES = {"←": "left", "→": "right", "↑": "up", "↓": "down", "Enter": "enter", "Esc": "escape",
              "Space": "space", "Del": "delete", "Alt": "alt", "Ctrl": "control", "Shift": "shift",
-             ",": "comma", ".": "period", "/": "slash"}
+             ",": "comma", ".": "period", "/": "slash", "[": "open-bracket", "]": "close-bracket"}
 
 
 PAD_GLYPHS = {

@@ -247,6 +247,21 @@ def filmstrip_frame(src: Path, at_ms: int, out: Path) -> bool:
     return out.exists()
 
 
+def buffer_frame(src: Path, at_s: float, out: Path, height: int = 360) -> bool:
+    """A picture from the last minutes' file src, at_s seconds in (for the Save recent preview and strip)."""
+    ffmpeg = find_tool("ffmpeg")
+    if not ffmpeg:
+        return False
+    tmp = out.with_name(out.stem + ".part.jpg")
+    run_quiet([ffmpeg, "-y", "-v", "error", "-ss", f"{max(0.0, at_s):.3f}", "-i", str(src),
+               "-frames:v", "1", "-vf", sdr_filter(src, f"scale=-2:{height}"), "-q:v", "4", str(tmp)])
+    if tmp.exists() and tmp.stat().st_size > 0:
+        tmp.replace(out)
+        return True
+    tmp.unlink(missing_ok=True)
+    return False
+
+
 # ---------------------------------------------------------------- sharing
 
 # Discord's upload limits: free, Nitro Basic, Nitro.

@@ -320,14 +320,206 @@ class ThumbCard(Card):
 
 
 def chip_label(seconds: int | None) -> str:
-    """PS5 wording: Full Video, Last 15s, Last 1m, Last 30m."""
-    if seconds is None:
-        return language.tr("Full video")
-    if seconds < 60:
-        return language.tr("Last {n}s", n=seconds)
-    if seconds < 3600:
-        return language.tr("Last {n}m", n=seconds // 60)
-    return language.tr("Last {n}h", n=seconds // 3600)
+    """One wording for a length everywhere: 15 sec, 1 min, 30 min, Everything."""
+    return language.duration_label(seconds, short=True)
+
+
+class BufferStrip(QtWidgets.QWidget):
+    """Save recent's picture of the last minutes: a strip of frames from the oldest kept moment to now,
+    hatched where nothing is recorded yet, with the part that will be saved framed in white."""
+
+    moved = QtCore.Signal(float)        # the clip should end here (wall-clock), from a click or a drag
+    LABEL_H, TRACK_H, TICKS_H = 30, 96, 24
+    RADIUS = 16
+
+    def __init__(self):
+        super().__init__()
+        self.setFixedHeight(self.LABEL_H + self.TRACK_H + 6 + self.TICKS_H)
+        self.setCursor(Qt.PointingHandCursor)
+        self.span = (0.0, 1.0)               # wall-clock times the strip runs between (oldest kept, now)
+        self.held_from = 1.0                 # recorded from here on
+        self.frames: list[tuple[float, float, Path | None]] = []
+        self.sel = (0.0, 1.0)                # the clip: start, end
+        self.label = ""
+        self._pixmaps: dict[Path, QtGui.QPixmap] = {}
+
+    def set_state(self, span, held_from, sel, label):
+        self.span, self.held_from, self.sel, self.label = span, held_from, sel, label
+        self.update()
+
+    def set_frames(self, frames):
+        self.frames = list(frames)
+        self.update()
+
+    def _track(self) -> QtCore.QRectF:
+        return QtCore.QRectF(0, self.LABEL_H, self.width(), self.TRACK_H)
+
+    def _x(self, t: float) -> float:
+        a, b = self.span
+        r = self._track()
+        f = 0.0 if b <= a else (t - a) / (b - a)
+        f = min(1.0, max(0.0, f))
+        return r.right() - f * r.width() if language.is_rtl() else r.left() + f * r.width()
+
+    def _t(self, x: float) -> float:
+        a, b = self.span
+        r = self._track()
+        f = min(1.0, max(0.0, (x - r.left()) / max(1.0, r.width())))
+        return a + (1 - f if language.is_rtl() else f) * (b - a)
+
+    def _span_rect(self, t0: float, t1: float) -> QtCore.QRectF:
+        x0, x1 = sorted((self._x(t0), self._x(t1)))
+        r = self._track()
+        return QtCore.QRectF(x0, r.top(), max(0.0, x1 - x0), r.height())
+
+    def _pixmap(self, path: Path) -> QtGui.QPixmap:
+        pm = self._pixmaps.get(path)
+        if pm is None:
+            pm = self._pixmaps[path] = QtGui.QPixmap(str(path))
+        return pm
+
+    def mousePressEvent(self, e):
+        self._drag(e)
+
+    def mouseMoveEvent(self, e):
+        if e.buttons() & Qt.LeftButton:
+            self._drag(e)
+
+    def _drag(self, e):
+        """A click puts the clip's middle there."""
+        half = (self.sel[1] - self.sel[0]) / 2
+        self.moved.emit(self._t(e.position().x()) + half)
+
+    def paintEvent(self, _):
+        p = QtGui.QPainter(self)
+        p.setRenderHint(QtGui.QPainter.Antialiasing)
+        p.setRenderHint(QtGui.QPainter.SmoothPixmapTransform)
+        track = self._track()
+        clip = QtGui.QPainterPath()
+        clip.addRoundedRect(track, self.RADIUS, self.RADIUS)
+        p.save()
+        p.setClipPath(clip)
+        p.fillRect(track, QtGui.QColor(255, 255, 255, 16))
+        # nothing recorded yet: hatched, and said so
+        empty = self._span_rect(self.span[0], self.held_from)
+        if empty.width() > 1:
+            p.save()
+            p.setClipRect(empty, Qt.IntersectClip)
+            p.setPen(QtGui.QPen(QtGui.QColor(255, 255, 255, 22), 2))
+            for x in range(int(empty.left()) - int(track.height()), int(empty.right()) + 1, 22):
+                p.drawLine(QtCore.QPointF(x, track.bottom()), QtCore.QPointF(x + track.height(), track.top()))
+            p.restore()
+            if empty.width() > 160:
+                p.setPen(QtGui.QColor(236, 240, 250, 150))
+                p.setFont(ui_theme.font(14))
+                p.drawText(empty, Qt.AlignCenter, language.tr("Not recorded yet"))
+        # the recorded part: one picture per file, cropped to fill its stretch
+        for started, ended, path in self.frames:
+            r = self._span_rect(max(started, self.held_from), ended).intersected(track)
+            if r.width() < 1:
+                continue
+            pm = self._pixmap(path) if path is not None else QtGui.QPixmap()
+            if pm.isNull():
+                p.fillRect(r, QtGui.QColor(255, 255, 255, 30))
+                continue
+            scale = max(r.width() / pm.width(), r.height() / pm.height())
+            sw, sh = r.width() / scale, r.height() / scale
+            src = QtCore.QRectF((pm.width() - sw) / 2, (pm.height() - sh) / 2, sw, sh)
+            p.drawPixmap(r, pm, src)
+            p.fillRect(QtCore.QRectF(r.right() - 1, r.top(), 1, r.height()), QtGui.QColor(0, 0, 0, 90))
+        # what won't be saved: dimmed
+        sel = self._span_rect(*self.sel)
+        recorded = self._span_rect(self.held_from, self.span[1])
+        for part in (QtCore.QRectF(recorded.left(), track.top(), sel.left() - recorded.left(), track.height()),
+                     QtCore.QRectF(sel.right(), track.top(), recorded.right() - sel.right(), track.height())):
+            if part.width() > 0:
+                p.fillRect(part, QtGui.QColor(*ui_theme.NIGHT, 135))
+        p.restore()
+        # the clip: a white frame with a handle at each end, and its length above it
+        sel = sel.adjusted(0, 0, 0, 0)
+        if sel.width() < 12:
+            sel.adjust(-(12 - sel.width()) / 2, 0, (12 - sel.width()) / 2, 0)
+        p.setPen(QtGui.QPen(QtGui.QColor(ui_theme.INK), 4))
+        p.setBrush(Qt.NoBrush)
+        p.drawRoundedRect(sel.adjusted(2, 2, -2, -2), 12, 12)
+        p.setPen(Qt.NoPen)
+        p.setBrush(QtGui.QColor(ui_theme.INK))
+        for x in (sel.left(), sel.right() - 8):
+            p.drawRoundedRect(QtCore.QRectF(x, sel.top(), 8, sel.height()), 4, 4)
+        if self.label:
+            p.setFont(ui_theme.font(14, QtGui.QFont.DemiBold))
+            w = p.fontMetrics().horizontalAdvance(self.label) + 24
+            lx = min(max(0.0, sel.center().x() - w / 2), self.width() - w)
+            pill = QtCore.QRectF(lx, 0, w, self.LABEL_H - 6)
+            p.drawRoundedRect(pill, pill.height() / 2, pill.height() / 2)
+            p.setPen(QtGui.QColor(ui_theme.DARK))
+            p.drawText(pill, Qt.AlignCenter, self.label)
+        # how long ago, under the strip
+        a, b = self.span
+        p.setFont(ui_theme.font(14))
+        p.setPen(QtGui.QColor(236, 240, 250, 165))
+        y = track.bottom() + 6
+        marks = [(a + (b - a) * f, f) for f in (0, 1 / 3, 2 / 3, 1)]
+        for t, f in marks:
+            ago = int(round((b - t) / 60))
+            text = language.tr("Now") if f == 1 else language.tr("{n} min ago", n=ago)
+            w = p.fontMetrics().horizontalAdvance(text)
+            x = self._x(t)
+            if f in (0, 1):     # the two ends sit inside the strip: the oldest at its start, Now at its end
+                left = x if (f == 0) != language.is_rtl() else x - w
+            else:
+                left = x - w / 2
+            p.drawText(QtCore.QRectF(min(max(0, left), self.width() - w), y, w + 1, self.TICKS_H),
+                       Qt.AlignVCenter | Qt.AlignLeft, text)
+
+
+class ClipPreview(QtWidgets.QWidget):
+    """Save recent's big picture: the moment the clip starts, with a tag saying how long ago that is."""
+
+    RADIUS = 26
+
+    def __init__(self):
+        super().__init__()
+        self.pixmap = QtGui.QPixmap()
+        self.tag = ""
+        self.empty_text = ""
+
+    def set_picture(self, path: str | Path | None):
+        self.pixmap = QtGui.QPixmap(str(path)) if path else QtGui.QPixmap()
+        self.update()
+
+    def paintEvent(self, _):
+        p = QtGui.QPainter(self)
+        p.setRenderHint(QtGui.QPainter.Antialiasing)
+        p.setRenderHint(QtGui.QPainter.SmoothPixmapTransform)
+        r = QtCore.QRectF(self.rect()).adjusted(1, 1, -1, -1)
+        path = QtGui.QPainterPath()
+        path.addRoundedRect(r, self.RADIUS, self.RADIUS)
+        p.fillPath(path, QtGui.QColor(*ui_theme.NIGHT, 235))
+        if not self.pixmap.isNull():
+            p.save()
+            p.setClipPath(path)
+            pm = self.pixmap
+            scale = max(r.width() / pm.width(), r.height() / pm.height())
+            sw, sh = r.width() / scale, r.height() / scale
+            p.drawPixmap(r, pm, QtCore.QRectF((pm.width() - sw) / 2, (pm.height() - sh) / 2, sw, sh))
+            p.restore()
+        elif self.empty_text:
+            p.setPen(QtGui.QColor(236, 240, 250, 165))
+            p.setFont(ui_theme.font(18))
+            p.drawText(r, Qt.AlignCenter | Qt.TextWordWrap, self.empty_text)
+        p.setPen(QtGui.QPen(QtGui.QColor(255, 255, 255, 40), 1))
+        p.setBrush(Qt.NoBrush)
+        p.drawPath(path)
+        if self.tag:
+            p.setFont(ui_theme.font(16, QtGui.QFont.DemiBold))
+            w = p.fontMetrics().horizontalAdvance(self.tag) + 32
+            tag = QtCore.QRectF(r.right() - 20 - w if language.is_rtl() else r.left() + 20, r.top() + 20, w, 38)
+            p.setPen(Qt.NoPen)
+            p.setBrush(QtGui.QColor(*ui_theme.NIGHT, 200))
+            p.drawRoundedRect(tag, 19, 19)
+            p.setPen(QtGui.QColor(ui_theme.INK))
+            p.drawText(tag, Qt.AlignCenter, self.tag)
 
 
 class Chip(Grow, HoverFocus, QtWidgets.QAbstractButton):
@@ -345,6 +537,7 @@ class Chip(Grow, HoverFocus, QtWidgets.QAbstractButton):
         self.setAttribute(Qt.WA_Hover)
         self.dimmed = False      # longer than what the buffer holds so far
         self.danger = False      # a delete waiting for its second press
+        self.on_focus = None     # called when it takes the focus (Save recent: the strip follows)
         self.setFont(ui_theme.font(15, QtGui.QFont.DemiBold))
         self._fit()
 
@@ -376,6 +569,8 @@ class Chip(Grow, HoverFocus, QtWidgets.QAbstractButton):
     def focusInEvent(self, e):
         super().focusInEvent(e)
         self.grow_to(True)
+        if self.on_focus:
+            self.on_focus()
 
     def focusOutEvent(self, e):
         super().focusOutEvent(e)

@@ -11,15 +11,16 @@ from PySide6.QtCore import Qt
 from pathlib import Path
 import time
 
-from . import capture_controller, catalog, input_devices, language, ui_theme, ui_widgets, windows
+from . import capture_controller, catalog, input_devices, language, obs_client, ui_theme, ui_widgets, windows
 
 
 class Menu(QtWidgets.QWidget):
     """The Create bar: docks along the bottom of the screen so the game stays in view."""
 
     BAR_H = 324
-    PICK_H = 246            # the bar is slimmer while choosing a duration
+    PICK_H = 448            # Save recent: the lengths under a strip of the last minutes
     HEADROOM = 90           # fade above the bar
+    SHIFT_STEP = 10         # seconds a clip moves earlier or later per press
 
     def __init__(self, ctl: capture_controller.Controller, viewer: "Viewer"):
         super().__init__(None, Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool)
@@ -34,9 +35,16 @@ class Menu(QtWidgets.QWidget):
         self.setStyleSheet(ui_theme.BAR_STYLE)
         self.setFont(ui_theme.font(13))
         ui_theme.dress(self, frosted=False)
-        # chip order follows the PS5: Full video first, then shortest to longest
-        self.options: list[int | None] = [None] + sorted(ctl.cfg["durations_seconds"])[:8]
-        self.last_choice = self.options.index(60) if 60 in self.options else min(1, len(self.options) - 1)
+        # shortest to longest, then everything that's kept
+        self.options: list[int | None] = sorted(ctl.cfg["durations_seconds"])[:8] + [None]
+        self.last_choice = self.options.index(60) if 60 in self.options else 0
+        self.pick_len: int | None = self.options[self.last_choice]
+        self.pick_shift = 0          # seconds the clip is moved earlier than now
+        self._pick_now = time.time()
+        self._asked_at: float | None = None
+        self._shown_start: float | None = None
+        self._pending_start = 0.0
+        self._screen_geo: QtCore.QRect | None = None
 
         self.bar = QtWidgets.QWidget(self)
         lay = QtWidgets.QVBoxLayout(self.bar)
@@ -103,29 +111,50 @@ class Menu(QtWidgets.QWidget):
         row.addStretch()
         lay.addWidget(self.main_row)
 
-        # Save recent gameplay: a row of pills, like the PS5
+        # Save recent gameplay: a strip of the last minutes over a row of lengths; a big picture above the
+        # bar shows where the clip starts
         self.picker = QtWidgets.QWidget()
         pl = QtWidgets.QVBoxLayout(self.picker)
         pl.setContentsMargins(0, 0, 0, 0)
         pl.setSpacing(12)
+        top = QtWidgets.QHBoxLayout()
+        top.setSpacing(14)
+        top.addWidget(ui_widgets.back_button(self.close_picker), 0, Qt.AlignVCenter)
         self.pick_caption = QtWidgets.QLabel(objectName="caption")
         self.pick_caption.setTextFormat(Qt.RichText)
-        pl.addWidget(self.pick_caption)
+        top.addWidget(self.pick_caption, 0, Qt.AlignVCenter)
+        top.addStretch()
+        self.pick_summary = QtWidgets.QLabel(objectName="caption")
+        self.pick_summary.setTextFormat(Qt.RichText)
+        top.addWidget(self.pick_summary, 0, Qt.AlignVCenter)
+        pl.addLayout(top)
+        self.strip = ui_widgets.BufferStrip()
+        self.strip.moved.connect(self._move_to)
+        pl.addWidget(self.strip)
         chips = QtWidgets.QHBoxLayout()
         chips.setSpacing(4)
-        chips.addWidget(ui_widgets.back_button(self.close_picker), 0, Qt.AlignVCenter)
-        chips.addSpacing(12)
         self.chips: list[ui_widgets.Chip] = []
         for sec in self.options:
             c = ui_widgets.Chip(ui_widgets.chip_label(sec))
             c.clicked.connect(lambda _=False, s=sec: self._save(s))
+            c.on_focus = lambda s=sec: self._choose(s)
             chips.addWidget(c)
             self.chips.append(c)
         chips.addStretch()
+        self.save_chip = ui_widgets.Chip("Save clip")
+        self.save_chip.clicked.connect(lambda: self._save(self.pick_len))
+        chips.addWidget(self.save_chip)
         pl.addLayout(chips)
         self.picker.hide()
         lay.addWidget(self.picker)
         lay.addStretch()
+        self.preview = ui_widgets.ClipPreview()
+        self.preview.setParent(self)
+        self.preview.empty_text = language.tr("Pictures show up once a minute is recorded")
+        self.preview.hide()
+        self._ask_timer = QtCore.QTimer(self, singleShot=True, interval=150, timeout=self._ask_picture)
+        ctl.buffer_frames.connect(self._on_frames)
+        ctl.buffer_preview.connect(self._on_preview)
 
         # footer: button prompts on the left, details of the focused capture on the right
         foot = QtWidgets.QHBoxLayout()
@@ -154,8 +183,8 @@ class Menu(QtWidgets.QWidget):
     def update_hints(self):
         pad = input_devices.input_mode().mode != "keyboard"
         if self.picking:
-            items = ([("DPAD_LR", "Choose"), ("A", "Save"), ("B", "Back")] if pad else
-                     [("k:← →", "Choose"), ("k:Enter", "Save"),
+            items = ([("DPAD_LR", "Length"), ("L1R1", "Earlier / later"), ("A", "Save"), ("B", "Back")] if pad else
+                     [("k:← →", "Length"), ("k:[ ]", "Earlier / later"), ("k:Enter", "Save"),
                       (f"k:1–{len(self.options)}", "Pick"), ("k:Esc", "Back")])
         elif pad:
             items = [("DPAD_LR", "Move"), ("A", "Select"), ("X", "Screenshot"),
@@ -170,11 +199,30 @@ class Menu(QtWidgets.QWidget):
         self.hide_menu() if self.isVisible() else self.show_menu(game)
 
     def _place(self):
-        """Pin the bar to the bottom edge at its current height."""
+        """Pin the bar to the bottom edge at its current height; while choosing a length, the picture
+        of where the clip starts sits above it."""
         h = self.PICK_H if self.picking else self.BAR_H
         self._rise.stop()
         self.bar.setGeometry(0, self.height() - h, self.width(), h)
+        if self.picking:
+            room_h = self.bar.y() - 48 - 28
+            pw = int(min(self.width() - 128, room_h * 16 / 9, 1180))
+            ph = int(pw * 9 / 16)
+            self.preview.setGeometry((self.width() - pw) // 2, max(24, 48 + (room_h - ph) // 2), pw, ph)
+        self.preview.setVisible(self.picking and self.preview.height() > 120)
         self.update()
+
+    def _fit_window(self):
+        """The bar's window: a band along the bottom, or the whole screen while choosing a length
+        (the picture of the clip needs the room)."""
+        g = self._screen_geo
+        if g is None:
+            return
+        if self.picking:
+            self.setGeometry(g)
+        else:
+            h = self.BAR_H + self.HEADROOM
+            self.setGeometry(g.left(), g.bottom() - h + 1, g.width(), h)
 
     def show_menu(self, game: str | None = None, fresh: bool = True):
         """fresh: opened from outside (the game's screen is picked again); False when coming Back."""
@@ -184,6 +232,7 @@ class Menu(QtWidgets.QWidget):
         if self.viewer.isVisible():
             self.viewer.close_viewer()
         g = windows.ui_screen(fresh).geometry()   # the screen the game is on, TV or monitor
+        self._screen_geo = g
         h = self.BAR_H + self.HEADROOM
         ui_theme.dress(self, frosted=False)
         self.setGeometry(g.left(), g.bottom() - h + 1, g.width(), h)
@@ -255,16 +304,25 @@ class Menu(QtWidgets.QWidget):
 
     # ---- Save recent gameplay row
     def _set_picking(self, on: bool):
+        changed = on != self.picking
         self.picking = on
         self.main_row.setVisible(not on)
         self.picker.setVisible(on)
+        if changed:
+            self._fit_window()
         self._place()
         self.update_hints()
 
     def open_picker(self):
         by_mouse = self.save_card.underMouse()
+        self._pick_now = time.time()
+        self.pick_shift = 0
+        self.pick_len = self.options[self.last_choice]
+        self.preview.set_picture(None)
+        self._shown_start = None
         self._set_picking(True)
         self._refresh_picker()
+        self.ctl.load_buffer_frames()
         self.chips[self.last_choice].setFocus()
         if by_mouse:      # the lengths appear under a mouse that hasn't moved: no enter event comes,
             QtCore.QTimer.singleShot(0, self._light_under_mouse)   # so light the one it's on ourselves
@@ -279,8 +337,101 @@ class Menu(QtWidgets.QWidget):
         self.save_card.setFocus()
 
     def _save(self, seconds: int | None):
+        """Saves that length; moved earlier in the strip, it ends there instead of now."""
         self.last_choice = self.options.index(seconds)
-        self._act(self.ctl.save_clip, seconds, self.game)
+        if self.picking and self.pick_shift and seconds:
+            self._act(self.ctl.save_clip, seconds, self.game, self._pick_now - self.pick_shift)
+        else:
+            self._act(self.ctl.save_clip, seconds, self.game)
+
+    # what's chosen: a length, moved some seconds earlier
+    def _held_s(self) -> float:
+        b = self._buffer
+        if b.get("held_ms") is None:
+            return b.get("max_ms", 0) / 1000
+        return min(b["held_ms"], b["max_ms"]) / 1000
+
+    def _choose(self, seconds: int | None):
+        self.pick_len = seconds
+        self._clamp_shift()
+        self._update_selection()
+
+    def _clamp_shift(self):
+        held = self._held_s()
+        longest = max(0.0, held - (self.pick_len or held))
+        self.pick_shift = int(max(0, min(self.pick_shift, longest))) if self.pick_len else 0
+
+    def _shift(self, seconds: int):
+        if self.pick_len is None:
+            return
+        self.pick_shift += seconds
+        self._clamp_shift()
+        self._update_selection()
+
+    def _move_to(self, until: float):
+        """A click on the strip: the clip ends there."""
+        if self.pick_len is None:
+            return
+        self.pick_shift = int(round(self._pick_now - until))
+        self._clamp_shift()
+        self._update_selection()
+
+    def _selection(self) -> tuple[float, float]:
+        end = self._pick_now - self.pick_shift
+        held_from = self._pick_now - self._held_s()
+        return (held_from if self.pick_len is None else max(held_from, end - self.pick_len)), end
+
+    def _mb_per_minute(self) -> float | None:
+        px = self.ctl.screen_px
+        if not px:
+            return None
+        cfg = self.ctl.cfg
+        enc = obs_client.choose_encoder(self.ctl.best_encoder or "nvenc_av1", cfg.get("video_codec", "auto"))
+        return obs_client.buffer_memory_mb(cfg, *px, enc) / max(1, int(cfg["buffer_minutes"]))
+
+    def _update_selection(self):
+        if not self.picking:
+            return
+        start, end = self._selection()
+        b = self._buffer
+        span = (self._pick_now - b.get("max_ms", 0) / 1000, self._pick_now)
+        length = end - start
+        label = ui_widgets.chip_label(self.pick_len) if self.pick_len else language.clock(int(length * 1000))
+        self.strip.set_state(span, self._pick_now - self._held_s(), (start, end), label)
+        parts = [f"<b>{language.tr('Last {length}', length=ui_widgets.chip_label(self.pick_len)) if self.pick_len else ui_widgets.chip_label(None)}</b>"]
+        if self.pick_shift:
+            parts.append(language.tr("ends {time} ago", time=language.clock(self.pick_shift * 1000)))
+        mb = self._mb_per_minute()
+        if mb:
+            parts.append(language.tr("about {size}", size=catalog.human_size(mb * length / 60 * 1024 * 1024)))
+        self.pick_summary.setText(f'<span style="color:{ui_theme.MUTED}; font-weight:400">'
+                                  + "&nbsp;&nbsp;·&nbsp;&nbsp;".join(parts) + "</span>")
+        self.preview.tag = language.tr("Clip starts {time} ago", time=language.clock(int((self._pick_now - start) * 1000)))
+        if self._shown_start is None or abs(start - self._shown_start) > 2:    # a new start: a new picture
+            self._shown_start = self._pending_start = start
+            frame = next((f for f in self.strip.frames if f[0] <= start < f[1] and f[2]), None)
+            if frame is not None:          # the strip's picture of that minute, until the exact one comes
+                self.preview.set_picture(frame[2])
+            self._asked_at = None
+            self._ask_timer.start()
+        self.preview.update()
+
+    def _ask_picture(self):
+        self._asked_at = self._pending_start
+        self.ctl.buffer_picture_at(self._pending_start)
+
+    def _on_frames(self, items: list):
+        self.strip.set_frames(items)
+        if self.picking and self.preview.pixmap.isNull():
+            start = self._selection()[0]
+            frame = next((f for f in items if f[0] <= start < f[1] and f[2]), None) or \
+                next((f for f in reversed(items) if f[2]), None)
+            if frame is not None:
+                self.preview.set_picture(frame[2])
+
+    def _on_preview(self, when: float, path: str):
+        if self.picking and self._asked_at is not None and abs(when - self._asked_at) < 0.01:
+            self.preview.set_picture(path)
 
     def _refresh_picker(self):
         b = self._buffer
@@ -297,7 +448,12 @@ class Menu(QtWidgets.QWidget):
         for sec, chip in zip(self.options, self.chips):
             chip.dimmed = (sec is not None and b["held_ms"] is not None
                            and sec * 1000 > b["held_ms"] + 500)
+            if sec is None:        # Everything says how much that is
+                chip.setText(language.tr("Everything · {length}", length=language.clock(int(self._held_s() * 1000)))
+                             if b.get("held_ms") is not None else ui_widgets.chip_label(None))
             chip.update()
+        self._clamp_shift()
+        self._update_selection()
 
     # ---- content
     def refresh_recent(self):
@@ -436,6 +592,8 @@ class Menu(QtWidgets.QWidget):
     # ---- painting and input
     def paintEvent(self, _):
         p = QtGui.QPainter(self)
+        if self.picking:     # the game dims behind the picture of the clip
+            p.fillRect(QtCore.QRect(0, 0, self.width(), self.bar.y()), QtGui.QColor(*ui_theme.NIGHT, 150))
         top = max(0, self.bar.y() - self.HEADROOM)
         grad = QtGui.QLinearGradient(0, top, 0, self.height())
         span = max(1, self.height() - top)
@@ -447,11 +605,14 @@ class Menu(QtWidgets.QWidget):
 
     def mousePressEvent(self, e):
         if e.position().y() < self.bar.y():
-            self.hide_menu()
+            if not self.picking:
+                self.hide_menu()
+            elif not self.preview.geometry().contains(e.position().toPoint()):
+                self.close_picker()
 
     def _nav_cards(self) -> list[QtWidgets.QAbstractButton]:
         if self.picking:
-            return list(self.chips)
+            return list(self.chips) + [self.save_chip]
         cards = [self.save_card, self.shot_card, self.rec_card]
         cards += [self.mic_card] if self.mic_card.isVisible() else []
         cards += [t for t in self.thumbs if t.isVisible()]
@@ -471,6 +632,8 @@ class Menu(QtWidgets.QWidget):
         elif self.picking:
             if k in (Qt.Key_Escape, Qt.Key_Backspace, Qt.Key_Down):
                 self.close_picker()
+            elif k in (Qt.Key_BracketLeft, Qt.Key_BracketRight):    # L1 / R1: the clip earlier / later
+                self._shift(self.SHIFT_STEP * (1 if (k == Qt.Key_BracketLeft) != language.is_rtl() else -1))
         elif k == Qt.Key_Escape:
             self.hide_menu()
         elif k == Qt.Key_Up and focused is self.save_card:
