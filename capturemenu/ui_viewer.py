@@ -320,7 +320,7 @@ class Viewer(QtWidgets.QWidget):
         self.opts_btn.setCursor(Qt.PointingHandCursor)
         self.opts_btn.clicked.connect(self._toggle_options)
         ll.addWidget(self.opts_btn)
-        line.setFixedHeight(60)
+        line.setFixedHeight(52)
         share_cards.addWidget(line)
         self._opts_open = False
         self.voice_card.divider_below = self.size_card.divider_below = True

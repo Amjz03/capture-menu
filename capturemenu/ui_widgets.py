@@ -638,11 +638,11 @@ class ActionButton(QtWidgets.QAbstractButton):
         total = 22 + (12 + text_w if text_w else 0) + (14 + glyph_w if glyph_w else 0)
         return text_w, glyph_w, total
 
-    TILE = (120, 96)
+    TILE = (108, 86)
 
     def as_tile(self):
         self.tile = True
-        self.setFont(ui_theme.font(18))          # spec: Label 18/24
+        self.setFont(ui_theme.font(16))
         self.setFixedSize(*self.TILE)
         return self
 
@@ -684,10 +684,10 @@ class ActionButton(QtWidgets.QAbstractButton):
             ink = QtGui.QColor("#ff8a82" if self.quiet_danger else ui_theme.INK)
         p.setFont(self.font())
         if self.tile:        # the icon, its name under it; the keys are in the hints along the bottom
-            p.drawPixmap(QtCore.QRectF(self.width() / 2 - 15, 18, 30, 30).toRect(),
-                         ui_theme.icon_pixmap(self.icon_name, 30, self.icon_color or ink.name()))
+            p.drawPixmap(QtCore.QRectF(self.width() / 2 - 13, 16, 26, 26).toRect(),
+                         ui_theme.icon_pixmap(self.icon_name, 26, self.icon_color or ink.name()))
             p.setPen(ink)
-            p.drawText(QtCore.QRectF(6, 56, self.width() - 12, 26), Qt.AlignCenter,
+            p.drawText(QtCore.QRectF(6, 50, self.width() - 12, 24), Qt.AlignCenter,
                        p.fontMetrics().elidedText(self.text(), Qt.ElideRight, self.width() - 12))
             return
         text_w, glyph_w, total = self._parts()
@@ -834,7 +834,7 @@ class DestCard(QtWidgets.QAbstractButton):
         super().__init__()
         self.key, self.icon_name, self.title, self.detail, self.foot = key, icon, title, detail, foot
         self.chosen = False
-        self.setFixedHeight(170)          # a name and one line (160), plus 5 px each side for the chosen one's ring
+        self.setFixedHeight(144)          # a name and one line, plus 5 px each side for the chosen one's ring
         self.setMinimumWidth(220)
         self.setCursor(Qt.PointingHandCursor)
         self.setAttribute(Qt.WA_Hover)
@@ -865,16 +865,16 @@ class DestCard(QtWidgets.QAbstractButton):
             ui_theme.paint_card(p, r, focused, self.underMouse(), 24)
             ink = QtGui.QColor(ui_theme.INK)
             soft, foot = QtGui.QColor(236, 240, 250, 214), QtGui.QColor(236, 240, 250, 168)
-        x, w = r.left() + 24, r.width() - 48       # pad 24, 24, 22, 24
-        icon = ui_theme.mirror(self, QtCore.QRectF(x, r.top() + 24, 36, 36))
-        p.drawPixmap(icon.toRect(), ui_theme.icon_pixmap(self.icon_name, 36, ink.name()))
+        x, w = r.left() + 22, r.width() - 44
+        icon = ui_theme.mirror(self, QtCore.QRectF(x, r.top() + 20, 28, 28))
+        p.drawPixmap(icon.toRect(), ui_theme.icon_pixmap(self.icon_name, 28, ink.name()))
         flags = Qt.AlignLeft | Qt.AlignTop | Qt.TextWordWrap
         p.setPen(ink)
-        p.setFont(ui_theme.font(24, QtGui.QFont.DemiBold))
-        p.drawText(ui_theme.mirror(self, QtCore.QRectF(x, r.top() + 70, w, 32)), flags, language.tr(self.title))
+        p.setFont(ui_theme.font(20, QtGui.QFont.DemiBold))
+        p.drawText(ui_theme.mirror(self, QtCore.QRectF(x, r.top() + 58, w, 28)), flags, language.tr(self.title))
         p.setPen(soft)
-        p.setFont(ui_theme.font(17))
-        p.drawText(ui_theme.mirror(self, QtCore.QRectF(x, r.top() + 112, w, 72)), flags, self.detail)
+        p.setFont(ui_theme.font(15))
+        p.drawText(ui_theme.mirror(self, QtCore.QRectF(x, r.top() + 92, w, 44)), flags, self.detail)
         if self.foot:      # pinned to the bottom
             p.setPen(foot)
             p.setFont(ui_theme.font(15))
@@ -916,17 +916,17 @@ class OptionCard(QtWidgets.QAbstractButton):
 
     def as_row(self):
         self.row = True
-        self.setFixedHeight(84)
+        self.setFixedHeight(72)
         return self
 
     def _segments(self) -> list[QtCore.QRectF]:
         if self.row:       # sized to their words, at the line's end: 48 high, 20 px each side, gap 4, in a 56 bar
-            fm = QtGui.QFontMetricsF(ui_theme.font(20, QtGui.QFont.DemiBold))
-            widths = [fm.horizontalAdvance(t) + 40 for _, t in self.choices]
+            fm = QtGui.QFontMetricsF(ui_theme.font(17, QtGui.QFont.DemiBold))
+            widths = [fm.horizontalAdvance(t) + 36 for _, t in self.choices]
             x = self.width() - 12 - 4 - sum(widths) - 4 * (len(widths) - 1)
             out = []
             for w in widths:
-                out.append(ui_theme.mirror(self, QtCore.QRectF(x, self.height() / 2 - 24, w, 48)))
+                out.append(ui_theme.mirror(self, QtCore.QRectF(x, self.height() / 2 - 21, w, 42)))
                 x += w + 4
             return out
         bar = QtCore.QRectF(20, self.height() - 58, self.width() - 40, 40)
@@ -998,17 +998,17 @@ class OptionCard(QtWidgets.QAbstractButton):
         span = (max(s.right() for s in segs) - min(s.left() for s in segs) + 8 + (32 if len(segs) == 1 else 0)) if segs else 0
         room = self.width() - 66 - 16 - 16 - span
         p.setPen(QtGui.QColor(ui_theme.INK))
-        p.setFont(ui_theme.font(20, QtGui.QFont.DemiBold))
+        p.setFont(ui_theme.font(17, QtGui.QFont.DemiBold))
         flags = Qt.AlignLeft | Qt.AlignVCenter
-        p.drawText(ui_theme.mirror(self, QtCore.QRectF(66, 14, room, 28)), flags, self.title)
+        p.drawText(ui_theme.mirror(self, QtCore.QRectF(66, 12, room, 26)), flags, self.title)
         p.setPen(QtGui.QColor(236, 240, 250, 214))
-        p.setFont(ui_theme.font(17))
+        p.setFont(ui_theme.font(15))
         sub = self.note or (self.describe(self.value) if callable(self.describe) else self.describe)
-        p.drawText(ui_theme.mirror(self, QtCore.QRectF(66, 44, room, 24)), flags,
+        p.drawText(ui_theme.mirror(self, QtCore.QRectF(66, 38, room, 22)), flags,
                    p.fontMetrics().elidedText(sub, Qt.ElideRight, int(room)))
         if len(segs) > 1:
             box = QtCore.QRectF(min(s.left() for s in segs) - 4, segs[0].top() - 4,
-                                max(s.right() for s in segs) - min(s.left() for s in segs) + 8, 56)
+                                max(s.right() for s in segs) - min(s.left() for s in segs) + 8, 50)
             p.setPen(Qt.NoPen)
             p.setBrush(QtGui.QColor(255, 255, 255, 26))
             p.drawRoundedRect(box, 26, 26)
@@ -1029,12 +1029,12 @@ class OptionCard(QtWidgets.QAbstractButton):
             if i == self.index:
                 p.setPen(Qt.NoPen)
                 p.setBrush(QtGui.QColor(ui_theme.INK))
-                p.drawRoundedRect(seg, 22, 22)
+                p.drawRoundedRect(seg, 19, 19)
                 p.setPen(QtGui.QColor(ui_theme.DARK))
-                p.setFont(ui_theme.font(20, QtGui.QFont.DemiBold))
+                p.setFont(ui_theme.font(17, QtGui.QFont.DemiBold))
             else:
                 p.setPen(QtGui.QColor(236, 240, 250, 214))
-                p.setFont(ui_theme.font(20))
+                p.setFont(ui_theme.font(17))
             p.drawText(seg, Qt.AlignCenter, self.choices[i][1])
         if self.divider_below:     # a 1 px line between the rows
             p.setPen(QtGui.QPen(QtGui.QColor(255, 255, 255, 36), 1))
@@ -1226,15 +1226,15 @@ class SettingRow(HoverFocus, QtWidgets.QWidget):
             desc = self.describe(self.value)
         except (TypeError, ValueError, KeyError):
             return        # the page is still filling its rows in: an explanation may read another row's value
-        metrics = QtGui.QFontMetrics(ui_theme.font(17 if self.stacked else 14))
-        if self._below():       # spec: pad 14, name 28, gap 2, explanation, gap 12, choices 56, pad 14
-            height = int(self._seg_top() + 56 + 14)
+        metrics = QtGui.QFontMetrics(ui_theme.font(15 if self.stacked else 14))
+        if self._below():       # pad 14, name, gap, explanation, gap 10, choices 50, pad 14
+            height = int(self._seg_top() + 50 + 14)
             if height != self.height():
                 self.setFixedHeight(height)
             return
         room = self.width() - (self._value_rect().width() + 56)
         two = bool(desc) and room > 100 and metrics.horizontalAdvance(desc) > room
-        height = (84 if self.stacked else self.H) + (metrics.lineSpacing() if two else 0)
+        height = (76 if self.stacked else self.H) + (metrics.lineSpacing() if two else 0)
         if height != self.height():
             self.setFixedHeight(height)
 
@@ -1332,8 +1332,8 @@ class SettingRow(HoverFocus, QtWidgets.QWidget):
         if not (self.stacked and self.kind == "choice" and 2 <= len(self.choices) <= 6):
             return False
         # only when they all fit the card's width (three screens' names don't): else the ‹ value › pill
-        fm = QtGui.QFontMetricsF(ui_theme.font(20, QtGui.QFont.DemiBold))
-        need = sum(fm.horizontalAdvance(t) + 44 for _, t in self.choices) + 4
+        fm = QtGui.QFontMetricsF(ui_theme.font(17, QtGui.QFont.DemiBold))
+        need = sum(fm.horizontalAdvance(t) + 40 for _, t in self.choices) + 4
         return need <= self.width() - 58
 
     def _desc_rect(self) -> QtCore.QRectF:
@@ -1342,21 +1342,21 @@ class SettingRow(HoverFocus, QtWidgets.QWidget):
         except (TypeError, ValueError, KeyError):
             desc = ""
         w = max(100, self.width() - 58)
-        fm = QtGui.QFontMetrics(ui_theme.font(17))
-        h = max(24, fm.boundingRect(0, 0, w, 400, Qt.TextWordWrap, desc).height()) if desc else 0
-        return QtCore.QRectF(29, 44, w, h)
+        fm = QtGui.QFontMetrics(ui_theme.font(15))
+        h = max(22, fm.boundingRect(0, 0, w, 400, Qt.TextWordWrap, desc).height()) if desc else 0
+        return QtCore.QRectF(29, 40, w, h)
 
     def _seg_top(self) -> float:
-        return self._desc_rect().bottom() + 12
+        return self._desc_rect().bottom() + 10
 
     def _segments(self) -> list[QtCore.QRectF]:
         """Where each choice sits when they're all shown at once (empty: too many or too long for that)."""
-        if self._below():      # spec: a 56 high bar, pad 4, choices 48 high with 20 px each side, gap 4
-            fm = QtGui.QFontMetricsF(ui_theme.font(20, QtGui.QFont.DemiBold))
+        if self._below():      # a 50 high bar, pad 4, choices 42 high with 18 px each side, gap 4
+            fm = QtGui.QFontMetricsF(ui_theme.font(17, QtGui.QFont.DemiBold))
             x, y, out = 33.0, self._seg_top() + 4, []
             for _, t in self.choices:
-                w = fm.horizontalAdvance(t) + 40
-                out.append(QtCore.QRectF(x, y, w, 48))
+                w = fm.horizontalAdvance(t) + 36
+                out.append(QtCore.QRectF(x, y, w, 42))
                 x += w + 4
             if language.is_rtl():
                 out = [QtCore.QRectF(self.width() - r.right(), r.y(), r.width(), r.height()) for r in out]
@@ -1382,7 +1382,7 @@ class SettingRow(HoverFocus, QtWidgets.QWidget):
             left = min(r.left() for r in segs) - 4
             right = max(r.right() for r in segs) + 4
             if self._below():
-                return QtCore.QRectF(left, segs[0].top() - 4, right - left, 56)
+                return QtCore.QRectF(left, segs[0].top() - 4, right - left, 50)
             return QtCore.QRectF(left, 0, right - left, self.height())
         w = 420 if self.stacked else 284      # Settings' cards: room for a screen's or a microphone's name
         if language.is_rtl():    # mirrored: the value on the left, the name on the right
@@ -1423,13 +1423,13 @@ class SettingRow(HoverFocus, QtWidgets.QWidget):
         left = QtCore.QRectF(self.width() - pad - room if language.is_rtl() else pad, 0, room, self.height())
         p.setPen(ink)
         big = self.stacked          # Settings' cards: name 20 semibold, explanation 17 (the spec)
-        p.setFont(ui_theme.font(20 if big else 16, QtGui.QFont.DemiBold if focused or big else QtGui.QFont.Normal))
+        p.setFont(ui_theme.font(18 if big else 16, QtGui.QFont.DemiBold if focused or big else QtGui.QFont.Normal))
         if desc:
-            p.drawText(left.adjusted(0, 16 if big else 13, 0, 0), language.lead() | Qt.AlignTop, self.label)
+            p.drawText(left.adjusted(0, 14 if big else 13, 0, 0), language.lead() | Qt.AlignTop, self.label)
             p.setPen(QtGui.QColor(236, 240, 250, 214) if big else soft)
-            p.setFont(ui_theme.font(17 if big else 14))
-            top = 46 if big else 39
-            if self.height() > (84 if big else self.H):      # fit() made room: the whole explanation, on two lines
+            p.setFont(ui_theme.font(15 if big else 14))
+            top = 42 if big else 39
+            if self.height() > (76 if big else self.H):      # fit() made room: the whole explanation, on two lines
                 p.drawText(left.adjusted(0, top, 0, -6), language.lead() | Qt.AlignTop | Qt.TextWordWrap, desc)
             else:
                 p.drawText(left.adjusted(0, top, 0, 0), language.lead() | Qt.AlignTop,
@@ -1503,28 +1503,28 @@ class SettingRow(HoverFocus, QtWidgets.QWidget):
     def _paint_below(self, p: QtGui.QPainter, lit: bool):
         """Stacked: the name, the whole explanation, then every choice in a row under them."""
         p.setPen(QtGui.QColor(ui_theme.INK))
-        p.setFont(ui_theme.font(20, QtGui.QFont.DemiBold))
-        p.drawText(QtCore.QRectF(29, 14, self.width() - 58, 28), language.lead() | Qt.AlignVCenter, self.label)
+        p.setFont(ui_theme.font(18, QtGui.QFont.DemiBold))
+        p.drawText(QtCore.QRectF(29, 13, self.width() - 58, 26), language.lead() | Qt.AlignVCenter, self.label)
         d = self._desc_rect()
         if d.height():
             p.setPen(QtGui.QColor(236, 240, 250, 214))           # text/secondary
-            p.setFont(ui_theme.font(17))
+            p.setFont(ui_theme.font(15))
             p.drawText(d, language.lead() | Qt.AlignTop | Qt.TextWordWrap, self.describe(self.value))
         values = [c[0] for c in self.choices]
         i = values.index(self.value) if self.value in values else 0
         p.setPen(Qt.NoPen)
         p.setBrush(QtGui.QColor(255, 255, 255, 26))              # surface/tile
-        p.drawRoundedRect(self._value_rect(), 26, 26)
+        p.drawRoundedRect(self._value_rect(), 23, 23)
         for j, (seg, (_, label)) in enumerate(zip(self._segments(), self.choices)):
             if j == i:
                 p.setPen(Qt.NoPen)
                 p.setBrush(QtGui.QColor(ui_theme.INK))
-                p.drawRoundedRect(seg, 22, 22)
+                p.drawRoundedRect(seg, 19, 19)
                 p.setPen(QtGui.QColor(ui_theme.DARK))
-                p.setFont(ui_theme.font(20, QtGui.QFont.DemiBold))
+                p.setFont(ui_theme.font(17, QtGui.QFont.DemiBold))
             else:
                 p.setPen(QtGui.QColor(236, 240, 250, 214))
-                p.setFont(ui_theme.font(20))
+                p.setFont(ui_theme.font(17))
             p.drawText(seg, Qt.AlignCenter, label)
 
 

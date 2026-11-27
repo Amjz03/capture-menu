@@ -68,11 +68,11 @@ class TileDelegate(QtWidgets.QStyledItemDelegate):
         p.save()
         box = r.adjusted(self.g.PAD, 8, -self.g.PAD, -4)      # spec: Heading 24, then Caption 15 (tertiary) 14 after it
         p.setPen(QtGui.QColor(ui_theme.INK))
-        p.setFont(ui_theme.font(24, QtGui.QFont.DemiBold, display=True))
+        p.setFont(ui_theme.font(21, QtGui.QFont.DemiBold, display=True))
         w = p.fontMetrics().horizontalAdvance(title)
         p.drawText(box, language.lead() | Qt.AlignVCenter, title)
         p.setPen(QtGui.QColor(236, 240, 250, 168))
-        p.setFont(ui_theme.font(15))
+        p.setFont(ui_theme.font(14))
         rest = box.adjusted(0, 4, -(w + 14), 0) if language.is_rtl() else box.adjusted(w + 14, 4, 0, 0)
         p.drawText(rest, language.lead() | Qt.AlignVCenter, sub)
         p.restore()
@@ -98,13 +98,13 @@ class TileDelegate(QtWidgets.QStyledItemDelegate):
         ui_theme.paint_focus(p, tile, radius, t)
         title, _, sub = index.data(Qt.DisplayRole).partition("\n")
         # spec: gap 10; the current one Body strong 20/28, the others Label 18/24; meta Caption 15 (secondary)
-        text = QtCore.QRectF(rest.left(), rest.bottom() + 10, rest.width(), 28)
+        text = QtCore.QRectF(rest.left(), rest.bottom() + 10, rest.width(), 26)
         p.setPen(QtGui.QColor(ui_theme.INK))
-        p.setFont(ui_theme.font(20, QtGui.QFont.DemiBold) if selected else ui_theme.font(18))
+        p.setFont(ui_theme.font(17, QtGui.QFont.DemiBold) if selected else ui_theme.font(16))
         p.drawText(text, language.lead() | Qt.AlignVCenter,
                    p.fontMetrics().elidedText(title, Qt.ElideRight, int(rest.width())))
         p.setPen(QtGui.QColor(236, 240, 250, 214))
-        p.setFont(ui_theme.font(15))
+        p.setFont(ui_theme.font(14))
         p.drawText(QtCore.QRectF(text.left(), text.bottom() + 2, text.width(), 20), language.lead() | Qt.AlignVCenter, sub)
         if selected and not self.g.selecting:     # what the current capture can do, right under it
             self.g.quick_rects = self.paint_actions(p, rest, path, option.rect)
@@ -121,31 +121,31 @@ class TileDelegate(QtWidgets.QStyledItemDelegate):
         if video:
             acts.append(("scissors", "Trim", None if pad else "k:R", "trim"))     # no button left for it on a pad
         # spec: chips 42 high, surface/tile-strong, r20, pad 9, 16, 9, 14, gap 8: glyph 24, icon 18, Hint 17
-        x, y = rest.left(), rest.bottom() + 10 + 28 + 2 + 20 + 10
+        x, y = rest.left(), rest.bottom() + 10 + 26 + 2 + 20 + 10
         out = []
-        p.setFont(ui_theme.font(17))
+        p.setFont(ui_theme.font(15))
         order = list(reversed(acts)) if language.is_rtl() else acts
-        widths = [14 + 18 + 8 + p.fontMetrics().horizontalAdvance(language.tr(label)) + 16
+        widths = [12 + 16 + 8 + p.fontMetrics().horizontalAdvance(language.tr(label)) + 14
                   + (ui_theme.glyph_width(token, mode) + 8 if token else 0) for _, label, token, _ in order]
         if language.is_rtl():
             x = rest.right() - sum(widths) - 8 * (len(widths) - 1)
         for (icon, label, token, action), w in zip(order, widths):
-            chip = QtCore.QRectF(x, y, w, 42)
+            chip = QtCore.QRectF(x, y, w, 36)
             p.setPen(Qt.NoPen)
             p.setBrush(QtGui.QColor(255, 255, 255, 41))
-            p.drawRoundedRect(chip, 20, 20)
+            p.drawRoundedRect(chip, 18, 18)
             # the button prompt, the icon, then the word; from the right in Arabic
             rtl, cy = language.is_rtl(), chip.center().y()
             gw = ui_theme.glyph_width(token, mode) if token else 0
-            gx = chip.right() - 14 - gw if rtl else chip.left() + 14
+            gx = chip.right() - 12 - gw if rtl else chip.left() + 12
             if token:
                 ui_theme.draw_glyph(p, gx, cy, token, mode)
-            ix = (gx - (8 if token else 0) - 18) if rtl else (gx + (gw + 8 if token else 0))
-            p.drawPixmap(QtCore.QRectF(ix, cy - 9, 18, 18).toRect(), ui_theme.icon_pixmap(icon, 18))
-            p.setFont(ui_theme.font(17))
+            ix = (gx - (8 if token else 0) - 16) if rtl else (gx + (gw + 8 if token else 0))
+            p.drawPixmap(QtCore.QRectF(ix, cy - 8, 16, 16).toRect(), ui_theme.icon_pixmap(icon, 16))
+            p.setFont(ui_theme.font(15))
             p.setPen(QtGui.QColor(ui_theme.INK))
             words = (QtCore.QRectF(chip.left(), chip.top(), ix - 8 - chip.left(), chip.height()) if rtl
-                     else QtCore.QRectF(ix + 26, chip.top(), chip.right() - ix - 26, chip.height()))
+                     else QtCore.QRectF(ix + 24, chip.top(), chip.right() - ix - 24, chip.height()))
             p.drawText(words, Qt.AlignVCenter | (Qt.AlignRight | Qt.AlignAbsolute if rtl else Qt.AlignLeft), language.tr(label))
             out.append((chip.translated(-cell.left(), -cell.top()), action))
             x += w + 8
@@ -156,7 +156,7 @@ class CategoryDelegate(QtWidgets.QStyledItemDelegate):
     """Gallery sidebar rows: name on the left, count and size on the right; the current one is white."""
 
     def sizeHint(self, option, index):
-        return QtCore.QSize(option.rect.width(), 58)     # spec: 52 high, 6 apart
+        return QtCore.QSize(option.rect.width(), 50)
 
     def paint(self, p: QtGui.QPainter, option, index):
         name, count, size, *rest = index.data(Qt.UserRole)
@@ -175,20 +175,20 @@ class CategoryDelegate(QtWidgets.QStyledItemDelegate):
                 p.setBrush(Qt.NoBrush)
                 p.drawRoundedRect(pill.adjusted(1.25, 1.25, -1.25, -1.25), 13, 13)
         right = f"{count}"
-        p.setFont(ui_theme.font(18))
+        p.setFont(ui_theme.font(15))
         p.setPen(QtGui.QColor(236, 240, 250, 214))
         rw = p.fontMetrics().horizontalAdvance(right)
         rtl = language.is_rtl()    # the count sits at the far end of the line from the name
         p.drawText(r, ((Qt.AlignLeft | Qt.AlignAbsolute) if rtl else Qt.AlignRight) | Qt.AlignVCenter, right)
         if lead:      # a round picture of the game (its newest capture), or the row's icon
-            spot = QtCore.QRectF(r.right() - 30 if rtl else r.left(), r.center().y() - 15, 30, 30)
-            if isinstance(lead, str):      # spec: icon 22
-                p.drawPixmap(spot.adjusted(4, 4, -4, -4).toRect(), ui_theme.icon_pixmap(lead, 22, ui_theme.INK))
-            else:                          # a round picture of the game, 30
-                pm = ui_theme.rounded_pixmap(lead, 30, 30, 15)
+            spot = QtCore.QRectF(r.right() - 26 if rtl else r.left(), r.center().y() - 13, 26, 26)
+            if isinstance(lead, str):
+                p.drawPixmap(spot.adjusted(4, 4, -4, -4).toRect(), ui_theme.icon_pixmap(lead, 18, ui_theme.INK))
+            else:                          # a round picture of the game
+                pm = ui_theme.rounded_pixmap(lead, 26, 26, 13)
                 p.drawPixmap(spot.toRect(), pm)
-            r = r.adjusted(0, 0, -42, 0) if rtl else r.adjusted(42, 0, 0, 0)
-        p.setFont(ui_theme.font(20, QtGui.QFont.DemiBold) if selected else ui_theme.font(20))
+            r = r.adjusted(0, 0, -38, 0) if rtl else r.adjusted(38, 0, 0, 0)
+        p.setFont(ui_theme.font(17, QtGui.QFont.DemiBold) if selected else ui_theme.font(17))
         p.setPen(QtGui.QColor(ui_theme.INK))
         p.drawText(r.adjusted(rw + 12, 0, 0, 0) if rtl else r.adjusted(0, 0, -rw - 12, 0), language.lead() | Qt.AlignVCenter,
                    p.fontMetrics().elidedText(name, Qt.ElideRight, int(r.width() - rw - 12)))
@@ -202,9 +202,9 @@ class Gallery(ui_widgets.Grow, QtWidgets.QWidget):
     deleted = QtCore.Signal(int, int)      # how many went to the Recycle Bin, of how many picked
     TW, TH = 256, 144        # set from the grid's width by _fit_tiles()
     PAD = 12                 # room around a tile to grow into when it's the current one (24 between tiles)
-    TEXT_H = 70              # gap 10, the title 28, gap 2, its meta 20, gap 10
-    ACTIONS_H = 50           # room under each tile for the current one's Play / Share / Trim (42 + 8)
-    HEADER_H = 52            # a day's heading (32), 16 above its captures
+    TEXT_H = 68              # gap 10, the title 26, gap 2, its meta 20, gap 10
+    ACTIONS_H = 44           # room under each tile for the current one's Play / Share / Trim (36 + 8)
+    HEADER_H = 48            # a day's heading (32), 16 above its captures
     FAVORITES = "★  Favorites"
     last_row = -1            # the tile that had the focus before; it settles back as the new one grows
     _row = -1
@@ -219,20 +219,26 @@ class Gallery(ui_widgets.Grow, QtWidgets.QWidget):
         self.grow = 0.0
         self.grow_to(True)
 
+    def _room(self) -> int:
+        """The grid's width for tiles, as if its scroll bar showed: the same whether it does or not, so the
+        columns don't change when the bar comes and goes (that left the first look scattered)."""
+        return self.grid.width() - 2 * self.grid.frameWidth() - self.grid.verticalScrollBar().sizeHint().width() - 6
+
     def _fit_tiles(self):
         """As many columns as fit tiles of about 350 px, sharing the width evenly, so the grid
         fills the page edge to edge. The scroll bar's room is kept either way."""
-        room = self.grid.viewport().width() - 6     # the few px the list keeps at its edges
+        room = self._room()
         cell = room // max(2, round(room / 381))       # spec: 357 wide cards, 24 apart
         if cell - 2 * self.PAD != self.TW:
             self.TW = cell - 2 * self.PAD
             self.TH = round(self.TW * 9 / 16)
             self.tiles.forget()
         self._size_rows(cell, room)
+        self.grid.doItemsLayout()       # new sizes: the list only places its items again when told
 
     def _size_rows(self, cell: int | None = None, room: int | None = None):
         """Tiles all one size; a day's heading as wide as the grid, so its captures start a new line."""
-        room = room if room is not None else self.grid.viewport().width() - 6
+        room = room if room is not None else self._room()
         cell = cell if cell is not None else self.TW + 2 * self.PAD
         tile, head = QtCore.QSize(cell, self.TH + self.PAD + self.TEXT_H + self.ACTIONS_H), QtCore.QSize(max(cell, room - 2), self.HEADER_H)
         for i in range(self.grid.count()):
@@ -408,6 +414,7 @@ class Gallery(ui_widgets.Grow, QtWidgets.QWidget):
         ui_theme.set_on_top(self, True)
         ui_theme.bring_to_front(self)
         self.grid.setFocus()
+        QtCore.QTimer.singleShot(0, self._fit_tiles)     # filled before it showed: lay it out at its real width
 
     @property
     def selecting(self) -> bool:
@@ -538,16 +545,16 @@ class Gallery(ui_widgets.Grow, QtWidgets.QWidget):
             threading.Thread(target=run, daemon=True).start()
 
     def _days(self, items: list[Path]) -> list[tuple[str | None, list[Path]]]:
-        """Newest first, the captures by day (Today, Yesterday, 23 Nov); sorted by size there are no days."""
+        """Newest first, in three groups: Today, This week (the 6 days before), Earlier. Sorted by size there
+        are no groups."""
         if self.by_size:
             return [(None, list(items))]
         groups: list[tuple[str | None, list[Path]]] = []
         today = date.today()
         for p in items:
-            d = datetime.fromtimestamp(self.ctl.modified_of(p)).date()
-            ago = (today - d).days
-            label = (language.tr("Today") if ago <= 0 else language.tr("Yesterday") if ago == 1
-                     else f"{d.day} {language.tr(d.strftime('%b'))}")
+            ago = (today - datetime.fromtimestamp(self.ctl.modified_of(p)).date()).days
+            label = (language.tr("Today") if ago <= 0 else language.tr("This week") if ago < 7
+                     else language.tr("Earlier"))
             if groups and groups[-1][0] == label:
                 groups[-1][1].append(p)
             else:
@@ -905,7 +912,7 @@ class StorageMeter(QtWidgets.QWidget):
             p.drawPixmap(icon.toRect(), ui_theme.icon_pixmap("warning", 20, ui_theme.AMBER))
             head = head.adjusted(0, 0, -28, 0) if language.is_rtl() else head.adjusted(28, 0, 0, 0)
         p.setPen(QtGui.QColor(ui_theme.INK))
-        p.setFont(ui_theme.font(20, QtGui.QFont.DemiBold))
+        p.setFont(ui_theme.font(17, QtGui.QFont.DemiBold))
         p.drawText(head, language.lead() | Qt.AlignVCenter,
                    language.tr("{used} of {limit} GB", used=f"{used:.0f}", limit=f"{limit:.0f}"))
         bar = QtCore.QRectF(inner.left(), inner.top() + 38, inner.width(), 8)
@@ -919,7 +926,7 @@ class StorageMeter(QtWidgets.QWidget):
         p.setBrush(QtGui.QColor(ui_theme.AMBER) if over else QtGui.QColor(255, 255, 255, 102))
         p.drawRoundedRect(fill, 4, 4)
         p.setPen(QtGui.QColor(236, 240, 250, 214))
-        p.setFont(ui_theme.font(15))
+        p.setFont(ui_theme.font(14))
         text = (language.tr("{n} GB over your limit. Delete old clips or raise the limit in Settings.", n=f"{used - limit:.0f}")
                 if over else language.tr("{n} GB left before the limit", n=f"{limit - used:.0f}"))
         p.drawText(QtCore.QRectF(inner.left(), bar.bottom() + 10, inner.width(), inner.bottom() - bar.bottom() - 10),

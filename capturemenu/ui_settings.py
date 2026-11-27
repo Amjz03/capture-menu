@@ -178,7 +178,7 @@ class Settings(QtWidgets.QWidget):
         pl.addWidget(QtWidgets.QLabel(language.tr("What you'll get"), objectName="panelTitle"))
         self.preview = ui_widgets.ClipPreview()
         self.preview.RADIUS = 18
-        self.preview.setFixedHeight(322)
+        self.preview.setFixedHeight(300)
         pl.addWidget(self.preview)
         stats = QtWidgets.QFrame(objectName="details")
         grid = QtWidgets.QGridLayout(stats)
@@ -297,7 +297,7 @@ class Settings(QtWidgets.QWidget):
             b = QtWidgets.QPushButton("  " + name.replace("&", "&&"), objectName="sideTab")
             b.setProperty("name", name)
             b.setIcon(ui_theme.qicon(self.TAB_ICONS.get(title, "settings")))
-            b.setIconSize(QtCore.QSize(24, 24))
+            b.setIconSize(QtCore.QSize(20, 20))
             b.setFocusPolicy(Qt.NoFocus)
             b.setCursor(Qt.PointingHandCursor)
             b.clicked.connect(lambda _=False, h=heading, c=card: self.jump_to(h, c))

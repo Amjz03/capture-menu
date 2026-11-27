@@ -516,8 +516,8 @@ QLabel {{ color: {INK}; background: transparent; }}
 #rule {{ background: rgba(255,255,255,40); }}
 QPushButton {{
     color: {INK}; font-size: 15px; font-weight: 600;
-    background: rgba(255,255,255,26); border: 1px solid rgba(255,255,255,36); border-radius: 26px;
-    padding: 0 24px 0 22px; min-height: 52px; font-size: 18px;
+    background: rgba(255,255,255,26); border: 1px solid rgba(255,255,255,36); border-radius: 23px;
+    padding: 0 20px 0 18px; min-height: 46px; font-size: 16px;
 }}
 QPushButton:hover {{ background: rgba(255,255,255,24); }}
 QPushButton:disabled {{ color: rgba(236,240,250,0.28); border-color: rgba(255,255,255,14); }}
@@ -555,20 +555,20 @@ QPushButton#metaChip:hover {{ background: rgba(255,255,255,18); }}
 #dock {{ background: rgba(16,20,31,204); border: 1px solid rgba(255,255,255,30); border-radius: 28px; }}
 #glassPanel {{ background: rgba(10,13,24,150); border: 1px solid rgba(255,255,255,36); border-radius: 32px; }}
 #trimInfo {{ color: {INK}; font-size: 20px; font-weight: 600; font-family: "Cascadia Mono", Consolas, monospace; }}
-QPushButton#back {{ min-height: 52px; border-radius: 26px; font-size: 17px; }}
-QPushButton#round {{ min-width: 52px; max-width: 52px; min-height: 52px; max-height: 52px; border-radius: 26px; }}
+QPushButton#back {{ min-height: 46px; border-radius: 23px; font-size: 16px; }}
+QPushButton#round {{ min-width: 46px; max-width: 46px; min-height: 46px; max-height: 46px; border-radius: 23px; }}
 #hint {{ font-size: 18px; }}
 #vSub {{ font-size: 17px; }}
 #shareDialog {{ background: rgba(16,20,31,204); border: 1px solid rgba(255,255,255,36); border-radius: 32px; }}
 #optionsBox {{ background: rgba(255,255,255,26); border: none; border-radius: 22px; }}
 #optLine {{ background: transparent; border: none; }}
-#optText {{ color: {INK}; font-size: 18px; font-weight: 600; }}
+#optText {{ color: {INK}; font-size: 16px; font-weight: 600; }}
 QPushButton#link {{ background: transparent; border: 2px solid transparent; border-radius: 14px; min-height: 36px;
     padding: 0 12px; font-size: 17px; font-weight: 400; text-decoration: underline; color: {INK}; }}
 QPushButton#link:hover {{ background: rgba(255,255,255,18); }}
 QPushButton#link:focus {{ border: 2px solid {INK}; padding: 0 12px; }}
 #shareNote {{ color: rgba(236,240,250,0.66); font-size: 17px; }}
-#shareSub {{ color: rgba(236,240,250,0.84); font-size: 20px; }}
+#shareSub {{ color: rgba(236,240,250,0.84); font-size: 17px; }}
 #capsTitle {{ color: rgba(236,240,250,0.66); font-size: 15px; font-weight: 400; letter-spacing: 1px; padding-top: 6px; }}
 """
 
@@ -633,21 +633,21 @@ QListWidget#games {{ font-size: 14px; }}
 QListWidget#grid {{ font-size: 12px; }}
 QListWidget#grid::item {{ border-radius: 12px; padding: 6px; color: {MUTED}; }}
 QListWidget#grid::item:selected {{ background: rgba(255,255,255,24); color: {INK}; }}
-QPushButton#kind {{ min-height: 52px; padding: 0 20px; border-radius: 24px; font-size: 20px; font-weight: 400; }}
-QLineEdit#search {{ min-height: 52px; border-radius: 26px; font-size: 18px; background: rgba(255,255,255,26); border: 1px solid rgba(255,255,255,36); padding: 0 18px; }}
+QPushButton#kind {{ min-height: 44px; padding: 0 18px; border-radius: 22px; font-size: 16px; font-weight: 400; }}
+QLineEdit#search {{ min-height: 44px; border-radius: 22px; font-size: 16px; background: rgba(255,255,255,26); border: 1px solid rgba(255,255,255,36); padding: 0 18px; }}
 #details {{ background: rgba(255,255,255,10); border: 1px solid rgba(255,255,255,20); border-radius: 18px; }}
 #detailTitle {{ color: {INK}; font-size: 17px; font-weight: 600; }}
 #summary {{ color: {INK}; font-size: 15px; padding-top: 6px; }}
 QPushButton#kind[on="true"] {{ background: {INK}; color: {DARK}; border-color: {INK}; font-weight: 600; }}
 #sidePanel {{ background: rgba(255,255,255,8); border: 1px solid rgba(255,255,255,18); border-radius: 26px; }}
-QPushButton#sideTab {{ text-align: left; min-height: 56px; padding: 0 14px; border-radius: 14px; font-size: 20px;
+QPushButton#sideTab {{ text-align: left; min-height: 48px; padding: 0 14px; border-radius: 12px; font-size: 17px;
     background: transparent; border: none; color: {INK}; }}
 QPushButton#sideTab:hover {{ background: rgba(255,255,255,14); }}
 QPushButton#sideTab[on="true"] {{ background: rgba(255,255,255,56); font-weight: 600; }}
-#panelTitle {{ color: {INK}; font-size: 24px; font-weight: 600; }}
-#statName {{ color: rgba(236,240,250,0.84); font-size: 20px; min-height: 60px; }}
-#statValue {{ color: {INK}; font-size: 20px; font-weight: 600; min-height: 60px; }}
-QPushButton#pcChip {{ min-height: 40px; padding: 0 14px 0 12px; border-radius: 16px; font-size: 18px; font-weight: 400;
+#panelTitle {{ color: {INK}; font-size: 21px; font-weight: 600; }}
+#statName {{ color: rgba(236,240,250,0.84); font-size: 17px; min-height: 52px; }}
+#statValue {{ color: {INK}; font-size: 17px; font-weight: 600; min-height: 52px; }}
+QPushButton#pcChip {{ min-height: 36px; padding: 0 12px 0 10px; border-radius: 14px; font-size: 15px; font-weight: 400;
     background: rgba(255,255,255,26); border: none; color: {INK}; }}
 QPushButton[danger="true"] {{ background: #ff6961; color: {DARK}; border: 1px solid #ff6961; }}
 QPushButton[danger="true"]:hover {{ background: #ff7b74; }}
