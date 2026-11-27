@@ -8,13 +8,13 @@ g = windows.game_screen().geometry()
 r = ui_notices.RecIndicator("top-left")
 assert not r.isVisible()
 r.set_recording(True); app.processEvents()
-assert r.isVisible() and r.text() == "REC  00:00" and r.x() == g.left() + 16 and r.y() == g.top() + 16
+assert r.isVisible() and r.text() == "REC  00:00" and r.x() == g.left() + 40 and r.y() == g.top() + 36
 assert r.windowFlags() & QtCore.Qt.WindowTransparentForInput and r.windowFlags() & QtCore.Qt.WindowDoesNotAcceptFocus
 r.sync({"online": True, "recording": True, "record_ms": 754_000}); assert r.text() == "REC  12:34", r.text()
 r.sync({"online": False}); assert r.isVisible(), "OBS hiccup doesn't hide it"
 r.set_recording(False); assert not r.isVisible() and r.started is None
 right = ui_notices.RecIndicator("top-right"); right.set_recording(True); app.processEvents()
-assert right.x() + right.width() == g.right() + 1 - 16, (right.x(), right.width(), g.right())
+assert right.x() + right.width() == g.right() + 1 - 40, (right.x(), right.width(), g.right())
 off = ui_notices.RecIndicator("off"); off.set_recording(True); off.sync({"online": True, "recording": True, "record_ms": 5000})
 assert not off.isVisible()
 # a recording already running when the app starts is picked up from the status poll

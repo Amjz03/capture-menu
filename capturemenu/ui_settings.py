@@ -120,7 +120,7 @@ class Settings(QtWidgets.QWidget):
         outer = QtWidgets.QHBoxLayout(holder)
         outer.setContentsMargins(0, 0, 0, 0)
         column = QtWidgets.QWidget(objectName="rows")
-        column.setMaximumWidth(920)
+        column.setMaximumWidth(830 if self.TABS else 920)    # spec: 820 wide cards (+ room for the focus ring)
         self.rows_layout = QtWidgets.QVBoxLayout(column)
         self.rows_layout.setContentsMargins(0, 0, 12, 0)
         self.rows_layout.setSpacing(0)
@@ -173,17 +173,17 @@ class Settings(QtWidgets.QWidget):
     # ---- what the recording settings add up to, beside the list
     def _build_panel(self):
         pl = QtWidgets.QVBoxLayout(self.panel)
-        pl.setContentsMargins(28, 30, 28, 28)
-        pl.setSpacing(18)
+        pl.setContentsMargins(28, 28, 28, 28)
+        pl.setSpacing(20)
         pl.addWidget(QtWidgets.QLabel(language.tr("What you'll get"), objectName="panelTitle"))
         self.preview = ui_widgets.ClipPreview()
-        self.preview.RADIUS = 16
-        self.preview.setFixedHeight(320)
+        self.preview.RADIUS = 18
+        self.preview.setFixedHeight(322)
         pl.addWidget(self.preview)
         stats = QtWidgets.QFrame(objectName="details")
         grid = QtWidgets.QGridLayout(stats)
-        grid.setContentsMargins(20, 14, 20, 14)
-        grid.setVerticalSpacing(22)
+        grid.setContentsMargins(20, 0, 20, 0)
+        grid.setVerticalSpacing(0)
         self.stat_labels: list[tuple[QtWidgets.QLabel, QtWidgets.QLabel]] = []
         for i in range(3):
             name, value = QtWidgets.QLabel(objectName="statName"), QtWidgets.QLabel(objectName="statValue")
@@ -297,7 +297,7 @@ class Settings(QtWidgets.QWidget):
             b = QtWidgets.QPushButton("  " + name.replace("&", "&&"), objectName="sideTab")
             b.setProperty("name", name)
             b.setIcon(ui_theme.qicon(self.TAB_ICONS.get(title, "settings")))
-            b.setIconSize(QtCore.QSize(22, 22))
+            b.setIconSize(QtCore.QSize(24, 24))
             b.setFocusPolicy(Qt.NoFocus)
             b.setCursor(Qt.PointingHandCursor)
             b.clicked.connect(lambda _=False, h=heading, c=card: self.jump_to(h, c))

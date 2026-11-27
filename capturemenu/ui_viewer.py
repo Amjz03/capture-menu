@@ -254,8 +254,8 @@ class Viewer(QtWidgets.QWidget):
         centre.addWidget(self.share_dialog, 12, Qt.AlignVCenter)
         centre.addStretch(1)
         sl = QtWidgets.QVBoxLayout(self.share_dialog)
-        sl.setContentsMargins(40, 36, 40, 34)
-        sl.setSpacing(10)
+        sl.setContentsMargins(40, 36, 40, 36)     # spec: pad 36, 40; gap 26
+        sl.setSpacing(26)
         top = QtWidgets.QHBoxLayout()
         top.setSpacing(22)
         self.share_thumb = QtWidgets.QLabel()
@@ -272,12 +272,11 @@ class Viewer(QtWidgets.QWidget):
         self.share_close = button(top, "", lambda: self._set_sharing(False), "close", "round")
         top.setAlignment(self.share_close, Qt.AlignVCenter)
         sl.addLayout(top)
-        sl.addSpacing(14)
         sl.addWidget(QtWidgets.QLabel(language.tr("SEND TO"), objectName="capsTitle"))
-        sl.addSpacing(8)
+        sl.addSpacing(-14)
         # where it goes, as big cards; then the choices that apply there
         dests = QtWidgets.QHBoxLayout()
-        dests.setSpacing(16)
+        dests.setSpacing(10)     # the cards keep 5 px each for the ring: 20 between them
         self.dest_cards = {
             "discord": ui_widgets.DestCard("discord", "share", "Discord", "", language.tr("Copied, paste it with Ctrl+V")),
             "apps": ui_widgets.DestCard("apps", "phone", "WhatsApp & apps", language.tr("An MP4 that plays everywhere, full quality"),
@@ -291,11 +290,10 @@ class Viewer(QtWidgets.QWidget):
             c.clicked.connect(lambda _=False, k=c.key: self._choose_dest(k))
             dests.addWidget(c, 1)
         sl.addLayout(dests)
-        sl.addSpacing(18)
         self.dest = "discord"
         self.options_box = QtWidgets.QFrame(objectName="optionsBox")
         share_cards = QtWidgets.QVBoxLayout(self.options_box)
-        share_cards.setContentsMargins(6, 6, 6, 6)
+        share_cards.setContentsMargins(0, 0, 0, 0)
         share_cards.setSpacing(0)
         self.format_card = ui_widgets.OptionCard("file-video", language.tr("Format"),
                                       [("mp4", language.tr("MP4 for phones & apps")), ("copy", language.tr("Original file"))],
@@ -316,16 +314,16 @@ class Viewer(QtWidgets.QWidget):
                                                 [("trim", language.tr("Trim"))],
                                                 language.tr("Cut it shorter before it's sent")).as_row()
         self.trim_first.picked.connect(lambda _: self._trim_from_share())
+        self.voice_card.divider_below = self.size_card.divider_below = True
         for c in (self.format_card, self.voice_card, self.size_card, self.trim_first):
             share_cards.addWidget(c)
         self.format_card.hide()           # the destination says it now: Copy the file is the original
         self.size_card.choices = [(mb, f"{mb} {language.tr('MB')}") for mb in (10, 50, 500)]   # Discord's sizes
         self.format_card.picked.connect(lambda _: self._share_cards_state())
         sl.addWidget(self.options_box)
-        sl.addSpacing(16)
         share_foot = QtWidgets.QHBoxLayout()
         share_foot.addWidget(QtWidgets.QLabel(language.tr("The copy is made in the background, so you can keep playing."),
-                                              objectName="info"))
+                                              objectName="shareNote"))
         share_foot.addStretch()
         sl.addLayout(share_foot)
         lay.addWidget(self.share_panel, 1)
@@ -954,7 +952,7 @@ class Viewer(QtWidgets.QWidget):
             thumb = self.ctl.thumb(path) if video else path
             pm = QtGui.QPixmap(str(thumb)) if thumb else QtGui.QPixmap()
             if not pm.isNull():
-                pm = pm.scaled(self.share_thumb.size(), Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation)
+                pm = ui_theme.rounded_pixmap(thumb, 176, 99, 14)
             self.share_thumb.setPixmap(pm)
             self.dest_cards["discord"].detail = language.tr("Made to fit Discord's size, copied ready to paste")
             self.dest_cards["file"].detail = (language.tr("Full quality, {size}, exactly as it was saved", size=size)

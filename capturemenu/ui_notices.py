@@ -24,7 +24,7 @@ class RecIndicator(QtWidgets.QWidget):
         self.corner = corner
         self.started: float | None = None      # time.monotonic() when the recording began
         self.blink = True
-        self.setFont(ui_theme.font(14, QtGui.QFont.DemiBold))
+        self.setFont(ui_theme.font(18))      # spec: Label 18/24 (Medium: Segoe UI Regular)
         self._tick = QtCore.QTimer(self, interval=1000, timeout=self._on_tick)
 
     def text(self) -> str:
@@ -67,12 +67,13 @@ class RecIndicator(QtWidgets.QWidget):
 
     def _place(self):
         long = self.started is not None and time.monotonic() - self.started >= 3600
-        w = self.fontMetrics().horizontalAdvance("REC  0:00:00" if long else "REC  00:00") + 52  # steady width
-        w += 26 if self.mic_muted is not None else 0
-        self.resize(w, 34)
+        # spec: 40 high, pad 8, 16, 8, 14; dot 12, gap 10, the time, gap 10, mic 18 (steady width)
+        w = 14 + 12 + 10 + self.fontMetrics().horizontalAdvance("REC  0:00:00" if long else "REC  00:00") + 16
+        w += 28 if self.mic_muted is not None else 0
+        self.resize(w, 40)
         g = windows.game_screen().geometry()      # follows the game to the TV and back
-        x = g.left() + 16 if self.corner == "top-left" else g.left() + g.width() - w - 16
-        self.move(x, g.top() + 16)
+        x = g.left() + 40 if self.corner == "top-left" else g.left() + g.width() - w - 40
+        self.move(x, g.top() + 36)
 
     def _on_tick(self):
         self.blink = not self.blink
@@ -83,22 +84,22 @@ class RecIndicator(QtWidgets.QWidget):
         p = QtGui.QPainter(self)
         p.setRenderHint(QtGui.QPainter.Antialiasing)
         r = QtCore.QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
-        p.setPen(QtGui.QPen(QtGui.QColor(255, 255, 255, 26), 1))
-        p.setBrush(QtGui.QColor(24, 29, 44, 215))
-        p.drawRoundedRect(r, r.height() / 2, r.height() / 2)
+        p.setPen(Qt.NoPen)
+        p.setBrush(QtGui.QColor(16, 20, 31, 204))     # surface/glass-strong
+        p.drawRoundedRect(r, 20, 20)
         dot = QtGui.QColor(ui_theme.RED)
         dot.setAlpha(255 if self.blink else 110)   # a slow pulse, so it reads as live
         p.setPen(Qt.NoPen)
         if self.blink:     # a soft red halo while the dot is lit
             p.setBrush(QtGui.QColor(255, 69, 58, 60))
-            p.drawEllipse(QtCore.QPointF(18, r.center().y()), 9, 9)
+            p.drawEllipse(QtCore.QPointF(20, r.center().y()), 10, 10)
         p.setBrush(dot)
-        p.drawEllipse(QtCore.QPointF(18, r.center().y()), 5.5, 5.5)
+        p.drawEllipse(QtCore.QPointF(20, r.center().y()), 6, 6)
         p.setPen(QtGui.QColor(ui_theme.INK))
-        p.drawText(r.adjusted(32, 0, -12, 0), Qt.AlignLeft | Qt.AlignVCenter, self.text())
+        p.drawText(r.adjusted(36, 0, -12, 0), Qt.AlignLeft | Qt.AlignVCenter, self.text())
         if self.mic_muted is not None:      # is your voice going in
             icon = ("mic-off", ui_theme.RED) if self.mic_muted else ("mic", ui_theme.GREEN)
-            p.drawPixmap(QtCore.QPointF(r.right() - 30, r.center().y() - 9), ui_theme.icon_pixmap(icon[0], 18, icon[1]))
+            p.drawPixmap(QtCore.QPointF(r.right() - 16 - 18, r.center().y() - 9), ui_theme.icon_pixmap(icon[0], 18, icon[1]))
 
 
 class Toast(QtWidgets.QWidget):
@@ -125,7 +126,7 @@ class Toast(QtWidgets.QWidget):
         self.trim_btn.hide()
         self.unsetCursor()
         self.thumb.setPixmap(ui_theme.rounded_pixmap(media.make_thumb(Path(path), self.thumbs_dir or Path(path).parent),
-                                            128, 72, 11))
+                                            176, 99, 14))
         self.thumb.show()
         self.title.setText(language.tr("Ready to share"))
         self.sub.setText(detail.replace(" · ", "  ·  "))
@@ -147,35 +148,35 @@ class Toast(QtWidgets.QWidget):
         self._frame()
         outer.addWidget(self.box)
         lay = QtWidgets.QHBoxLayout(self.box)
-        lay.setContentsMargins(12, 12, 20, 12)
+        lay.setContentsMargins(16, 16, 20, 16)      # spec: pad 16, 20, 16, 16; gap 16
         lay.setSpacing(16)
         self.thumb = QtWidgets.QLabel()
         lay.addWidget(self.thumb)
         col = QtWidgets.QVBoxLayout()
         col.setSpacing(2)
+        self.col = col
         self.title = QtWidgets.QLabel()
-        self.title.setFont(ui_theme.font(16, QtGui.QFont.DemiBold))
+        self.title.setFont(ui_theme.font(20, QtGui.QFont.DemiBold))
         self.title.setStyleSheet(f"color: {ui_theme.INK};")
         self.title.setTextFormat(Qt.RichText)
         self.sub = QtWidgets.QLabel()
-        self.sub.setFont(ui_theme.font(14))
-        self.sub.setStyleSheet(f"color: {ui_theme.MUTED};")
+        self.sub.setFont(ui_theme.font(17))
+        self.sub.setStyleSheet("color: rgba(236,240,250,0.84);")
         self.hint = QtWidgets.QLabel()
         self.hint.setTextFormat(Qt.RichText)
-        self.hint.setFont(ui_theme.font(13))
+        self.hint.setFont(ui_theme.font(17))
         self.hint.setStyleSheet(f"color: {ui_theme.MUTED};")
         col.addStretch()
         for w in (self.title, self.sub, self.hint):
-            w.setMaximumWidth(380)
-            w.setWordWrap(True)          # long notices wrap instead of being cut off
-            col.addWidget(w)
+            w.setWordWrap(True)          # long notices wrap instead of being cut off (_present sets the width)
+            col.addWidget(w, 0, language.lead())     # the words start where the line starts, not centred
         # a capture's notice: View, Trim and Share under its name
         self.actions = QtWidgets.QWidget()
         acts = QtWidgets.QHBoxLayout(self.actions)
         acts.setContentsMargins(0, 8, 0, 0)
         acts.setSpacing(8)
-        style = (f"QPushButton {{ background: rgba(255,255,255,22); color: {ui_theme.INK}; border: none; border-radius: 17px;"
-                 f" padding: 0 14px; min-height: 34px; font-size: 14px; font-weight: 600; }}"
+        style = (f"QPushButton {{ background: rgba(255,255,255,41); color: {ui_theme.INK}; border: none; border-radius: 18px;"
+                 f" padding: 0 14px 0 10px; min-height: 38px; font-size: 17px; font-weight: 400; }}"
                  f"QPushButton:hover {{ background: rgba(255,255,255,44); }}")
         self.view_btn, self.trim_btn, self.share_btn = (
             QtWidgets.QPushButton(" " + language.tr(text)) for text in ("View", "Trim", "Share"))
@@ -191,10 +192,14 @@ class Toast(QtWidgets.QWidget):
         col.addWidget(self.actions)
         self.actions.hide()
         col.addStretch()
-        lay.addLayout(col)
+        lay.addLayout(col, 1)      # the words take the room the 640 px leave; buttons stay at the end
         self.fix_btn = QtWidgets.QPushButton()      # an error's own way out: "Start OBS"
         self.fix_btn.setCursor(Qt.PointingHandCursor)
-        self.fix_btn.setStyleSheet(style.replace("min-height: 34px", "min-height: 44px").replace("17px", "22px"))
+        self.fix_btn.setStyleSheet(   # spec: h52, surface/tile, a subtle edge, r26, Label 18
+            f"QPushButton {{ background: rgba(255,255,255,26); color: {ui_theme.INK}; border: 1px solid rgba(255,255,255,36);"
+            f" border-radius: 26px; padding: 0 24px 0 22px; min-height: 52px; font-size: 18px; }}"
+            f"QPushButton:hover {{ background: rgba(255,255,255,44); }}")
+        self.fix_btn.setIconSize(QtCore.QSize(22, 22))
         self.fix_btn.setIcon(ui_theme.qicon("external"))
         self.fix_btn.clicked.connect(self._run_fix)
         lay.addWidget(self.fix_btn, 0, Qt.AlignVCenter)
@@ -212,30 +217,32 @@ class Toast(QtWidgets.QWidget):
         self._fade.setEasingCurve(QtCore.QEasingCurve.OutCubic)
         self._fade.finished.connect(lambda: self.hide() if self.windowOpacity() < 0.05 else None)
 
-    def _frame(self, border: str = "rgba(255,255,255,22)"):
+    def _frame(self, border: str = "rgba(255,255,255,36)", width: float = 1):
         """The notice's card; an error has an amber edge."""
         self.box.setStyleSheet(
-            f"#toastBox {{ background: {ui_theme.PANEL}; border-radius: 18px; border: 1px solid {border}; }}"
+            f"#toastBox {{ background: rgba(16,20,31,204); border-radius: 22px; border: {width}px solid {border}; }}"
             f"QLabel {{ background: transparent; border: none; }}")
 
     def _badge(self, icon: str | None, color: str, spin: bool = False) -> QtGui.QPixmap:
-        """The round mark on the left of a notice without a picture: a warning, or the saving ring."""
-        dpr = 2.0
-        pm = QtGui.QPixmap(int(44 * dpr), int(44 * dpr))
+        """The round mark on the left of a notice without a picture: a warning in a 52 px circle,
+        or the 44 px saving ring (spec)."""
+        dpr, size = 2.0, 44 if spin else 52
+        pm = QtGui.QPixmap(int(size * dpr), int(size * dpr))
         pm.setDevicePixelRatio(dpr)
         pm.fill(Qt.transparent)
         p = QtGui.QPainter(pm)
         p.setRenderHint(QtGui.QPainter.Antialiasing)
-        p.setPen(Qt.NoPen)
-        p.setBrush(QtGui.QColor(255, 255, 255, 22))
-        p.drawEllipse(QtCore.QRectF(0, 0, 44, 44))
-        if spin:
-            p.setPen(QtGui.QPen(QtGui.QColor(255, 255, 255, 50), 3))
-            p.drawEllipse(QtCore.QRectF(11, 11, 22, 22))
-            p.setPen(QtGui.QPen(QtGui.QColor(ui_theme.INK), 3, Qt.SolidLine, Qt.RoundCap))
-            p.drawArc(QtCore.QRectF(11, 11, 22, 22), int(-self._spin * 16), 100 * 16)
-        elif icon:
-            p.drawPixmap(QtCore.QRectF(11, 11, 22, 22).toRect(), ui_theme.icon_pixmap(icon, 22, color))
+        if spin:      # track surface/tile-strong, the arc surface/focus
+            p.setPen(QtGui.QPen(QtGui.QColor(255, 255, 255, 41), 4))
+            p.drawEllipse(QtCore.QRectF(4, 4, 36, 36))
+            p.setPen(QtGui.QPen(QtGui.QColor(ui_theme.INK), 4, Qt.SolidLine, Qt.RoundCap))
+            p.drawArc(QtCore.QRectF(4, 4, 36, 36), int(-self._spin * 16), 100 * 16)
+        else:
+            p.setPen(Qt.NoPen)
+            p.setBrush(QtGui.QColor(255, 255, 255, 26))
+            p.drawEllipse(QtCore.QRectF(0, 0, 52, 52))
+            if icon:
+                p.drawPixmap(QtCore.QRectF(13, 13, 26, 26).toRect(), ui_theme.icon_pixmap(icon, 26, color))
         p.end()
         return pm
 
@@ -295,7 +302,7 @@ class Toast(QtWidgets.QWidget):
         if kind == "Clip" and catalog.capture_kind(capture) == "Trimmed clip":
             kind = "Trimmed"
         thumb = media.make_thumb(capture, self.thumbs_dir or capture.parents[1] / ".thumbs")
-        self.thumb.setPixmap(ui_theme.rounded_pixmap(thumb, 128, 72, 11))
+        self.thumb.setPixmap(ui_theme.rounded_pixmap(thumb, 176, 99, 14))
         self.thumb.show()
         self.title.setText(language.tr(self.TITLES.get(kind, "Saved")) if self._burst == 1
                            else language.tr("{n} captures saved", n=self._burst))
@@ -349,7 +356,7 @@ class Toast(QtWidgets.QWidget):
         if kind == "error":          # a warning sign and an amber edge; and its fix, when there is one
             self.thumb.setPixmap(self._badge("warning", ui_theme.AMBER))
             self.thumb.show()
-            self._frame("rgba(255,179,64,150)")
+            self._frame(ui_theme.AMBER, 1.5)
             fix = next(((label, fn) for words, label, fn in self.fixes if words.casefold() in text.casefold()), None)
             if fix:
                 self.fix_btn.setText(language.tr(fix[0]))
@@ -366,21 +373,24 @@ class Toast(QtWidgets.QWidget):
         self._present(self.ERROR_MS if kind == "error" else 3500)
 
     def _present(self, ms: int):
-        # each line gets its natural width and wraps only past 380 px (Qt would wrap far earlier)
+        # each line gets its natural width and wraps only past the room a 640 wide notice leaves it
+        pic = self.thumb.pixmap().deviceIndependentSize().width() if not self.thumb.isHidden() else 0
+        room = int(640 - 16 - 20 - 4 - (pic + 16 if pic else 0)     # (4: the card's edge, both sides)
+                   - (self.fix_btn.sizeHint().width() + 16 if not self.fix_btn.isHidden() else 0))
         for w in (self.title, self.sub, self.hint):
             w.setWordWrap(False)
             natural = w.sizeHint().width()
             w.setWordWrap(True)
-            w.setFixedWidth(min(natural, 380))
+            w.setFixedWidth(min(natural, room))
         # shrink back after a bigger notice (one with a thumbnail) was shown before
         for lay in (self.box.layout(), self.layout()):
             lay.invalidate()
             lay.activate()
-        self.resize(self.sizeHint())
+        self.resize(640, self.sizeHint().height())     # spec: every notice 640 wide
         page_open = any(w.isVisible() for w in QtWidgets.QApplication.topLevelWidgets()
                         if w.property("captureMenuPage"))
         g = (windows.ui_screen() if page_open else windows.game_screen()).geometry()   # beside the page in use
-        x, y = g.right() - self.width() - 28, g.top() + 28
+        x, y = g.right() - self.width() - 40, g.top() + 36      # spec: 40 from the right, 36 from the top
         side = next((w.geometry() for w in QtWidgets.QApplication.topLevelWidgets() if w.isVisible()
                      and w.property("captureMenuPage") in ("settings", "welcome")), None)
         if side is not None and side.intersects(QtCore.QRect(x, y, self.width(), self.height())):

@@ -17,8 +17,8 @@ from . import capture_controller, catalog, input_devices, language, obs_client, 
 class Menu(QtWidgets.QWidget):
     """The Create bar: docks along the bottom of the screen so the game stays in view."""
 
-    BAR_H = 324
-    PICK_H = 448            # Save recent: the lengths under a strip of the last minutes
+    BAR_H = 362             # spec: header 40, gap 28, tiles 174, gap 28, hints 24, 40 to the edge
+    PICK_H = 386            # Save recent: a 354 high glass panel (spec), 32 above the screen's edge
     HEADROOM = 90           # fade above the bar
     SHIFT_STEP = 10         # seconds a clip moves earlier or later per press
 
@@ -48,12 +48,15 @@ class Menu(QtWidgets.QWidget):
 
         self.bar = QtWidgets.QWidget(self)
         lay = QtWidgets.QVBoxLayout(self.bar)
-        lay.setContentsMargins(64, 26, 64, 22)
-        lay.setSpacing(18)
+        # the tiles keep 12 px round them to grow into, so the bar's edge is 18 px further out than the
+        # spec's 72 and the gaps are 12 px smaller; the header and hints are brought back in line
+        lay.setContentsMargins(54, 24, 54, 40)
+        lay.setSpacing(16)
 
         # header: which game and what the replay buffer holds
         head = QtWidgets.QHBoxLayout()
-        head.setSpacing(18)
+        head.setContentsMargins(18, 0, 18, 0)
+        head.setSpacing(20)
         self.game_label = QtWidgets.QLabel(objectName="game")
         self.status = QtWidgets.QLabel(objectName="status")
         self.status.setTextFormat(Qt.RichText)
@@ -75,7 +78,9 @@ class Menu(QtWidgets.QWidget):
         self.update_btn.hide()
         head.addWidget(self.update_btn, 0, Qt.AlignBaseline)
         head.addStretch()
-        lay.addLayout(head)
+        self.head_w = QtWidgets.QWidget()       # hidden while choosing a length: the panel has its own title
+        self.head_w.setLayout(head)
+        lay.addWidget(self.head_w)
 
         # main row: actions, then recent captures
         self.main_row = QtWidgets.QWidget()
@@ -124,10 +129,10 @@ class Menu(QtWidgets.QWidget):
         self.picker = QtWidgets.QWidget()
         pl = QtWidgets.QVBoxLayout(self.picker)
         pl.setContentsMargins(0, 0, 0, 0)
-        pl.setSpacing(12)
+        pl.setSpacing(0)
         top = QtWidgets.QHBoxLayout()
         top.setSpacing(14)
-        top.addWidget(ui_widgets.back_button(self.close_picker), 0, Qt.AlignVCenter)
+        # (no Back here: ◯ / Esc, or a click outside the panel, go back)
         self.pick_caption = QtWidgets.QLabel(objectName="caption")
         self.pick_caption.setTextFormat(Qt.RichText)
         top.addWidget(self.pick_caption, 0, Qt.AlignVCenter)
@@ -140,7 +145,7 @@ class Menu(QtWidgets.QWidget):
         self.strip.moved.connect(self._move_to)
         pl.addWidget(self.strip)
         chips = QtWidgets.QHBoxLayout()
-        chips.setSpacing(4)
+        chips.setSpacing(0)         # the chips keep 5 px each to grow into: 10 between them (spec)
         self.chips: list[ui_widgets.Chip] = []
         for sec in self.options:
             c = ui_widgets.Chip(ui_widgets.chip_label(sec))
@@ -152,6 +157,7 @@ class Menu(QtWidgets.QWidget):
         self.save_chip = ui_widgets.Chip("Save clip")
         self.save_chip.clicked.connect(lambda: self._save(self.pick_len))
         chips.addWidget(self.save_chip)
+        pl.addSpacing(13)          # 18 under the times (the chips keep 5 px to grow into)
         pl.addLayout(chips)
         self.picker.hide()
         lay.addWidget(self.picker)
@@ -166,6 +172,8 @@ class Menu(QtWidgets.QWidget):
 
         # footer: button prompts on the left, details of the focused capture on the right
         foot = QtWidgets.QHBoxLayout()
+        foot.setContentsMargins(18, 0, 18, 0)
+        self._foot = foot
         self.hints = ui_widgets.HintBar()
         foot.addWidget(self.hints)
         foot.addStretch()
@@ -212,11 +220,11 @@ class Menu(QtWidgets.QWidget):
         h = self.PICK_H if self.picking else self.BAR_H
         self._rise.stop()
         self.bar.setGeometry(0, self.height() - h, self.width(), h)
-        if self.picking:
-            room_h = self.bar.y() - 48 - 28
-            pw = int(min(self.width() - 128, room_h * 16 / 9, 1180))
+        if self.picking:      # spec: 1024 x 576, 56 from the top, 62 above the panel
+            room_h = self.bar.y() - 56 - 62
+            pw = int(min(self.width() - 128, room_h * 16 / 9, 1024))
             ph = int(pw * 9 / 16)
-            self.preview.setGeometry((self.width() - pw) // 2, max(24, 48 + (room_h - ph) // 2), pw, ph)
+            self.preview.setGeometry((self.width() - pw) // 2, max(24, 56 + (room_h - ph) // 2), pw, ph)
         self.preview.setVisible(self.picking and self.preview.height() > 120)
         self.update()
 
@@ -316,6 +324,10 @@ class Menu(QtWidgets.QWidget):
         self.picking = on
         self.main_row.setVisible(not on)
         self.picker.setVisible(on)
+        self.head_w.setVisible(not on)
+        # choosing a length: everything sits in a glass panel 48 in from the sides, 32 above the edge, pad 26, 32
+        self.bar.layout().setContentsMargins(*((81, 26, 81, 56) if on else (54, 24, 54, 40)))
+        self._foot.setContentsMargins(*((0, 0, 0, 0) if on else (18, 0, 18, 0)))
         if changed:
             self._fit_window()
         self._place()
@@ -406,13 +418,16 @@ class Menu(QtWidgets.QWidget):
         length = end - start
         label = ui_widgets.chip_label(self.pick_len) if self.pick_len else language.clock(int(length * 1000))
         self.strip.set_state(span, self._pick_now - self._held_s(), (start, end), label)
-        parts = [f"<b>{language.tr('Last {length}', length=ui_widgets.chip_label(self.pick_len)) if self.pick_len else ui_widgets.chip_label(None)}</b>"]
+        first = (language.tr('Last {length}', length=ui_widgets.chip_label(self.pick_len)) if self.pick_len
+                 else ui_widgets.chip_label(None))
+        parts = []
         if self.pick_shift:
             parts.append(language.tr("ends {time} ago", time=language.clock(self.pick_shift * 1000)))
         mb = self._mb_per_minute()
         if mb:
             parts.append(language.tr("about {size}", size=catalog.human_size(mb * length / 60 * 1024 * 1024)))
-        self.pick_summary.setText(f'<span style="color:{ui_theme.MUTED}; font-weight:400">'
+        # spec: the length as a 24 px heading, then the rest at 18 px
+        self.pick_summary.setText(f'{first}&nbsp;&nbsp;&nbsp;<span style="color:{ui_theme.MUTED}; font-size:18px; font-weight:400">'
                                   + "&nbsp;&nbsp;·&nbsp;&nbsp;".join(parts) + "</span>")
         self.preview.tag = language.tr("Clip starts {time} ago", time=language.clock(int((self._pick_now - start) * 1000)))
         if self._shown_start is None or abs(start - self._shown_start) > 2:    # a new start: a new picture
@@ -452,7 +467,8 @@ class Menu(QtWidgets.QWidget):
         else:
             held = f"{language.clock(min(b['held_ms'], b['max_ms']))} / {language.clock(b['max_ms'])}"
         self.pick_caption.setText(f'{language.tr("Save recent gameplay")}&nbsp;&nbsp;&nbsp;'
-                                  f'<span style="color:{ui_theme.MUTED}; font-weight:400">{held}</span>')
+                                  f'<span style="color:{ui_theme.MUTED}; font-size:18px; font-weight:400">'
+                                  f'{self.game.replace("&", "&amp;").replace("<", "&lt;")} · {held}</span>')
         for sec, chip in zip(self.options, self.chips):
             chip.dimmed = (sec is not None and b["held_ms"] is not None
                            and sec * 1000 > b["held_ms"] + 500)
@@ -600,8 +616,13 @@ class Menu(QtWidgets.QWidget):
     # ---- painting and input
     def paintEvent(self, _):
         p = QtGui.QPainter(self)
-        if self.picking:     # the game dims behind the picture of the clip
-            p.fillRect(QtCore.QRect(0, 0, self.width(), self.bar.y()), QtGui.QColor(*ui_theme.NIGHT, 150))
+        if self.picking:     # the game dims behind the picture of the clip (overlay/scrim), the panel is glass
+            p.fillRect(self.rect(), QtGui.QColor(4, 6, 12, 158))
+            p.setRenderHint(QtGui.QPainter.Antialiasing)
+            p.setPen(QtGui.QPen(QtGui.QColor(255, 255, 255, 36), 1))
+            p.setBrush(QtGui.QColor(10, 13, 24, 140))
+            p.drawRoundedRect(QtCore.QRectF(48.5, self.bar.y() + 0.5, self.width() - 97, self.PICK_H - 33), 32, 32)
+            return
         top = max(0, self.bar.y() - self.HEADROOM)
         grad = QtGui.QLinearGradient(0, top, 0, self.height())
         span = max(1, self.height() - top)

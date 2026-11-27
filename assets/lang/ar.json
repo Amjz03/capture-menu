@@ -529,5 +529,7 @@
   "Audio": "الصوت",
   "Folder": "المجلد",
   "Player": "المشغّل",
-  "Press again": "اضغط مرة ثانية"
+  "Press again": "اضغط مرة ثانية",
+  "Search titles, notes, games": "ابحث في العناوين والملاحظات والألعاب",
+  "{n} GB over your limit. Delete old clips or raise the limit in Settings.": "تعديت الحد بـ {n} GB. احذف مقاطع قديمة أو ارفع الحد من الإعدادات."
 }
