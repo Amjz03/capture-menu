@@ -175,7 +175,7 @@ class Toast(QtWidgets.QWidget):
         acts = QtWidgets.QHBoxLayout(self.actions)
         acts.setContentsMargins(0, 8, 0, 0)
         acts.setSpacing(8)
-        style = (f"QPushButton {{ background: rgba(255,255,255,41); color: {ui_theme.INK}; border: none; border-radius: 18px;"
+        style = (f"QPushButton {{ font-family: {ui_theme.FONT}; background: rgba(255,255,255,41); color: {ui_theme.INK}; border: none; border-radius: 18px;"
                  f" padding: 0 14px 0 10px; min-height: 38px; font-size: 17px; font-weight: 400; }}"
                  f"QPushButton:hover {{ background: rgba(255,255,255,44); }}")
         self.view_btn, self.trim_btn, self.share_btn = (
@@ -196,7 +196,7 @@ class Toast(QtWidgets.QWidget):
         self.fix_btn = QtWidgets.QPushButton()      # an error's own way out: "Start OBS"
         self.fix_btn.setCursor(Qt.PointingHandCursor)
         self.fix_btn.setStyleSheet(   # spec: h52, surface/tile, a subtle edge, r26, Label 18
-            f"QPushButton {{ background: rgba(255,255,255,26); color: {ui_theme.INK}; border: 1px solid rgba(255,255,255,36);"
+            f"QPushButton {{ font-family: {ui_theme.FONT}; background: rgba(255,255,255,26); color: {ui_theme.INK}; border: 1px solid rgba(255,255,255,36);"
             f" border-radius: 26px; padding: 0 24px 0 22px; min-height: 52px; font-size: 18px; }}"
             f"QPushButton:hover {{ background: rgba(255,255,255,44); }}")
         self.fix_btn.setIconSize(QtCore.QSize(22, 22))

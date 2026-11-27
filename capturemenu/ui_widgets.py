@@ -219,9 +219,12 @@ class ActionCard(Card):
         # spec: Label 18/24, the focused one Body strong 20/28; the second line Caption 15/20
         text_r = QtCore.QRectF(0, self.tile().bottom() + 12, self.width(), 28)
         p.setPen(QtGui.QColor(ui_theme.INK))
-        p.setFont(ui_theme.font(20, QtGui.QFont.DemiBold) if focused else ui_theme.font(18))
-        p.drawText(text_r, Qt.AlignHCenter | Qt.AlignVCenter,
-                   p.fontMetrics().elidedText(language.tr(self.label), Qt.ElideRight, self.width()))
+        name = language.tr(self.label)
+        for px in ((20, 18, 16, 15) if focused else (18, 16, 15)):   # a long name (Arabic often) gets smaller first
+            p.setFont(ui_theme.font(px, QtGui.QFont.DemiBold) if focused else ui_theme.font(px))
+            if p.fontMetrics().horizontalAdvance(name) <= self.width() - 4:
+                break
+        p.drawText(text_r, Qt.AlignHCenter | Qt.AlignVCenter, p.fontMetrics().elidedText(name, Qt.ElideRight, self.width()))
         if self.hint:
             color = ui_theme.BLUE if self.badge else self.hint_color
             p.setPen(QtGui.QColor(color) if color else QtGui.QColor(236, 240, 250, 214))
@@ -991,7 +994,9 @@ class OptionCard(QtWidgets.QAbstractButton):
         icon = ui_theme.mirror(self, QtCore.QRectF(24, self.height() / 2 - 13, 26, 26))
         p.drawPixmap(icon.toRect(), ui_theme.icon_pixmap(self.icon_name, 26))
         segs = self._segments()
-        room = (min(s.left() for s in segs) - 4 if segs else self.width()) - 66 - 16
+        # the words get what the choices leave (the choices sit at the line's end, on the left in Arabic)
+        span = (max(s.right() for s in segs) - min(s.left() for s in segs) + 8 + (32 if len(segs) == 1 else 0)) if segs else 0
+        room = self.width() - 66 - 16 - 16 - span
         p.setPen(QtGui.QColor(ui_theme.INK))
         p.setFont(ui_theme.font(20, QtGui.QFont.DemiBold))
         flags = Qt.AlignLeft | Qt.AlignVCenter
@@ -1009,15 +1014,17 @@ class OptionCard(QtWidgets.QAbstractButton):
             p.drawRoundedRect(box, 26, 26)
         for i, seg in enumerate(segs):
             if len(segs) == 1:      # one choice is a button (Trim): h52, r26, its icon and an 18 px label
-                b = seg.adjusted(-30, -2, 2, 2)
+                rtl = language.is_rtl()       # the icon leads, on the right in Arabic; the button grows inward
+                b = seg.adjusted(-2, -2, 30, 2) if rtl else seg.adjusted(-30, -2, 2, 2)
                 p.setPen(QtGui.QPen(QtGui.QColor(255, 255, 255, 36), 1))
                 p.setBrush(QtGui.QColor(255, 255, 255, 26))
                 p.drawRoundedRect(b, 26, 26)
-                p.drawPixmap(QtCore.QRectF(b.left() + 22, b.center().y() - 11, 22, 22).toRect(),
+                icon_x = b.right() - 22 - 22 if rtl else b.left() + 22
+                p.drawPixmap(QtCore.QRectF(icon_x, b.center().y() - 11, 22, 22).toRect(),
                              ui_theme.icon_pixmap(self.icon_name, 22))
                 p.setPen(QtGui.QColor(ui_theme.INK))
                 p.setFont(ui_theme.font(18))
-                p.drawText(seg.adjusted(14, 0, 0, 0), Qt.AlignCenter, self.choices[i][1])
+                p.drawText(seg.adjusted(0, 0, -14, 0) if rtl else seg.adjusted(14, 0, 0, 0), Qt.AlignCenter, self.choices[i][1])
                 continue
             if i == self.index:
                 p.setPen(Qt.NoPen)

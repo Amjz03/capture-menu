@@ -134,13 +134,19 @@ class TileDelegate(QtWidgets.QStyledItemDelegate):
             p.setPen(Qt.NoPen)
             p.setBrush(QtGui.QColor(255, 255, 255, 41))
             p.drawRoundedRect(chip, 20, 20)
-            gx = chip.left() + 14
+            # the button prompt, the icon, then the word; from the right in Arabic
+            rtl, cy = language.is_rtl(), chip.center().y()
+            gw = ui_theme.glyph_width(token, mode) if token else 0
+            gx = chip.right() - 14 - gw if rtl else chip.left() + 14
             if token:
-                gx += ui_theme.draw_glyph(p, gx, chip.center().y(), token, mode) + 8
-            p.drawPixmap(QtCore.QRectF(gx, chip.center().y() - 9, 18, 18).toRect(), ui_theme.icon_pixmap(icon, 18))
+                ui_theme.draw_glyph(p, gx, cy, token, mode)
+            ix = (gx - (8 if token else 0) - 18) if rtl else (gx + (gw + 8 if token else 0))
+            p.drawPixmap(QtCore.QRectF(ix, cy - 9, 18, 18).toRect(), ui_theme.icon_pixmap(icon, 18))
             p.setFont(ui_theme.font(17))
             p.setPen(QtGui.QColor(ui_theme.INK))
-            p.drawText(QtCore.QRectF(gx + 26, chip.top(), w, chip.height()), Qt.AlignVCenter | Qt.AlignLeft, language.tr(label))
+            words = (QtCore.QRectF(chip.left(), chip.top(), ix - 8 - chip.left(), chip.height()) if rtl
+                     else QtCore.QRectF(ix + 26, chip.top(), chip.right() - ix - 26, chip.height()))
+            p.drawText(words, Qt.AlignVCenter | (Qt.AlignRight | Qt.AlignAbsolute if rtl else Qt.AlignLeft), language.tr(label))
             out.append((chip.translated(-cell.left(), -cell.top()), action))
             x += w + 8
         return out
