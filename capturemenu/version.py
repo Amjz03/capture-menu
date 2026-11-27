@@ -6,7 +6,7 @@ from __future__ import annotations
 
 # ---------------------------------------------------------------- updates (only when asked)
 
-APP_VERSION = "0.0.46"     # the release workflow stamps this from the version being released
+APP_VERSION = "0.0.47"     # the release workflow stamps this from the version being released
 
 
 REPO = "Amjz03/capture-menu"

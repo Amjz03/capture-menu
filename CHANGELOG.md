@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.0.47 · 2026-11-27
+
+- **Settings says plainly where the last minutes are kept:** on your drive, not in RAM ("Last 30 min, on your drive (not RAM)"). In Arabic it says storage and RAM by name.
 ## 0.0.46 · 2026-11-27
 
 - **Sending to your phone is much quicker.** The QR code shows in about 2 seconds, and the phone downloads the video while it's being made instead of waiting for all of it. A 15-minute 1440p clip reaches the phone in about 3 to 4 minutes (it took about 15).
