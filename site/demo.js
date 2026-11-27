@@ -11,11 +11,11 @@ const DEMO = (() => {
       mic_on: "Mic on", mic_off: "Mic off", all: "All captures", settings: "Settings",
       move: "Move", select: "Select", instantly: "Save instantly", trim_latest: "Trim latest", close: "Close",
       view_latest: "View latest", choose: "Choose", save_k: "Save", pick: "Pick", back: "Back",
-      caption: "Save recent gameplay", full: "Full video", last_s: "Last {n}s", last_m: "Last {n}m",
+      caption: "Save recent gameplay", full: "Everything", last_s: "{n} sec", last_m: "{n} min", again: "Click again to save", on: "On", off: "Off", mic: "Mic", save_clip: "Save clip",
       clip_saved: "Clip saved", shot_saved: "Screenshot saved", rec_saved: "Recording saved",
       last: "Last {l}", length: "Length {l}", everything: "Everything · {l}",
       sec: "{n} sec", min: "{n} min", one_min: "1 minute",
-      to_view: "{open}&nbsp; then &nbsp;{view}&nbsp; to view", trim: "Trim",
+      to_view: "{open}&nbsp; then &nbsp;{view}&nbsp; to view", trim: "Trim", view: "View", share: "Share",
       rec_started: "Recording started · open the menu and choose Stop to finish",
       mic_msg_off: "Mic off · your voice won't be recorded", mic_msg_on: "Mic on · your voice is recorded",
       clip: "Clip", clip_len: "Clip · {l}", screenshot: "Screenshot", recording_kind: "Recording",
@@ -27,11 +27,11 @@ const DEMO = (() => {
       mic_on: "المايك يعمل", mic_off: "المايك مغلق", all: "كل المقاطع واللقطات", settings: "الإعدادات",
       move: "تنقّل", select: "اختيار", instantly: "حفظ فوري", trim_latest: "قص الأخير", close: "إغلاق",
       view_latest: "عرض الأخير", choose: "اختيار", save_k: "حفظ", pick: "اختيار سريع", back: "رجوع",
-      caption: "حفظ اللعب الأخير", full: "الفيديو كاملًا", last_s: "آخر {n} ث", last_m: "آخر {n} د",
+      caption: "حفظ اللعب الأخير", full: "كل اللعب المسجّل", last_s: "{n} ثانية", last_m: "{n} دقيقة", again: "اضغط مرة ثانية للحفظ", on: "يعمل", off: "مغلق", mic: "المايك", save_clip: "حفظ المقطع",
       clip_saved: "حُفظ المقطع", shot_saved: "حُفظت لقطة الشاشة", rec_saved: "حُفظ التسجيل",
       last: "آخر {l}", length: "المدة {l}", everything: "كل اللعب المسجّل · {l}",
       sec: "{n} ثانية", min: "{n} دقيقة", one_min: "دقيقة واحدة",
-      to_view: "{open}&nbsp; ثم &nbsp;{view}&nbsp; للعرض", trim: "قص",
+      to_view: "{open}&nbsp; ثم &nbsp;{view}&nbsp; للعرض", trim: "قص", view: "عرض", share: "مشاركة",
       rec_started: "بدأ التسجيل · افتح القائمة واختر «إيقاف» لإنهائه",
       mic_msg_off: "المايك مغلق · لن يُسجَّل صوتك", mic_msg_on: "المايك يعمل · صوتك يُسجَّل",
       clip: "مقطع", clip_len: "مقطع · {l}", screenshot: "لقطة شاشة", recording_kind: "تسجيل",
@@ -52,6 +52,8 @@ const DEMO = (() => {
     settings: '<path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/>',
     left: '<path d="m15 18-6-6 6-6"/>', right: '<path d="m9 18 6-6-6-6"/>',
     scissors: '<circle cx="6" cy="6" r="3"/><path d="M8.12 8.12 12 12"/><path d="M20 4 8.12 15.88"/><circle cx="6" cy="18" r="3"/><path d="M14.8 14.8 20 20"/>',
+    play: '<path d="M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z"/>',
+    share: '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/>',
     image: '<rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>',
   };
   const svg = (name, px) => `<svg width="${px}" height="${px}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICON[name]}</svg>`;
@@ -64,8 +66,8 @@ const DEMO = (() => {
   };
   const g = (ch) => `<span class="g">${ch}</span>`;
 
-  // chip order follows the PS5: Full video first, then shortest to longest
-  const OPTIONS = [null, 15, 30, 60, 180, 300, 900, 1800];
+  // shortest to longest, then everything that's kept (as the app)
+  const OPTIONS = [15, 30, 60, 180, 300, 900, 1800, null];
   const MB = 15.2 * 1024 * 1024;                 // what a second of 1440p / 120 weighs, about
 
   const $ = (id) => document.getElementById(id);
@@ -79,7 +81,7 @@ const DEMO = (() => {
     { kind: "clip", secs: 30, img: "assets/app/thumb1.jpg", at: now - 38 * 60e3, game: RD },
     { kind: "clip", secs: 60, img: "assets/app/thumb2.jpg", at: now - 40 * 60e3, game: RD },
   ];
-  let open = false, picking = false, focus = 0, lent = null, lastChoice = 3, page = null;
+  let open = false, picking = false, focus = 0, lent = null, lastChoice = 2, page = null, armed = null;
   let recStart = null, micOn = true, recTimer = null, toastTimer = null, toastHtml = null;
 
   // ---------------------------------------------------------------- words
@@ -117,27 +119,27 @@ const DEMO = (() => {
     return list.map(([glyph, label]) => `<span class="hint">${glyph}<span>${label}</span></span>`).join("");
   }
   function status() {
-    return recStart === null ? t.keeping
+    return recStart === null ? `<span class="green">●</span>&nbsp;&nbsp;${t.keeping}`
       : `<span class="red">●</span>&nbsp;&nbsp;<span class="ink">${t.recording}</span>&nbsp;&nbsp;${clock(Date.now() - recStart)}`;
   }
   function render() {
     const rec = recStart === null ? card("rec", "record", t.rec) : card("rec", "stop", fill(t.stop, { t: clock(Date.now() - recStart) }), "", "danger");
-    const mic = micOn ? card("mic", "mic", t.mic_on) : card("mic", "mic-off", t.mic_off, "", "red-icon");
+    const mic = micOn ? card("mic", "mic", t.mic, `<span class="green">${t.on}</span>`) : card("mic", "mic-off", t.mic, `<span class="red">${t.off}</span>`, "red-icon");
     menu.innerHTML = `<div class="cm-bar">
       <div class="cm-head"><span class="cm-game">${t.game}</span><span class="cm-status">${status()}</span></div>
       ${picking ? `<div class="cm-picker">
-          <div class="cm-caption">${t.caption}&nbsp;&nbsp;&nbsp;<span>30:00 / 30:00</span></div>
-          <div class="cm-chips"><button class="cm-back" data-id="back" tabindex="-1">${svg(lang === "ar" ? "right" : "left", 18)}<span>${t.back}</span></button>
-          ${OPTIONS.map((s, i) => `<button class="cm-chip" data-id="chip${i}" tabindex="-1"><span>${chipLabel(s)}</span></button>`).join("")}</div>
+          <div class="cm-caption">${t.caption}&nbsp;&nbsp;&nbsp;<span>${t.game} · 30:00 / 30:00${armed !== null ? `&nbsp;&nbsp;·&nbsp;&nbsp;${t.again}` : ""}</span></div>
+          <div class="cm-chips">${OPTIONS.map((s, i) => `<button class="cm-chip" data-id="chip${i}" tabindex="-1"><span>${chipLabel(s)}</span></button>`).join("")}
+          <button class="cm-chip save" data-id="chip_save" tabindex="-1"><span>${t.save_clip}</span></button></div>
         </div>`
       : `<div class="cm-row">${card("save", "rewind", t.save, t.save_hint)}${card("shot", "camera", t.shot)}${rec}${mic}
-          <i class="gap28"></i>${thumbsShown().map(thumb).join("")}<i class="gap4"></i>${card("all", "gallery", t.all)}${card("settings", "settings", t.settings)}</div>`}
+          <i class="rule"></i>${thumbsShown().map(thumb).join("")}<i class="rule"></i>${card("all", "gallery", t.all)}${card("settings", "settings", t.settings)}</div>`}
       <div class="cm-foot"><div class="cm-hints">${hints()}</div><div class="cm-info" id="cm-info"></div></div>
     </div>`;
     menu.classList.toggle("picking", picking);
     paintFocus();
   }
-  const navIds = () => picking ? OPTIONS.map((_, i) => `chip${i}`) : items();
+  const navIds = () => picking ? [...OPTIONS.map((_, i) => `chip${i}`), "chip_save"] : items();
   function paintFocus() {
     const id = navIds()[focus];
     menu.querySelectorAll("[data-id]").forEach((el) => el.classList.toggle("focus", el.dataset.id === id));
@@ -214,17 +216,18 @@ const DEMO = (() => {
     toastMessage(micOn ? "mic_msg_on" : "mic_msg_off", false);
   }
   function activate(id) {
-    if (id === "save") { picking = true; render(); setFocus(lastChoice); }
+    if (id === "save") { picking = true; armed = null; render(); setFocus(lastChoice); }
     else if (id === "shot") screenshot();
     else if (id === "rec") toggleRecord();
     else if (id === "mic") toggleMic();
     else if (id === "all") openPage("library");
     else if (id === "settings") openPage("settings");
     else if (id === "back") closePicker();
+    else if (id === "chip_save") saveClip(OPTIONS[lastChoice]);
     else if (id.startsWith("thumb")) openPage("viewer");
-    else if (id.startsWith("chip")) saveClip(OPTIONS[+id.slice(4)]);
+    else if (/^chip\d$/.test(id)) saveClip(OPTIONS[+id.slice(4)]);
   }
-  function closePicker() { picking = false; render(); setFocus(0); }
+  function closePicker() { picking = false; armed = null; render(); setFocus(0); }
 
   // ---------------------------------------------------------------- notices
   function present(make, ms) {
@@ -244,8 +247,10 @@ const DEMO = (() => {
     const view = mode === "keyboard" ? g(k.v) : g(p.y);
     const sub = [detail, t.game].filter(Boolean).join("  ·  ");
     return `<div class="thumbnail" style="background-image:url(assets/game.jpg)"></div>
-      <div class="text"><b>${title}</b><span>${sub}</span><small>${fill(t.to_view, { open, view })}</small></div>
-      ${trimmable ? `<button class="trim" data-act="trim" tabindex="-1">${svg("scissors", 16)}<span>${t.trim}</span></button>` : ""}`;
+      <div class="text"><b>${title}</b><span>${sub}</span>
+      <div class="acts"><button class="trim" data-act="view" tabindex="-1">${svg("play", 14)}<span>${t.view}</span></button>
+      ${trimmable ? `<button class="trim" data-act="trim" tabindex="-1">${svg("scissors", 14)}<span>${t.trim}</span></button>` : ""}
+      <button class="trim" data-act="share" tabindex="-1">${svg("share", 14)}<span>${t.share}</span></button></div></div>`;
   }
   function toastMessage(key, rec) {
     present(() => {
@@ -256,7 +261,7 @@ const DEMO = (() => {
   $("cm-toast").addEventListener("click", (e) => {
     e.stopPropagation();
     $("cm-toast").classList.remove("in");
-    openPage(e.target.closest("[data-act=trim]") ? "trim" : "viewer");
+    openPage(e.target.closest("[data-act=trim]") ? "trim" : "viewer");   // (Share opens the viewer here too)
   });
 
   // ---------------------------------------------------------------- mouse: hover lends the highlight, like the app
@@ -280,7 +285,11 @@ const DEMO = (() => {
     lent = null;
     const i = navIds().indexOf(el.dataset.id);
     if (i >= 0) setFocus(i);
-    activate(el.dataset.id);
+    const id = el.dataset.id;
+    if (/^chip\d$/.test(id) && armed !== id) {     // a click picks a length; a second click on it saves (as the app)
+      armed = id; lastChoice = +id.slice(4); render(); setFocus(navIds().indexOf(id)); return;
+    }
+    activate(id);
   });
   $("cm-page").addEventListener("click", (e) => { e.stopPropagation(); closePage(); });
 

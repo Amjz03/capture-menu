@@ -96,7 +96,8 @@ class RecIndicator(QtWidgets.QWidget):
         p.setBrush(dot)
         p.drawEllipse(QtCore.QPointF(20, r.center().y()), 6, 6)
         p.setPen(QtGui.QColor(ui_theme.INK))
-        p.drawText(r.adjusted(36, 0, -12, 0), Qt.AlignLeft | Qt.AlignVCenter, self.text())
+        # (absolute left: in Arabic Qt would put the time at the right edge, under the mic)
+        p.drawText(r.adjusted(36, 0, -12, 0), Qt.AlignLeft | Qt.AlignAbsolute | Qt.AlignVCenter, self.text())
         if self.mic_muted is not None:      # is your voice going in
             icon = ("mic-off", ui_theme.RED) if self.mic_muted else ("mic", ui_theme.GREEN)
             p.drawPixmap(QtCore.QPointF(r.right() - 16 - 18, r.center().y() - 9), ui_theme.icon_pixmap(icon[0], 18, icon[1]))

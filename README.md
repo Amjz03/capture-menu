@@ -32,13 +32,13 @@
 
 ## Features
 
-- **Save recent gameplay** from the last 30 minutes, kept on your drive (not in RAM): the last 15 s, 30 s, 1, 3, 5, 15 or 30 minutes, or everything.
+- **Save recent gameplay** from the last 30 minutes, kept on your drive (not in RAM): the last 15 s, 30 s, 1, 3, 5, 15 or 30 minutes, or everything. See them as a strip of pictures and move the clip earlier or later before it's saved.
 - **Screenshot and record** from the same bar, with a small REC timer while you record.
 - **A folder per game**, detected automatically, like the PS5. Clips and screenshots can go to different drives or folders.
 - **Check it right away:** a viewer with play, skip and frame-exact trim.
 - **Your voice louder or quieter, per clip:** your voice and the game are recorded on their own tracks, so each clip's balance can be changed afterwards, and changed back.
-- **Share in one step:** copies for phones and Discord (10 / 50 / 500 MB) go straight to the clipboard, with or without your voice.
-- **Gallery** with favorites, titles, notes, sizes, sorting and multi-delete.
+- **Share in one step:** Discord (10 / 50 / 500 MB), your phone by QR code, or a copy that plays everywhere, straight to the clipboard, with or without your voice.
+- **Gallery** grouped into Today, This week and earlier, with favorites, titles, notes, sizes, sorting and multi-delete.
 - **Works with a controller:** DualSense, Xbox and most others, with on-screen hints that match.
 - **Follows your game** across monitors and TVs, or always records the screen you pick. The menu shows in your clips and screen shares, but never in its own screenshots.
 - **English and Arabic:** the whole interface, mirrored right to left in Arabic, like the PS5.
@@ -51,7 +51,7 @@
 | | | |
 |---|---|---|
 | ![Save recent](docs/screenshots/save-recent.jpg) | ![Viewer](docs/screenshots/viewer.jpg) | ![Trim](docs/screenshots/trim.jpg) |
-| ![Gallery](docs/screenshots/gallery.jpg) | ![Settings](docs/screenshots/settings.jpg) | ![Notifications](docs/screenshots/notifications.jpg) |
+| ![Gallery](docs/screenshots/gallery.jpg) | ![Settings](docs/screenshots/settings.jpg) | ![Share](docs/screenshots/share.jpg) |
 
 ## Install
 

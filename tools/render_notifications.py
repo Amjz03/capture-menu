@@ -58,7 +58,7 @@ W, colw, pad, gap = 1920, 940, 28, 18
 col_items = [shots[:8], shots[8:]]
 heights = [sum(size(pm).height() + 30 + gap for _, pm in col) for col in col_items]
 H = max(heights) + pad * 2 + 70
-bg = QtGui.QPixmap.fromImage(draw_scene(W, H, "dusk", 7, hud=False))
+bg = QtGui.QPixmap.fromImage(draw_scene(W, H, "snow", 2, hud=False))   # a darker scene: the labels read on it
 p = QtGui.QPainter(bg); p.setRenderHint(QtGui.QPainter.Antialiasing)
 p.fillRect(0, 0, W, H, QtGui.QColor(0, 0, 0, 90))
 f = QtGui.QFont("Segoe UI"); f.setPixelSize(30); f.setBold(True); p.setFont(f); p.setPen(QtGui.QColor("white"))

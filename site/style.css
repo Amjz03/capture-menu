@@ -237,7 +237,11 @@ html[dir="rtl"] .release .arrow { display: inline-block; transform: scaleX(-1); 
 .picking .cm-bar { height: 246px; }
 .cm-head { display: flex; align-items: baseline; gap: 18px; height: 45px; }
 .cm-game { font-family: "Segoe UI Variable Display", "Segoe UI", "Geist", "IBM Plex Sans Arabic", sans-serif; font-size: 30px; font-weight: 600; }
-.cm-status { color: var(--muted); font-size: 15px; }
+.cm-status { color: var(--ink); font-size: 17px; background: rgba(255, 255, 255, .1); border-radius: 20px; padding: 6px 16px 7px 14px; align-self: center; }
+.cm-status .green, .cm-card .sub .green { color: #32d74b; }
+.cm-card .sub .red { color: #ff453a; }
+.cm-row .rule { width: 1px; height: 112px; margin: 12px 14px 0; background: rgba(255, 255, 255, .16); flex: none; }
+.cm-chip.save { margin-inline-start: auto; }
 .cm-row { display: flex; align-items: flex-start; height: 168px; }
 .cm-row .gap28 { width: 28px; flex: none; }
 .cm-row .gap4 { width: 4px; flex: none; }
@@ -274,10 +278,11 @@ html[dir="rtl"] .release .arrow { display: inline-block; transform: scaleX(-1); 
 .cm-thumb:hover .tile::after { background: rgba(0, 0, 0, .2); }
 .cm-thumb.focus .tile { background-color: transparent; outline: 3px solid #fff; outline-offset: 2px; }
 .cm-thumb.focus .tile::after { background: transparent; }
-.cm-thumb .lbl, .cm-thumb .sub { left: 12px; right: 12px; text-align: start; visibility: hidden; }
-.cm-thumb .lbl { color: var(--ink); font-weight: 600; }
+.cm-thumb .lbl, .cm-thumb .sub { left: 12px; right: 12px; text-align: start; }
+.cm-thumb .lbl { color: rgba(236, 240, 250, .9); }
+.cm-thumb.focus .lbl { color: var(--ink); font-weight: 600; }
 .cm-thumb .sub { top: 145px; color: rgba(236, 240, 250, .65); }
-.cm-thumb.focus .lbl, .cm-thumb.focus .sub { visibility: visible; }
+
 .badge {
   position: absolute; right: 6px; bottom: 6px; z-index: 1; height: 20px; padding: 0 7px; border-radius: 5px; background: rgba(0, 0, 0, .59);
   font-size: 11px; font-weight: 600; line-height: 20px; color: var(--ink);
@@ -324,6 +329,8 @@ html[dir="rtl"] .cm-toast { padding: 12px 12px 12px 20px; }
 .cm-toast small .g { font-size: 17px; line-height: 1; }
 .cm-toast .trim { display: flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 17px; background: rgba(255, 255, 255, .086); font-size: 13px; font-weight: 600; }
 .cm-toast .trim:hover { background: rgba(255, 255, 255, .17); }
+.cm-toast .acts { display: flex; gap: 8px; margin-top: 6px; }
+.cm-toast .acts .trim { padding: 6px 12px 6px 9px; font-size: 13px; font-weight: 400; }
 .cm-page { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: none; cursor: pointer; background: #070a14; }
 .paging .cm-page { display: block; }
 .try-flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; }

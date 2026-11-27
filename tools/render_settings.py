@@ -19,6 +19,8 @@ def shot(name):
     s.resize(W, H); pump(); c = frosted(bg); p = QtGui.QPainter(c); p.drawPixmap(0, 0, s.grab()); p.end(); c.save(str(out / name))
 input_devices.input_mode().set("playstation")
 s.open((2560, 1440)); s.setGeometry(0, 0, W, H); s.rows[4].setFocus(); pump()
+shot_png = Path(tempfile.mkdtemp()) / "game.png"; draw_scene(1280, 720, "dusk", 7).save(str(shot_png))
+s.preview.set_picture(shot_png); s._gpu = "NVIDIA GeForce RTX 4070"; s._refresh(); pump()   # What you'll get: a picture, a card
 shot("s1_settings.png")
 key = lambda k: (QtWidgets.QApplication.sendEvent(s.focusWidget(), QtGui.QKeyEvent(QtCore.QEvent.KeyPress, k, Qt.NoModifier)), pump())
 s.rows[1].setFocus(); key(Qt.Key_Right); s.rows[2].setFocus(); key(Qt.Key_Right)

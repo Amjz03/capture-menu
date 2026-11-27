@@ -38,6 +38,7 @@ for game, name, pal, seed, secs, ago in shots:
                         "-t", "6", "-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p", str(dst)], check=True)
     os.utime(dst, (now - ago,) * 2)
 ctl = capture_controller.Controller(dict(preferences.DEFAULTS, clips_dir=str(root))); ctl.refresh_status = lambda: None
+ctl.buffer_picture_at = lambda *a: None   # never this PC's real replay buffer
 for p in ctl.recent:
     media.make_thumb(p, ctl.thumbs_dir)
 # show the lengths the clips would really have
@@ -58,8 +59,16 @@ def compose(name, *layers):
     p.end(); canvas.save(str(out / name))
 input_devices.input_mode().set("playstation")
 m.save_card.setFocus(); pump(); compose("1_bar.png", (m.grab(), 0, H - BH))
-m.open_picker(); m._on_status(status); pump(); compose("2_save_recent.png", (m.grab(), 0, H - BH))
-m.close_picker()
+# Save recent fills the screen: its strip shows a picture a minute, made here from the mockup frames
+def fake_frames():
+    pngs = [p for p in sorted(work.glob("*.png")) if p.name.startswith(("dusk", "neon", "ember"))]; held = 1160   # the bar's game
+    m._on_frames([(m._pick_now - held + i * 60, m._pick_now - held + (i + 1) * 60, str(pngs[i % len(pngs)]))
+                  for i in range(held // 60)])
+ctl.load_buffer_frames = fake_frames
+m.open_picker(); m._on_status(status); pump(6)
+m.setGeometry(0, 0, W, H); m._place(); pump(10)
+compose("2_save_recent.png", (m.grab(), 0, 0))
+m.close_picker(); m.setGeometry(0, 0, W, BH); m._place()
 t = ui_notices.Toast(); t.pad_button = "create"; t.show_capture("Last 1m", str(ctl.recent[0])); pump()
 compose("3_notification.png", (t.grab(), W - t.width() - 28, 28))
 t.hide(); m.activateWindow(); m.thumbs[0].setFocus(); m._on_focus(m.thumbs[0]); m.save_card.clearFocus(); m.thumbs[0].active = True; pump(); compose("4_recent.png", (m.grab(), 0, H - BH))

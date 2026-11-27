@@ -28,18 +28,18 @@ Setup does all of this by itself:
 
 ## Using it
 
-**Back, everywhere.** The viewer, the gallery, Settings and the Save recent row all have a **Back** button at the top. It goes one step back: a panel closes first, then you return to where you came from (the bar or the gallery). **Esc** and **◯ / B** on the controller do the same.
+**Back, everywhere.** The viewer, the gallery and Settings have a **Back** button at the top. It goes one step back: a panel closes first, then you return to where you came from (the bar or the gallery). **Esc** and **◯ / B** on the controller do the same.
 
 ### The bar
 
-Press **Alt + C** in a game or on the desktop. A bar slides up along the bottom of the screen, like the PS5 Create menu, so the game stays visible above it. **Create** has Save recent, Screenshot, Record and Mic; **Recent** has your last 4 captures plus All captures.
+Press **Alt + C** in a game or on the desktop. A bar slides up along the bottom of the screen, like the PS5 Create menu, so the game stays visible above it. Next to the game's name a green pill says the last minutes are being kept. The tiles: Save recent, Screenshot, Record and Mic (it says **On** in green or **Off** in red); your latest captures, each with its name and when; then All captures and Settings.
 
 | Key | Action |
 |---|---|
 | ← → | Move between tiles (hovering with the mouse works too) |
 | Enter | Select |
-| ↑, or Enter on **Save recent** | Pick a length: Full video, Last 15 s, 30 s, 1 m, 3 m, 5 m, 15 m, 30 m |
-| 1–8 | Save that length right away (1 = Full video, 2 = Last 15 s, …) |
+| ↑, or Enter on **Save recent** | Pick a length: 15 sec, 30 sec, 1, 3, 5, 15, 30 min, Everything |
+| 1–8 | Save that length right away (1 = 15 sec, 2 = 30 sec, …, 8 = Everything) |
 | S / R | Screenshot / start or stop recording |
 | V / T | View / trim the latest capture |
 | M | Mic on / off |
@@ -47,7 +47,7 @@ Press **Alt + C** in a game or on the desktop. A bar slides up along the bottom 
 | , | Settings |
 | Esc | Close (clicking back into the game closes it too) |
 
-**Save recent** shows how much is recorded right now, e.g. `19:20 / 30:00`. Longer options are dimmed; picking one saves everything recorded so far. **Picked too short?** Open the bar again and pick a longer one: the new clip still has the moment, and both clips are kept.
+**Save recent** fills the screen: a big picture of where the clip starts, and under it a strip of the last 30 minutes, a picture a minute (hatched where nothing is recorded yet), with the clip framed in white. It says how much is recorded, e.g. `19:20 / 30:00`, and how big the clip will be. **L1 / R1** (or `[` `]`) move the clip 10 seconds earlier or later; a click on the strip moves it there. With the mouse, a click on a length picks it and a second click on it saves (Enter, ✕ and the 1–8 keys save at once). Longer options are dimmed; picking one saves everything recorded so far. **Picked too short?** Open the bar again and pick a longer one: the new clip still has the moment, and both clips are kept.
 
 **Double-press to save.** Press Alt + C or Create twice quickly to save the last 30 seconds without opening the bar.
 
@@ -76,16 +76,16 @@ Press **Create** on a DualSense (the small button left of the touchpad), just li
 | ✕ / A | Select | Play / pause | Save as a new clip |
 | ◯ / B | Back / close | Close | Cancel |
 | ▢ / X | Screenshot | Trim | Set start |
-| △ / Y | View latest | More | Set end |
+| △ / Y | View latest | Favorite | Set end |
 | L1 R1 / LB RB | | Newer / older | One frame back / forward |
 | D-pad ↑ ↓ | | | One second forward / back |
-| Options / Menu | | Share / Export | Preview |
+| Options / Menu | | Share | Preview |
 
 On-screen hints follow what you're holding: ✕ ◯ ▢ △ for PlayStation, A B X Y for Xbox, keys as soon as you touch the keyboard. Change the button in [Settings](#settings).
 
 ### Viewer
 
-Every capture shows a notification with its thumbnail; click it to open the capture, or its **Trim** button to trim it. In the bar, click a Recent capture or press **V**.
+Every capture shows a notification with its thumbnail and **View**, **Trim** and **Share** buttons. In the bar, click a recent capture or press **V**.
 
 | Key | In the viewer |
 |---|---|
@@ -94,15 +94,15 @@ Every capture shows a notification with its thumbnail; click it to open the capt
 | A / D | Newer / older capture |
 | T | Trim |
 | V | Adjust audio: your voice and the game louder or quieter |
-| E | Share / Export |
-| M | More: Favorite, Rename, Show in folder, Open in your video player, Delete |
+| E | Share |
+| M | The small buttons: Favorite, Folder, Player, Delete |
 | N | Rename (a title and a note) |
 | F | Favorite |
 | Del | Delete (press twice; it goes to the Recycle Bin) |
 | F11 | Only the video (Esc to come back) |
 | Esc | Back |
 
-The four big buttons under the video show the controller button that does each one: ▢ Trim, L3 Adjust audio, Options Share / Export, △ More. The title is the file's name (or the name you gave it), with the game under it. The video's own bar has 5 seconds back, play, 5 seconds forward, the timeline, sound on / off and "only the video". If the built-in player can't show a clip's picture (for example AV1 without GPU decoding), a light 720p preview plays instead; the original is untouched. Click the video to pause or play it.
+Under the picture, a row of tiles: **Share** first, then Trim, Audio, Favorite, Folder and Player, and **Delete** apart past a line. The frame is as wide as the picture, and the page takes the capture's colours. The title is the name you gave it (or what it is); under it the game, when, the size and the length. The captures before and after it show small at the bottom right: a click goes there, L1 / R1 too. The video's own bar has 5 seconds back, play, 5 seconds forward, the timeline, sound on / off and "only the video". If the built-in player can't show a clip's picture (for example AV1 without GPU decoding), a light 720p preview plays instead; the original is untouched. Click the video to pause or play it.
 
 ### Trim
 
@@ -122,7 +122,7 @@ Press **T**. A filmstrip appears with two handles:
 
 ### Sound
 
-Too quiet next to the game, or too loud? In the viewer press **V** (L3 on the controller) or **Adjust audio**. Two cards appear, **Your voice** and **Game**, each with a volume bar and **Mute**: drag them, or use the arrows. **100%** is how it was recorded, 200% sounds twice as loud, 50% half as loud, 0% is muted (your voice goes up to 400%).
+Too quiet next to the game, or too loud? In the viewer press **V** (L3 on the controller) or **Audio**. Two cards appear, **Your voice** and **Game**, each with a volume bar and **Mute**: drag them, or use the arrows. **100%** is how it was recorded, 200% sounds twice as loud, 50% half as loud, 0% is muted (your voice goes up to 400%).
 
 | Key | In Adjust audio |
 |---|---|
@@ -137,17 +137,19 @@ Only the sound that players play (track 1) is rebuilt; the video and your separa
 
 ### Share
 
-In the viewer press **E** (Options on the controller). Three cards, then **Export & copy**; ← → moves between them and Enter (✕) changes the one you're on:
+In the viewer press **E** (Options on the controller) or **Share**. Pick where it goes, then the button, which says what it does:
 
-| Card | Choices |
+| Card | What happens |
 |---|---|
-| Format | **MP4 for phones & apps** (H.264, up to 1080p, plays everywhere), or the **Original file** as it was saved |
-| Your voice | **Include** it, or **Leave out** for the game sound only (when the clip has your voice on its own track) |
-| Size limit | **No limit**, or **10 / 50 / 500 MB** to fit Discord (free / Nitro Basic / Nitro). Long clips drop to 720p or 480p; a clip too long for the limit asks you to trim it first |
+| Discord | **Copy for Discord**: a copy that fits **10 / 50 / 500 MB** (free / Nitro Basic / Nitro). Long clips drop to 720p or 480p; a clip too long for the limit asks you to trim it first |
+| Your phone | **Show the QR code**: the phone downloads it over your Wi-Fi (below) |
+| Copy | **Copy**: an H.264 clip goes as it is; anything else (AV1, HEVC, HDR, or without your voice) as an MP4 that plays everywhere |
+
+Under the cards one line says what goes with it, e.g. *With your voice · 10 MB*; **Change** opens the choices: **Your voice** (Include, or Leave out for the game sound only, when the clip has your voice on its own track) and Discord's size. A double click on a card (or a second Enter / ✕ on the chosen one) shares at once, and the next Share starts where the last one went.
 
 Copies go into a `Shared` folder in the game's folder and are **copied to the clipboard**, so you can paste them straight into Discord or WhatsApp.
 
-**To your phone.** Next to Cancel, **To your phone** shows a QR code. Scan it with the phone's camera: a page opens with the video and a **Download the video** button. The phone and the PC must be on the same Wi-Fi; nothing goes through the internet, and the link ends when you close the panel (or after 30 minutes). The video goes over in full resolution. Two exceptions so it plays in the iPhone's Photos app: a clip faster than 60 FPS goes at 60, and an HDR clip goes in normal colours; while that copy is made the panel shows a percentage. The first time, Windows may ask about network access: choose **Allow**.
+**To your phone.** **Show the QR code** shows a QR code. Scan it with the phone's camera: a page opens with the video and a **Download the video** button. The phone and the PC must be on the same Wi-Fi; nothing goes through the internet, and the link ends when you close the panel (or after 30 minutes). The video goes over in full resolution. Two exceptions so it plays in the iPhone's Photos app: a clip faster than 60 FPS goes at 60, and an HDR clip goes in normal colours; while that copy is made the panel shows a percentage. The first time, Windows may ask about network access: choose **Allow**.
 
 ### Gallery
 
