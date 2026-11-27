@@ -224,7 +224,7 @@ class Settings(QtWidgets.QWidget):
         now, before = mb(cfg, enc), mb(saved, saved_enc)
         minute = now / max(1, int(cfg["buffer_minutes"]))
         minute_before = before / max(1, int(saved["buffer_minutes"]))
-        rows = [(language.tr("{n} min kept on the drive", n=cfg["buffer_minutes"]),
+        rows = [(language.tr("Last {n} min, on your drive (not RAM)", n=cfg["buffer_minutes"]),
                  language.tr("up to {gb} GB", gb=f"{now / 1024:.1f}") + badge(now, before)),
                 (language.tr("A 1 min clip"), language.tr("about {mb} MB", mb=f"{minute:.0f}") + badge(minute, minute_before)),
                 (language.tr("Discord copy"), language.tr("under 10 MB, 1080p"))]
