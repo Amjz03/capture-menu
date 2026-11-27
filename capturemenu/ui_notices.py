@@ -8,7 +8,7 @@ import time
 
 import threading
 
-from . import catalog, input_devices, language, media, ui_theme, windows
+from . import catalog, input_devices, language, media, phone_link, ui_theme, windows
 
 
 class RecIndicator(QtWidgets.QWidget):
@@ -312,6 +312,24 @@ class Toast(QtWidgets.QWidget):
         self.sub.show()
         self.hint.hide()          # View, Trim and Share under it say what it does
         self._present(6000)
+
+    def show_phone_ready(self, path: str, on_click):
+        """The phone's copy is made while its panel was put away: a click shows the QR code to scan."""
+        capture = Path(path)
+        self._plain()
+        self.path, self.action = None, on_click
+        self.trim_btn.hide()
+        self.setCursor(Qt.PointingHandCursor)
+        thumb = media.make_thumb(capture, self.thumbs_dir or capture.parents[1] / ".thumbs")
+        self.thumb.setPixmap(ui_theme.rounded_pixmap(thumb, 144, 81, 12))
+        self.thumb.show()
+        self.title.setText(language.tr("The QR code is ready"))
+        self.sub.setText(capture.parent.name)
+        self.sub.setVisible(bool(capture.parent.name))
+        self.hint.setText(language.tr("Works for {minutes} minutes · click to show it, then scan it with your phone",
+                                      minutes=phone_link.LIFETIME_S // 60))   # so it's scanned in time
+        self.hint.show()
+        self._present(10000)
 
     def show_running(self, title: str, detail: str):
         """The start-up notice: app icon, "running", and how to open it."""

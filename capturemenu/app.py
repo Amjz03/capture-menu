@@ -99,6 +99,8 @@ def main():
     ctl.captured.connect(toast.show_capture)
     ctl.captured.connect(lambda *_: menu.refresh_recent())
     ctl.shared.connect(toast.show_shared)
+    viewer.phone_ready.connect(lambda path, novoice: toast.show_phone_ready(
+        path, lambda: (menu.view_capture(path), viewer.send_to_phone(novoice))))   # the click: the code again
 
     toast.open_capture.connect(menu.view_capture)
     toast.share_capture.connect(lambda path: (menu.view_capture(path), viewer.enter_share()))

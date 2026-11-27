@@ -31,12 +31,14 @@ class Viewer(QtWidgets.QWidget):
     frame_ready = QtCore.Signal(str, int, str)
     sound_ready = QtCore.Signal(str, str, bool)   # clip, the short remixed piece this request writes, made
     closed = QtCore.Signal()
+    phone_ready = QtCore.Signal(str, bool)   # the QR code got ready with its panel put away: path, without voice
     away = QtCore.Signal()      # handed the screen to another app (the folder, a video player)
 
     def __init__(self, ctl: capture_controller.Controller):
         super().__init__(None, Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool)
         self.setProperty("captureMenuPage", "viewer")
         self.ctl = ctl
+        self._phone_watch: set = set()   # phone links still being made, for their notice
         self.items: list[Path] = []
         self.index = 0
         self.trimming = False
@@ -1042,7 +1044,22 @@ class Viewer(QtWidgets.QWidget):
             self.player.pause()               # the phone plays it now
         if without_voice is None:
             without_voice = self.is_video() and self.without_voice
-        self.phone_panel.show_link(phone_link.PhoneLink(self.items[self.index], without_voice=without_voice))
+        link = phone_link.link_for(self.items[self.index], without_voice=without_voice)
+        self.phone_panel.show_link(link)
+        if link.url and not link.ready.is_set() and link not in self._phone_watch:
+            self._phone_watch.add(link)
+            self._watch_phone(link, str(self.items[self.index]), without_voice)
+
+    def _watch_phone(self, link: phone_link.PhoneLink, path: str, without_voice: bool):
+        """Once the phone's copy is made: if its panel was put away (back to the game), a notice says the code is ready."""
+        if link.server is None:
+            self._phone_watch.discard(link)
+        elif not link.ready.is_set():
+            QtCore.QTimer.singleShot(500, lambda: self._watch_phone(link, path, without_voice))
+        else:
+            self._phone_watch.discard(link)
+            if self.phone_panel.link is not link:
+                self.phone_ready.emit(path, without_voice)
 
     def _share_nav(self) -> list[QtWidgets.QWidget]:
         dests = [c for c in self.dest_cards.values() if c.isVisible()]
@@ -1481,7 +1498,8 @@ class PhonePanel(QtWidgets.QWidget):
         self.notes = []
         for icon, text in (("phone", "Scan the code with your phone's camera: the video opens, with a button to download it"),
                            ("info", "Your phone and this PC must be on the same Wi-Fi network"),
-                           ("file-video", "The video goes over in its full, original quality")):   # (or at 60 FPS: show_link)
+                           ("file-video", "The video goes over in its full, original quality"),   # (or at 30 FPS: show_link)
+                           ("info", "You can close this and go back to your game: the link keeps working")):
             row = QtWidgets.QHBoxLayout()
             row.setSpacing(12)
             pic = QtWidgets.QLabel()
@@ -1514,7 +1532,7 @@ class PhonePanel(QtWidgets.QWidget):
         if link.url is None:
             self.fine.setText(language.tr("This PC isn't connected to a network"))
         else:
-            self._tick()                       # the code shows once the video is ready (a 60 FPS copy takes a moment)
+            self._tick()                       # the code shows once the video is ready (a 30 FPS copy takes a moment)
         self.setGeometry(self.viewer.geometry())
         self.show()
         ui_theme.bring_to_front(self)
@@ -1558,9 +1576,7 @@ class PhonePanel(QtWidgets.QWidget):
         return pm
 
     def close_panel(self):
-        if self.link is not None:
-            self.link.stop()
-            self.link = None
+        self.link = None                # put away, not ended: the phone keeps downloading (phone_link.link_for)
         self.hide()
 
     def mousePressEvent(self, e):
