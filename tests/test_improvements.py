@@ -190,8 +190,8 @@ def click(row, x):
 
 click(fps, 60)
 assert fps.value == 60, "a click on the name leaves the value alone"
-click(fps, fps._value_rect().center().x())
-assert fps.value == 120, "the value changes it"
+click(fps, fps._segments()[2].center().x())
+assert fps.value == 120, "a click on a choice picks it"
 fps.set_value(60, emit=True)
 rows["sounds"].activate(); rows["storage_warn_gb"].step(1)
 s.save()

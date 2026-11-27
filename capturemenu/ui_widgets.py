@@ -1119,7 +1119,7 @@ class SettingRow(HoverFocus, QtWidgets.QWidget):
         except (TypeError, ValueError, KeyError):
             return        # the page is still filling its rows in: an explanation may read another row's value
         metrics = QtGui.QFontMetrics(ui_theme.font(14))
-        room = self.width() - 340
+        room = self.width() - (self._value_rect().width() + 56)
         two = bool(desc) and room > 100 and metrics.horizontalAdvance(desc) > room
         height = self.H + (metrics.lineSpacing() if two else 0)
         if height != self.height():
@@ -1196,13 +1196,42 @@ class SettingRow(HoverFocus, QtWidgets.QWidget):
     def mousePressEvent(self, e):
         self.keep_focus()
         if self.kind == "choice":     # only a click on the value changes it; anywhere else just picks the row
+            segs = self._segments()
+            hit = next((i for i, r in enumerate(segs) if r.adjusted(0, -8, 0, 8).contains(e.position())), None)
+            if hit is not None:
+                self.set_value(self.choices[hit][0], emit=True)
+                return
             v, x = self._value_rect(), e.position().x()
-            if v.left() <= x <= v.right():
+            if not segs and v.left() <= x <= v.right():
                 self.step(-1 if x < v.left() + 28 else 1)
         else:
             self.activate()
 
+    SEG_MAX = 4          # up to this many short choices show side by side instead of ‹ value ›
+
+    def _segments(self) -> list[QtCore.QRectF]:
+        """Where each choice sits when they're all shown at once (empty: too many or too long for that)."""
+        if self.kind != "choice" or not 2 <= len(self.choices) <= self.SEG_MAX:
+            return []
+        fm = QtGui.QFontMetricsF(ui_theme.font(14, QtGui.QFont.DemiBold))
+        widths = [fm.horizontalAdvance(t) + 28 for _, t in self.choices]
+        total = sum(widths) + 8
+        if total > min(440, self.width() * 0.5):
+            return []
+        x = 16 + 4 if language.is_rtl() else self.width() - 16 - total + 4
+        y = self.height() / 2 - 15
+        out = []
+        for w in (reversed(widths) if language.is_rtl() else widths):
+            out.append(QtCore.QRectF(x, y, w, 30))
+            x += w
+        return list(reversed(out)) if language.is_rtl() else out
+
     def _value_rect(self) -> QtCore.QRectF:
+        segs = self._segments()
+        if segs:
+            left = min(r.left() for r in segs) - 4
+            right = max(r.right() for r in segs) + 4
+            return QtCore.QRectF(left, 0, right - left, self.height())
         if language.is_rtl():    # mirrored: the value on the left, the name on the right
             return QtCore.QRectF(16, 0, 284, self.height())
         return QtCore.QRectF(self.width() - 300, 0, 284, self.height())
@@ -1223,7 +1252,8 @@ class SettingRow(HoverFocus, QtWidgets.QWidget):
         ink = QtGui.QColor(ui_theme.DARK) if focused else QtGui.QColor(ui_theme.INK)
         soft = QtGui.QColor(13, 17, 32, 165) if focused else QtGui.QColor(236, 240, 250, 185)
         desc = self.describe(self.value)
-        left = QtCore.QRectF(322 if language.is_rtl() else 18, 0, self.width() - 340, self.height())
+        room = self.width() - (self._value_rect().width() + 56)
+        left = QtCore.QRectF(self.width() - 18 - room if language.is_rtl() else 18, 0, room, self.height())
         p.setPen(ink)
         p.setFont(ui_theme.font(16, QtGui.QFont.DemiBold if focused else QtGui.QFont.Normal))
         if desc:
@@ -1250,7 +1280,27 @@ class SettingRow(HoverFocus, QtWidgets.QWidget):
             return
         p.setFont(ui_theme.font(15, QtGui.QFont.DemiBold if focused else QtGui.QFont.Normal))
         p.setPen(ink if focused or self.listening else QtGui.QColor(236, 240, 250, 220))
-        if self.kind == "choice":   # a pill with ‹ › on every row, so it's clear the value can change
+        segs = self._segments()
+        if segs:    # a few short choices: all of them at once, the chosen one filled
+            values = [c[0] for c in self.choices]
+            i = values.index(self.value) if self.value in values else 0
+            box = QtCore.QRectF(v.left(), v.center().y() - 19, v.width(), 38)
+            p.save()
+            p.setPen(Qt.NoPen)
+            p.setBrush(QtGui.QColor(13, 17, 32, 22) if focused else QtGui.QColor(255, 255, 255, 16))
+            p.drawRoundedRect(box, 19, 19)
+            p.setFont(ui_theme.font(14, QtGui.QFont.DemiBold))
+            for j, (seg, (_, label)) in enumerate(zip(segs, self.choices)):
+                if j == i:
+                    p.setPen(Qt.NoPen)
+                    p.setBrush(QtGui.QColor(ui_theme.DARK) if focused else QtGui.QColor(ui_theme.INK))
+                    p.drawRoundedRect(seg, 15, 15)
+                    p.setPen(QtGui.QColor(ui_theme.INK) if focused else QtGui.QColor(ui_theme.DARK))
+                else:
+                    p.setPen(QtGui.QColor(13, 17, 32, 170) if focused else QtGui.QColor(236, 240, 250, 190))
+                p.drawText(seg, Qt.AlignCenter, label)
+            p.restore()
+        elif self.kind == "choice":   # a pill with ‹ › on every row, so it's clear the value can change
             values = [c[0] for c in self.choices]
             i = values.index(self.value) if self.value in values else 0
             pill = QtCore.QRectF(v.left(), v.center().y() - 19, v.width(), 38)

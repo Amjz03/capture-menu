@@ -611,6 +611,9 @@ QListWidget#grid {{ font-size: 12px; }}
 QListWidget#grid::item {{ border-radius: 12px; padding: 6px; color: {MUTED}; }}
 QListWidget#grid::item:selected {{ background: rgba(255,255,255,24); color: {INK}; }}
 QPushButton#kind {{ min-height: 40px; padding: 0 16px; border-radius: 20px; font-size: 14px; }}
+#details {{ background: rgba(255,255,255,10); border: 1px solid rgba(255,255,255,20); border-radius: 18px; }}
+#detailTitle {{ color: {INK}; font-size: 17px; font-weight: 600; }}
+#summary {{ color: {INK}; font-size: 15px; padding-top: 6px; }}
 QPushButton#kind[on="true"] {{ background: {INK}; color: {DARK}; border-color: {INK}; }}
 QPushButton[danger="true"] {{ background: #ff6961; color: {DARK}; border: 1px solid #ff6961; }}
 QPushButton[danger="true"]:hover {{ background: #ff7b74; }}

@@ -60,7 +60,7 @@ key(Qt.Key_Escape); assert s.isVisible() and "Press again" in s.info.text(), "un
 key(Qt.Key_Escape); assert not s.isVisible() and json.loads(preferences.CONFIG_PATH.read_text())["hotkey"] == "alt+c"
 # 6) reopen, change, save: only changed keys written, password kept, app restarts
 s.open((2560, 1440)); assert s.values()["fps"] == 60, "cancel discarded the edits"
-key(Qt.Key_Down); key(Qt.Key_Down); key(Qt.Key_Right)   # past Share and Resolution: fps 120
+key(Qt.Key_Down); key(Qt.Key_Right)   # past Resolution: fps 120
 s.res_row.setFocus(); key(Qt.Key_Right)      # 1440p is not below native -> next choice 1080p
 key(Qt.Key_S)
 saved = json.loads(preferences.CONFIG_PATH.read_text())
@@ -77,12 +77,18 @@ assert input_devices.pad_key(input_devices.Y, menu, ui_viewer.Viewer(ctl), None,
 # 10) ↑ from the first row reaches the buttons along the top, ← → walk them, ↓ comes back
 s.rows[0].setFocus(); app.processEvents()
 key(Qt.Key_Up); assert s.focusWidget() is s.back_btn, s.focusWidget()
-key(Qt.Key_Right); assert s.focusWidget() is s.defaults_btn
-key(Qt.Key_Right); key(Qt.Key_Right); assert s.focusWidget() is s.save_btn
+key(Qt.Key_Right); assert s.focusWidget() is s.cancel_btn, "Restore defaults isn't next to Save any more"
+key(Qt.Key_Right); assert s.focusWidget() is s.save_btn
 key(Qt.Key_Down); assert s.focusWidget() is s.rows[0]
-# 11) the first row shares the app: Enter opens the website, and nothing of it is saved
+# 11) near the end, a row shares the app: Enter opens the website, and nothing of it is saved
 opened = []
 QtGui.QDesktopServices.openUrl = lambda url: opened.append(url.toString())
-share = s.rows[0]; assert share.key == "_share" and "_share" not in s.values()
+share = s.rows[-2]; assert share.key == "_share" and "_share" not in s.values()
+assert s.rows[-1].key == "_defaults" and "_defaults" not in s.values(), "Restore defaults is the last row"
+# the tabs jump to their section, and the box under the list explains the row
+tab, heading, card = next(t for t in s.tabs if t[1].text().lower().startswith("control"))
+tab.click(); app.processEvents()
+assert s.focusWidget().parent() is card and s.detail_title.text() == s.focusWidget().label
+assert "the last 30 min take up to" in s.memory.text(), s.memory.text()
 share.setFocus(); key(Qt.Key_Return); assert opened == ["https://amjz03.github.io/capture-menu/"], opened
 print("settings PASS")

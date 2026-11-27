@@ -75,7 +75,13 @@ class Settings(QtWidgets.QWidget):
             b.setCursor(Qt.PointingHandCursor)
             b.clicked.connect(fn)
             head.addWidget(b, 0, Qt.AlignTop)
+        self.defaults_btn.hide()          # far from Save now: a row at the end of the list
         lay.addLayout(head)
+        # the sections as tabs: a press jumps there (the page still scrolls through all of them)
+        self.tabs_row = QtWidgets.QHBoxLayout()
+        self.tabs_row.setSpacing(8)
+        self.tabs: list[tuple[QtWidgets.QPushButton, QtWidgets.QWidget, ui_widgets.SettingsCard]] = []
+        lay.addLayout(self.tabs_row)
         for b in self._head():
             b.installEventFilter(self)          # the D-pad reaches them from the first row
 
@@ -97,14 +103,21 @@ class Settings(QtWidgets.QWidget):
         self.scroll.setWidget(holder)
         lay.addWidget(self.scroll, 1)
 
+        # the highlighted setting, explained in full, and what the recording settings add up to
+        self.details = QtWidgets.QFrame(objectName="details")
+        dl = QtWidgets.QVBoxLayout(self.details)
+        dl.setContentsMargins(22, 16, 22, 16)
+        dl.setSpacing(4)
+        self.detail_title = QtWidgets.QLabel(objectName="detailTitle")
+        self.detail_text = QtWidgets.QLabel(objectName="vSub", wordWrap=True)
+        self.memory = QtWidgets.QLabel(objectName="summary", wordWrap=True)
+        for w in (self.detail_title, self.detail_text, self.memory):
+            dl.addWidget(w)
+        lay.addWidget(self.details)
         foot = QtWidgets.QHBoxLayout()
         self.hints = ui_widgets.HintBar()
         foot.addWidget(self.hints)
         foot.addStretch()
-        self.memory = QtWidgets.QLabel(objectName="vSub")
-        self.memory.setWordWrap(True)        # the panel is narrow: two lines rather than a wider page
-        self.memory.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        foot.addWidget(self.memory)
         lay.addLayout(foot)
 
         self.rows: list[ui_widgets.SettingRow] = []
@@ -112,6 +125,8 @@ class Settings(QtWidgets.QWidget):
         self.mics: tuple | None | str = "checking"   # Obs.mic_devices() once OBS has answered
         self.install = updates.run_update_installer     # tests swap this out
         self._build_rows()
+        self._build_tabs()
+        QtWidgets.QApplication.instance().focusChanged.connect(self._on_focus_changed)
         self.update_event.connect(self._on_update_event)
         self.update_found.connect(self._on_update_found)
         self.encoder_ready.connect(self._on_encoder)
@@ -127,19 +142,60 @@ class Settings(QtWidgets.QWidget):
         self.rows.append(row)
         return row
 
+    TABS = True            # the sections as tabs along the top (the first-start page is short enough without)
+    TAB_NAMES = {"RECORDING": "Recording", "DEVICES": "Devices", "CONTROLS": "Controls", "LIBRARY": "Library",
+                 "GENERAL": "General"}
+
     def _section(self, title: str):
         """A title, then a card that the next rows go into."""
-        self.rows_layout.addWidget(ui_widgets.SectionTitle(title))
+        heading = ui_widgets.SectionTitle(title)
+        self.rows_layout.addWidget(heading)
         self.card = ui_widgets.SettingsCard()
         self.rows_layout.addWidget(self.card)
+        self._sections = getattr(self, "_sections", []) + [(title, heading, self.card)]
+
+    def _build_tabs(self):
+        if not self.TABS:
+            return
+        for title, heading, card in getattr(self, "_sections", []):
+            b = QtWidgets.QPushButton(language.tr(self.TAB_NAMES.get(title, title)), objectName="kind")
+            b.setFocusPolicy(Qt.NoFocus)
+            b.setCursor(Qt.PointingHandCursor)
+            b.clicked.connect(lambda _=False, h=heading, c=card: self.jump_to(h, c))
+            self.tabs_row.addWidget(b)
+            self.tabs.append((b, heading, card))
+        self.tabs_row.addStretch()
+
+    def jump_to(self, heading: QtWidgets.QWidget, card: ui_widgets.SettingsCard):
+        """A tab: the page scrolls to that section's title and the highlight goes to its first row."""
+        self.scroll.verticalScrollBar().setValue(heading.y())
+        first = next((r for r in self.rows if r.parent() is card), None)
+        if first is not None:
+            first.setFocus(Qt.MouseFocusReason)
+            self._on_focus_changed(None, first)     # the tab and the box follow at once
+
+    def _on_focus_changed(self, _old, new):
+        if not isinstance(new, ui_widgets.SettingRow) or new.window() is not self:
+            return
+        for b, _, card in self.tabs:          # the tab of the section the highlight is in
+            b.setProperty("on", new.parent() is card)
+            b.style().unpolish(b)
+            b.style().polish(b)
+        self._explain(new)
+
+    def _explain(self, row: ui_widgets.SettingRow | None):
+        """The box under the list: the highlighted setting's name and its whole explanation."""
+        if row is None:
+            return
+        self.detail_title.setText(row.label)
+        try:
+            text = row.describe(row.value)
+        except (TypeError, ValueError, KeyError):
+            text = ""
+        self.detail_text.setText(text)
+        self.detail_text.setVisible(bool(text))
 
     def _build_rows(self):
-        # first, so it's easy to find again: the website, to send to anyone ("_" keeps it out of config.json)
-        self._section("Capture Menu")
-        share = self._row("_share", "Share Capture Menu", "action",
-                          describe=lambda v: "Opens the website, to send its link to anyone",
-                          display=lambda v: language.tr("Open the website"))
-        share.on_activate = lambda row: QtGui.QDesktopServices.openUrl(QtCore.QUrl(version.SITE))
         self._section("RECORDING")
         self.res_row = self._row("resolution", "Resolution", "choice", [("native", "Native")],
                                  lambda v: "Lower uses less space; Native looks sharpest")
@@ -234,6 +290,15 @@ class Settings(QtWidgets.QWidget):
         self.update_row = self._row("_update", "Updates", "action", describe=lambda v: self._update_describe(),
                                     display=lambda v: self._update_value())
         self.update_row.on_activate = lambda row: self.check_or_install()
+        # the website, to send to anyone, and every setting back to how it came: at the end, away from Save
+        share = self._row("_share", "Share Capture Menu", "action",
+                          describe=lambda v: "Opens the website, to send its link to anyone",
+                          display=lambda v: language.tr("Open the website"))
+        share.on_activate = lambda row: QtGui.QDesktopServices.openUrl(QtCore.QUrl(version.SITE))
+        defaults = self._row("_defaults", "Restore defaults", "action",
+                             describe=lambda v: "Every setting back to how it came. Nothing changes until you save",
+                             display=lambda v: language.tr("Restore"))
+        defaults.on_activate = lambda row: self.restore_defaults()
         self.rows_layout.addStretch()
 
     def _plan_cfg(self) -> dict:
@@ -446,8 +511,10 @@ class Settings(QtWidgets.QWidget):
         enc = obs_client.choose_encoder(self.encoder or "nvenc_av1", cfg["video_codec"])
         w, h = obs_client.output_size(*self.screen_px, cfg["resolution"])
         mb = obs_client.buffer_memory_mb(cfg, *self.screen_px, enc)
-        self.memory.setText(language.tr("Recording {w}×{h} at {fps} FPS  ·  the last minutes take up to {gb} GB on the drive",
-                               w=w, h=h, fps=cfg["fps"], gb=f"{mb / 1024:.1f}"))
+        self.memory.setText(language.tr("Recording {w}×{h} at {fps} FPS  ·  the last {minutes} min take up to {gb} GB on the drive",
+                               w=w, h=h, fps=cfg["fps"], minutes=cfg["buffer_minutes"], gb=f"{mb / 1024:.1f}"))
+        focused = self.focusWidget()
+        self._explain(focused if isinstance(focused, ui_widgets.SettingRow) else None)
         dirty = self.changes()
         self._leave_armed = False
         self.info.setText((language.tr("1 unsaved change") if len(dirty) == 1 else
@@ -610,7 +677,7 @@ class Settings(QtWidgets.QWidget):
         return super().eventFilter(obj, event)
 
     def _head(self) -> list[QtWidgets.QWidget]:
-        return [self.back_btn, self.defaults_btn, self.cancel_btn, self.save_btn]
+        return [self.back_btn, self.cancel_btn, self.save_btn]
 
     def keyPressEvent(self, e):
         row = self.focusWidget() if isinstance(self.focusWidget(), ui_widgets.SettingRow) else None
@@ -683,6 +750,8 @@ class Welcome(Settings):
 
     LATER = "You can change it later in Settings."
     READ_AT_START = ("hotkey", "controller_button", "controller_hold_ms", "double_press_seconds", "clips_dir")
+
+    TABS = False           # short enough to read top to bottom
 
     def __init__(self, ctl: capture_controller.Controller, done):
         self.done = done
