@@ -1329,7 +1329,12 @@ class SettingRow(HoverFocus, QtWidgets.QWidget):
 
     def _below(self) -> bool:
         """Stacked, with every choice shown: they sit under the explanation."""
-        return self.stacked and self.kind == "choice" and 2 <= len(self.choices) <= 6
+        if not (self.stacked and self.kind == "choice" and 2 <= len(self.choices) <= 6):
+            return False
+        # only when they all fit the card's width (three screens' names don't): else the ‹ value › pill
+        fm = QtGui.QFontMetricsF(ui_theme.font(20, QtGui.QFont.DemiBold))
+        need = sum(fm.horizontalAdvance(t) + 44 for _, t in self.choices) + 4
+        return need <= self.width() - 58
 
     def _desc_rect(self) -> QtCore.QRectF:
         try:
@@ -1379,9 +1384,10 @@ class SettingRow(HoverFocus, QtWidgets.QWidget):
             if self._below():
                 return QtCore.QRectF(left, segs[0].top() - 4, right - left, 56)
             return QtCore.QRectF(left, 0, right - left, self.height())
+        w = 420 if self.stacked else 284      # Settings' cards: room for a screen's or a microphone's name
         if language.is_rtl():    # mirrored: the value on the left, the name on the right
-            return QtCore.QRectF(16, 0, 284, self.height())
-        return QtCore.QRectF(self.width() - 300, 0, 284, self.height())
+            return QtCore.QRectF(16, 0, w, self.height())
+        return QtCore.QRectF(self.width() - 16 - w, 0, w, self.height())
 
     def paintEvent(self, _):
         p = QtGui.QPainter(self)

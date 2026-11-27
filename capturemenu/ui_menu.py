@@ -149,7 +149,7 @@ class Menu(QtWidgets.QWidget):
         self.chips: list[ui_widgets.Chip] = []
         for sec in self.options:
             c = ui_widgets.Chip(ui_widgets.chip_label(sec))
-            c.clicked.connect(lambda _=False, s=sec: self._save(s))
+            c.clicked.connect(lambda _=False, s=sec: self._chip_clicked(s))
             c.on_focus = lambda s=sec: self._choose(s)
             chips.addWidget(c)
             self.chips.append(c)
@@ -338,6 +338,7 @@ class Menu(QtWidgets.QWidget):
         self._pick_now = time.time()
         self.pick_shift = 0
         self.pick_len = self.options[self.last_choice]
+        self._armed = None
         self.preview.set_picture(None)
         self._shown_start = None
         self._set_picking(True)
@@ -355,6 +356,17 @@ class Menu(QtWidgets.QWidget):
     def close_picker(self):
         self._set_picking(False)
         self.save_card.setFocus()
+
+    _armed = None       # the length a click picked: a second click on it saves
+
+    def _chip_clicked(self, seconds: int | None):
+        """A click on a length picks it (the strip shows it and it can be moved there); a second click on the
+        same one saves it, so a single click never saves by accident. Enter / ✕ and the 1-9 keys still save."""
+        if self._armed == seconds:
+            self._save(seconds)
+            return
+        self._armed = seconds
+        self._choose(seconds)
 
     def _save(self, seconds: int | None):
         """Saves that length; moved earlier in the strip, it ends there instead of now."""
@@ -426,6 +438,8 @@ class Menu(QtWidgets.QWidget):
         mb = self._mb_per_minute()
         if mb:
             parts.append(language.tr("about {size}", size=catalog.human_size(mb * length / 60 * 1024 * 1024)))
+        if self._armed is not None and self._armed == self.pick_len:
+            parts.append(language.tr("click again to save"))
         # spec: the length as a 24 px heading, then the rest at 18 px
         self.pick_summary.setText(f'{first}&nbsp;&nbsp;&nbsp;<span style="color:{ui_theme.MUTED}; font-size:18px; font-weight:400">'
                                   + "&nbsp;&nbsp;·&nbsp;&nbsp;".join(parts) + "</span>")
@@ -655,7 +669,10 @@ class Menu(QtWidgets.QWidget):
             j = cards.index(focused) + language.forward(k)
             cards[max(0, min(len(cards) - 1, j))].setFocus()
         elif k in (Qt.Key_Return, Qt.Key_Enter, Qt.Key_Space) and focused in cards:
-            focused.click()
+            if self.picking and focused in self.chips:      # Enter / ✕ saves at once; only a click asks twice
+                self._save(self.options[self.chips.index(focused)])
+            else:
+                focused.click()
         elif Qt.Key_1 <= k <= Qt.Key_9 and k - Qt.Key_1 < len(self.options):
             self._save(self.options[k - Qt.Key_1])
         elif self.picking:

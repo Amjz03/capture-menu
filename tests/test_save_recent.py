@@ -153,6 +153,14 @@ assert saves[-1] == (60, "Game", None), "unmoved: up to now"
 reopen(); menu._choose(60)
 menu._move_to(menu._pick_now - 300)
 assert menu.pick_shift == 300
+# a click on a length only picks it; a second click on the same one saves
+reopen(); n = len(saves)
+menu.chips[menu.options.index(300)].click(); app.processEvents()
+assert len(saves) == n and menu.pick_len == 300 and "click again" in menu.pick_summary.text(), "one click doesn't save"
+menu.chips[menu.options.index(60)].click()
+assert len(saves) == n and menu.pick_len == 60, "another length: picked, still not saved"
+menu.chips[menu.options.index(60)].click()
+assert saves[-1][0] == 60, "the second click on it saves"
 # the controller's L1 / R1 move it while choosing; otherwise R1 trims the latest as before
 menu.show_menu("Game"); menu._on_status(st); menu.open_picker()
 assert input_devices.pad_key(input_devices.L1, menu, menu.viewer) == Qt.Key_BracketLeft
