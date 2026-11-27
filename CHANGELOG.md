@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.0.46 · 2026-11-27
+
+- **Sending to your phone is much quicker.** The QR code shows in about 2 seconds, and the phone downloads the video while it's being made instead of waiting for all of it. A 15-minute 1440p clip reaches the phone in about 3 to 4 minutes (it took about 15).
+- **Fewer frames, not less quality:** a clip faster than 30 FPS goes over at 30, in full resolution and the same quality, about a third smaller.
+- **HDR clips are made ready on the graphics card,** about 3 times faster, in the same colours as before.
+- **Go back to your game.** The link keeps working after you close the code or the viewer, and stops 30 minutes after the phone last used it. A notice says when the QR code is ready and how long it works; click it to show the code again.
 ## 0.0.45 · 2026-11-27
 
 - **A new look, page by page.** The bar has a green pill that says the last minutes are being kept, Mic says On or Off, every recent capture has its name and when under it, and thin lines part the groups. Text, tiles and buttons follow one set of sizes everywhere.
