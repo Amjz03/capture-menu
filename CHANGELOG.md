@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.0.45 · 2026-11-27
+
+- **A new look, page by page.** The bar has a green pill that says the last minutes are being kept, Mic says On or Off, every recent capture has its name and when under it, and thin lines part the groups. Text, tiles and buttons follow one set of sizes everywhere.
+- **Save recent shows the last 30 minutes.** A big picture of where the clip starts, a strip of a picture a minute, and how big the clip will be. Move the clip 10 seconds earlier or later with L1 / R1 (or `[` `]`), or click the strip. With the mouse a click on a length picks it and a second click saves; Enter, ✕ and 1–8 still save at once. Lengths read 15 sec … 30 min, then Everything.
+- **Share asks less.** Three places: Discord, Your phone (a QR code) and Copy, which sends an H.264 clip as it is and anything else as an MP4 that plays everywhere. Your voice and Discord's size are one line with Change. The button says what it does, and a double click on a place shares at once.
+- **The viewer:** its actions are tiles under the picture (Share first, Delete apart), the frame is as wide as the picture, the page takes the capture's colours, and the captures before and after it show small at the bottom. Trim and Audio keep their buttons in their own panel.
+- **Gallery:** a side rail with the games and the storage, captures grouped into Today, This week and All earlier captures, Play / Share / Trim under the current capture. It no longer opens with its captures out of place.
+- **Settings** fills the screen: sections down the side, every choice shown, and what you'll get (sizes, your graphics card and the formats it records) beside them. A row with too many choices to show (three screens) steps through them with ‹ ›.
+- **Notices** have View, Trim and Share; errors have a warning sign and a way out (Start OBS); captures saved close together are counted; the REC timer shows whether your mic is on.
+- Arabic: Share's rows, the gallery's buttons and the REC timer read right to left properly.
 ## 0.0.44 · 2026-11-25
 
 - **Nothing lights up by itself.** When the bar, Settings, the gallery or the viewer opens, or you come back to it, no button is highlighted until you use the keys or the controller. Enter still does what it did. The first arrow only shows where you are (in Settings it no longer changes a value by accident), the next one moves. The mouse lights up only what it's on.
