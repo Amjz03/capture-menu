@@ -741,3 +741,31 @@ html[dir="rtl"] .st-val span { direction: rtl; }
 .nofocus .gl-card.on:not(:hover) .gl-acts { visibility: hidden; }
 .nofocus .set-row.on:not(:hover) { box-shadow: none; }
 .gl-card:not(.on) .gl-acts { display: none; }
+
+/* after the download starts: the two warnings, and what to press */
+.dl-guide { width: min(560px, 100% - 32px); max-height: calc(100% - 32px); overflow: auto; padding: 28px; border: 1px solid var(--line-2); border-radius: 22px;
+  background: var(--bg-2); color: var(--ink); box-shadow: 0 30px 80px -20px rgba(0, 0, 0, .7); }
+.dl-guide::backdrop { background: rgba(5, 6, 10, .72); backdrop-filter: blur(4px); }
+.dl-guide h2 { font-size: 24px; }
+.dl-guide-sub { margin: 6px 0 20px; color: var(--muted); }
+.dl-guide-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 18px; }
+.dl-guide-steps li { display: flex; gap: 14px; }
+.dl-guide-steps .num { flex: none; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--ink); color: var(--bg); font-weight: 700; font-size: 14px; }
+.dl-guide-steps li > div { min-width: 0; flex: 1; }
+.dl-guide-steps h3 { font-size: 16px; margin-bottom: 4px; }
+.dl-guide-steps p { margin: 0; color: var(--muted); font-size: 15px; }
+.dl-guide-acts { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; margin-top: 24px; }
+.dl-guide-acts .link { color: var(--muted); font-size: 14px; }
+/* a small drawing of Windows' SmartScreen window, the part to press lit */
+.ss { margin: 8px 0 10px; padding: 14px 16px; border-radius: 6px; background: #1f5fb4; color: #fff; display: flex; flex-direction: column; gap: 7px; font-size: 13px; }
+.ss b { font-size: 16px; font-weight: 600; }
+.ss-line { height: 6px; border-radius: 3px; background: rgba(255, 255, 255, .35); width: 92%; }
+.ss-line.short { width: 60%; }
+.ss-more { align-self: flex-start; outline: 2px solid #ffd23f; outline-offset: 3px; border-radius: 2px; }
+.ss-btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px; }
+.ss-btns span { padding: 5px 12px; border: 1px solid rgba(255, 255, 255, .7); font-size: 12px; }
+.ss-run { outline: 2px solid #ffd23f; outline-offset: 2px; }
+@media (prefers-reduced-motion: no-preference) {
+  .dl-guide[open] { animation: dl-in .28s var(--ease); }
+  @keyframes dl-in { from { opacity: 0; transform: translateY(10px) scale(.98); } }
+}

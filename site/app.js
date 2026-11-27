@@ -30,6 +30,17 @@ const T = {
     i_smartscreen_h: "If Windows says “Windows protected your PC”",
     i_smartscreen_p: "Without a signature, Windows shows the publisher as unknown. If the file came from the official release, press <span class=\"ui\">More info</span>, then <span class=\"ui\">Run anyway</span>.",
     i_install_h: "Press Install",
+    g_h: "Your download has started",
+    g_sub: "Capture Menu isn't code-signed yet, so you'll see two warnings. Both are expected.",
+    g_1h: "Your browser asks about the file",
+    g_1p: "Press <span class=\"ui\">Keep</span>. In Edge: <span class=\"ui\">···</span>, then <span class=\"ui\">Keep</span>, then <span class=\"ui\">Keep anyway</span>.",
+    g_2h: "Windows shows a blue window",
+    g_ss_t: "Windows protected your PC", g_ss_more: "More info", g_ss_run: "Run anyway", g_ss_no: "Don't run",
+    g_2p: "Press <span class=\"ui\">More info</span>, then <span class=\"ui\">Run anyway</span>.",
+    g_3h: "Press Install",
+    g_3p: "About a minute later, press <span class=\"ui\">Alt + C</span> in any game.",
+    g_ok: "Got it",
+    g_again: "Didn't start? Download again",
     i_install_p: "Setup gets its own copy of OBS Studio (your own OBS isn't touched), installs FFmpeg if you don't have it and sets everything up for your PC. A minute later, press <span class=\"ui\">Alt + C</span> in a game.",
     skip: "Skip to content",
     all_releases: "All releases",
@@ -110,6 +121,17 @@ const T = {
     i_smartscreen_h: "إذا ظهرت رسالة «قام Windows بحماية الكمبيوتر»",
     i_smartscreen_p: "بدون توقيع، يعرض ويندوز الناشر على أنه غير معروف. إذا نزّلت الملف من صفحة الإصدار الرسمية، اضغط <span class=\"ui\">مزيد من المعلومات</span>، ثم <span class=\"ui\">تشغيل على أي حال</span>.",
     i_install_h: "اضغط تثبيت",
+    g_h: "بدأ التنزيل",
+    g_sub: "البرنامج ما زال بدون توقيع رقمي، فبيطلع لك تنبيهين. الاثنين طبيعيين.",
+    g_1h: "المتصفح يسألك عن الملف",
+    g_1p: "اضغط <span class=\"ui\">الاحتفاظ</span>. في إيدج: <span class=\"ui\">···</span>، ثم <span class=\"ui\">الاحتفاظ</span>، ثم <span class=\"ui\">الاحتفاظ على أي حال</span>.",
+    g_2h: "ويندوز يطلع نافذة زرقاء",
+    g_ss_t: "قام Windows بحماية الكمبيوتر", g_ss_more: "مزيد من المعلومات", g_ss_run: "تشغيل على أي حال", g_ss_no: "عدم التشغيل",
+    g_2p: "اضغط <span class=\"ui\">مزيد من المعلومات</span>، ثم <span class=\"ui\">تشغيل على أي حال</span>.",
+    g_3h: "اضغط تثبيت",
+    g_3p: "وبعد دقيقة تقريباً، اضغط <span class=\"ui\">Alt + C</span> في أي لعبة.",
+    g_ok: "تمام",
+    g_again: "ما بدأ؟ نزّله مرة ثانية",
     i_install_p: "اضغط <span class=\"ui\">Install</span> في ملف التثبيت، وهو ينزّل نسخة OBS Studio خاصة بالبرنامج (ولا يلمس نسخة OBS التي عندك)، ويثبّت FFmpeg إذا لم يكن عندك، ويضبط كل شيء على جهازك. وبعد دقيقة، اضغط <span class=\"ui\">Alt + C</span> في أي لعبة.",
     skip: "انتقل إلى المحتوى",
     all_releases: "كل الإصدارات",
@@ -336,8 +358,18 @@ if (!store.get("seen")) {
   if (store.get("seen")) count("new-device", "New device");   // only where it's remembered: private windows that forget it aren't counted every time
 }
 document.addEventListener("click", (e) => {
-  if (e.target.closest('a[href$="CaptureMenu-Setup.exe"]')) count("download", "Download Setup.exe");
+  const dl = e.target.closest('a[href$="CaptureMenu-Setup.exe"]');
+  if (!dl) return;
+  count("download", "Download Setup.exe");
+  // the download goes ahead; a moment later, what the warnings will say and what to press
+  const guide = document.getElementById("dl-guide");
+  if (guide && !guide.open && !dl.hasAttribute("data-dl-again") && !document.documentElement.classList.contains("phone") && guide.showModal)
+    setTimeout(() => guide.showModal(), 350);
 });
+{ const guide = document.getElementById("dl-guide");
+  document.getElementById("dl-guide-ok").addEventListener("click", () => guide.close());
+  guide.addEventListener("click", (e) => { if (e.target === guide) guide.close(); });   // a click beside the card closes it
+}
 
 // ---------------------------------------------------------------- on a phone: the link, for the computer
 // The site's own address (never the .exe), in the visitor's language. Copy says so when it worked;

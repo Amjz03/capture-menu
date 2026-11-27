@@ -199,6 +199,45 @@
     </section>
   </main>
 
+  <!-- after the download starts: what Windows and the browser will say, and what to press -->
+  <dialog class="dl-guide" id="dl-guide" aria-labelledby="dl-guide-h">
+    <h2 id="dl-guide-h" data-i18n="g_h">Your download has started</h2>
+    <p class="dl-guide-sub" data-i18n="g_sub">Capture Menu isn't code-signed yet, so you'll see two warnings. Both are expected.</p>
+    <ol class="dl-guide-steps">
+      <li>
+        <span class="num">1</span>
+        <div>
+          <h3 data-i18n="g_1h">Your browser asks about the file</h3>
+          <p data-i18n-html="g_1p">Press <span class="ui">Keep</span>. In Edge: <span class="ui">···</span>, then <span class="ui">Keep</span>, then <span class="ui">Keep anyway</span>.</p>
+        </div>
+      </li>
+      <li>
+        <span class="num">2</span>
+        <div>
+          <h3 data-i18n="g_2h">Windows shows a blue window</h3>
+          <div class="ss" aria-hidden="true">
+            <b data-i18n="g_ss_t">Windows protected your PC</b>
+            <span class="ss-line"></span><span class="ss-line short"></span>
+            <u class="ss-more" data-i18n="g_ss_more">More info</u>
+            <span class="ss-btns"><span class="ss-run" data-i18n="g_ss_run">Run anyway</span><span class="ss-no" data-i18n="g_ss_no">Don't run</span></span>
+          </div>
+          <p data-i18n-html="g_2p">Press <span class="ui">More info</span>, then <span class="ui">Run anyway</span>.</p>
+        </div>
+      </li>
+      <li>
+        <span class="num">3</span>
+        <div>
+          <h3 data-i18n="g_3h">Press Install</h3>
+          <p data-i18n-html="g_3p">About a minute later, press <span class="ui">Alt + C</span> in any game.</p>
+        </div>
+      </li>
+    </ol>
+    <div class="dl-guide-acts">
+      <button class="btn" type="button" id="dl-guide-ok" data-i18n="g_ok">Got it</button>
+      <a class="link" href="https://github.com/Amjz03/capture-menu/releases/latest/download/CaptureMenu-Setup.exe" data-dl-again data-i18n="g_again">Didn't start? Download again</a>
+    </div>
+  </dialog>
+
   <footer class="foot">
     <span class="foot-brand"><img src="assets/icon.png" alt="" width="20" height="20">Capture Menu · <a href="https://github.com/Amjz03/capture-menu/blob/main/LICENSE">MIT</a> · <a href="https://github.com/Amjz03/capture-menu">GitHub</a> · <a href="#privacy" data-i18n="privacy">Privacy</a></span>
     <span data-i18n="tm">PlayStation and Xbox are trademarks of their owners. Capture Menu is not affiliated with Sony or Microsoft.</span>
