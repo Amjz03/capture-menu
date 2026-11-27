@@ -328,3 +328,19 @@ assert focused is not None and not lit(focused), "and coming back from Settings,
 menu.settings.hide(); menu.hide_menu()
 app.removeEventFilter(watch)
 print("no focus highlight until a key PASS")
+
+# the bar: every prompt has a glyph you can see (PromptFont's PlayStation D-pad advances by nothing)
+from capturemenu import ui_theme
+for token in ("DPAD", "DPAD_LR", "DPAD_UD", "A", "L1R1"):
+    for pad in ("playstation", "xbox"):
+        assert ui_theme.glyph_width(token, pad) >= 14, (token, pad, ui_theme.glyph_width(token, pad))
+# the bar: the mic tile says its state on the second line, coloured
+menu.show_menu("Game")
+st = {"online": True, "buffer": True, "buffer_seconds": 1800, "buffered_ms": 1000, "recording": False, "record_ms": 0}
+menu._on_status(dict(st, mic_muted=False))
+assert (menu.mic_card.label, menu.mic_card.hint, menu.mic_card.hint_color) == ("Mic", "On", ui_theme.GREEN)
+menu._on_status(dict(st, mic_muted=True))
+assert (menu.mic_card.icon_name, menu.mic_card.hint, menu.mic_card.hint_color) == ("mic-off", "Off", ui_theme.RED)
+assert ui_theme.GREEN in menu.status.text(), "a green dot while the last minutes are kept"
+menu.hide_menu()
+print("bar glyphs and mic state PASS")

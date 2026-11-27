@@ -344,9 +344,17 @@ def _glyph_parts(token: str, mode: str) -> list[tuple[QtGui.QFont, str]]:
     return parts
 
 
+def _ink_width(f: QtGui.QFont, text: str) -> float:
+    """How wide text draws. A few PromptFont glyphs (the PlayStation D-pad) are drawn over the
+    next one and so advance by nothing: those are as wide as their ink."""
+    fm = QtGui.QFontMetricsF(f)
+    adv = fm.horizontalAdvance(text)
+    return adv if adv >= 1 else fm.tightBoundingRect(text).width()
+
+
 def glyph_width(token: str, mode: str) -> float:
     """How wide draw_glyph() draws this button prompt."""
-    return sum(QtGui.QFontMetrics(f).horizontalAdvance(text) + (2 if i else 0)
+    return sum(_ink_width(f, text) + (2 if i else 0)
                for i, (f, text) in enumerate(_glyph_parts(token, mode)))
 
 
@@ -366,9 +374,15 @@ def draw_glyph(p: QtGui.QPainter, x: float, cy: float, token: str, mode: str,
             f = font(12, QtGui.QFont.DemiBold)
             text = name[2:] if name.startswith("t:") else name.split("-", 1)[-1].upper()
         p.setFont(f)
-        w = p.fontMetrics().horizontalAdvance(text)
+        fm = QtGui.QFontMetricsF(f)
         x0 = x + width + (2 if i else 0)
-        p.drawText(QtCore.QRectF(x0, cy - 14, w + 1, 28), Qt.AlignCenter, text)
+        if fm.horizontalAdvance(text) >= 1:
+            w = fm.horizontalAdvance(text)
+            p.drawText(QtCore.QRectF(x0, cy - 14, w + 1, 28), Qt.AlignCenter, text)
+        else:          # a glyph with no advance: place its ink, not its (empty) box
+            ink = fm.tightBoundingRect(text)
+            w = ink.width()
+            p.drawText(QtCore.QPointF(x0 - ink.left(), cy - ink.center().y()), text)
         width += w + (2 if i else 0)
     p.restore()
     return width
@@ -466,10 +480,10 @@ def paint_focus(p: QtGui.QPainter, r: QtCore.QRectF, radius: float, t: float = 1
 BAR_STYLE = f"""
 QLabel {{ color: {INK}; background: transparent; }}
 #game {{ font-family: {DISPLAY}; font-size: 30px; font-weight: 600; }}
-#status {{ color: {MUTED}; font-size: 15px; }}
+#status {{ color: {INK}; font-size: 17px; background: rgba(255,255,255,24); border: 1px solid rgba(255,255,255,18); border-radius: 15px; padding: 4px 16px 5px 14px; }}
 #caption {{ color: {INK}; font-size: 17px; font-weight: 600; }}
-#focusInfo {{ color: {FAINT}; font-size: 15px; }}
-#storage {{ color: {AMBER}; font-size: 15px; }}
+#focusInfo {{ color: {MUTED}; font-size: 16px; }}
+#storage {{ color: {AMBER}; font-size: 16px; }}
 QPushButton#update {{ color: {BLUE}; font-size: 15px; font-weight: 600; border: none; background: transparent; padding: 0; }}
 QPushButton#update:hover {{ text-decoration: underline; }}
 QPushButton#back {{

@@ -17,7 +17,7 @@ from . import capture_controller, catalog, input_devices, language, ui_theme, ui
 class Menu(QtWidgets.QWidget):
     """The Create bar: docks along the bottom of the screen so the game stays in view."""
 
-    BAR_H = 316
+    BAR_H = 324
     PICK_H = 246            # the bar is slimmer while choosing a duration
     HEADROOM = 90           # fade above the bar
 
@@ -50,7 +50,7 @@ class Menu(QtWidgets.QWidget):
         self.status = QtWidgets.QLabel(objectName="status")
         self.status.setTextFormat(Qt.RichText)
         head.addWidget(self.game_label, 0, Qt.AlignBaseline)
-        head.addWidget(self.status, 0, Qt.AlignBaseline)
+        head.addWidget(self.status, 0, Qt.AlignVCenter)
         self.storage_label = QtWidgets.QLabel(objectName="storage")
         self.storage_label.hide()
         head.addWidget(self.storage_label, 0, Qt.AlignBaseline)
@@ -77,7 +77,7 @@ class Menu(QtWidgets.QWidget):
         self.save_card = ui_widgets.ActionCard("rewind", "Save recent", "last 30 min")
         self.shot_card = ui_widgets.ActionCard("camera", "Screenshot")
         self.rec_card = ui_widgets.ActionCard("record", "Record")
-        self.mic_card = ui_widgets.ActionCard("mic", "Mic on")
+        self.mic_card = ui_widgets.ActionCard("mic", "Mic", "On")
         self.mic_card.clicked.connect(self.ctl.toggle_mic)
         self.save_card.clicked.connect(self.open_picker)
         self.shot_card.clicked.connect(self._screenshot)
@@ -314,14 +314,29 @@ class Menu(QtWidgets.QWidget):
                 card.caption = self.ctl.title_of(path) or catalog.capture_kind(path)
                 card.when = catalog.time_ago(path.stat().st_mtime)
         self.empty_label.setVisible(not items)
-        self.focus_info.setText("")
+        self.focus_info.setText(self._folder_info())
+
+    def _folder_info(self) -> str:
+        """What this game's folder holds, said in the corner while no capture is focused."""
+        count = size = 0
+        for root in {self.ctl.clips_dir, getattr(self.ctl, "shots_dir", self.ctl.clips_dir)}:
+            try:
+                for f in (Path(root) / self.game).iterdir():
+                    if f.suffix.lower() in catalog.MEDIA_EXTS:
+                        count += 1
+                        size += catalog.file_size(f)
+            except OSError:
+                pass
+        if not count:
+            return ""
+        return language.tr("This game: {n} captures · {size}", n=count, size=catalog.human_size(size))
 
     def _on_focus(self, card: ui_widgets.Card):
         if isinstance(card, ui_widgets.ThumbCard) and card.path is not None:
             path = card.path
-            self.focus_info.setText(f"{path.parent.name}    {catalog.human_size(catalog.file_size(path))}")
+            self.focus_info.setText(f"{path.parent.name}  ·  {catalog.human_size(catalog.file_size(path))}")
         else:
-            self.focus_info.setText("")
+            self.focus_info.setText(self._folder_info())
 
     def show_storage(self, info: dict):
         if info.get("over"):
@@ -388,8 +403,9 @@ class Menu(QtWidgets.QWidget):
         elif st["recording"]:
             text = (f'<span style="color:{ui_theme.RED}">●</span>&nbsp;&nbsp;<span style="color:{ui_theme.INK}">{language.tr("Recording")}'
                     f'</span>&nbsp;&nbsp;{language.clock(st["record_ms"])}')
-        elif st["buffer"]:
-            text = language.tr("Keeping the last {length}", length=language.duration_label(st["buffer_seconds"], short=True))
+        elif st["buffer"]:     # a green dot: the last minutes are being kept
+            text = (f'<span style="color:{ui_theme.GREEN}">●</span>&nbsp;&nbsp;'
+                    + language.tr("Keeping the last {length}", length=language.duration_label(st["buffer_seconds"], short=True)))
         else:
             text = f'<span style="color:{ui_theme.AMBER}">{language.tr("Replay buffer is off")}</span>'
         self.status.setText(text)
@@ -408,10 +424,12 @@ class Menu(QtWidgets.QWidget):
                 self.rec_card.set_state("record", "Record")
             muted = st.get("mic_muted")
             self.mic_card.setVisible(muted is not None)
-            if muted:
-                self.mic_card.set_state("mic-off", "Mic off", ui_theme.RED)
+            if muted:     # the state is the second line: green On, red Off
+                self.mic_card.set_state("mic-off", "Mic", ui_theme.RED)
+                self.mic_card.hint, self.mic_card.hint_color = "Off", ui_theme.RED
             else:
-                self.mic_card.set_state("mic", "Mic on")
+                self.mic_card.set_state("mic", "Mic")
+                self.mic_card.hint, self.mic_card.hint_color = "On", ui_theme.GREEN
         if self.picking:
             self._refresh_picker()
 

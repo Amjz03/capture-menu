@@ -122,7 +122,7 @@ print("gallery PASS")
 menu.show_menu("Neon Highway")
 menu._on_status({"online": True, "buffer": True, "buffer_seconds": 1800, "buffered_ms": 1000, "recording": False,
                  "record_ms": 0, "mic_muted": True})
-assert menu.mic_card.isVisible() and menu.mic_card.label == "Mic off"
+assert menu.mic_card.isVisible() and (menu.mic_card.label, menu.mic_card.hint) == ("Mic", "Off")
 assert menu.mic_card in menu._nav_cards()
 menu._on_status({"online": True, "buffer": True, "buffer_seconds": 1800, "buffered_ms": 1000, "recording": False,
                  "record_ms": 0, "mic_muted": None})

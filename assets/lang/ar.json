@@ -463,5 +463,7 @@
   "Show: Everything": "عرض: الكل",
   "Show: Clips": "عرض: المقاطع",
   "Show: Screenshots": "عرض: لقطات الشاشة",
-  "Show: Recordings": "عرض: التسجيلات"
+  "Show: Recordings": "عرض: التسجيلات",
+  "Mic": "المايك",
+  "This game: {n} captures · {size}": "هذه اللعبة: {n} ملف · {size}"
 }

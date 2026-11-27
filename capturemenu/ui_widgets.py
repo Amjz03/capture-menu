@@ -36,8 +36,8 @@ class HintBar(QtWidgets.QWidget):
                 x += self.ITEM_GAP
             if glyph and not rtl:
                 x += ui_theme.draw_glyph(p, x, cy, glyph, self.mode) + self.GAP
-            p.setFont(ui_theme.font(14))
-            p.setPen(QtGui.QColor(236, 240, 250, 205))
+            p.setFont(ui_theme.font(16))
+            p.setPen(QtGui.QColor(236, 240, 250, 215))
             w = p.fontMetrics().horizontalAdvance(label)
             p.drawText(QtCore.QRectF(x, 0, w + 2, self.height()), Qt.AlignVCenter | Qt.AlignLeft, label)
             x += w
@@ -180,7 +180,7 @@ class ActionCard(Card):
     Create menu."""
 
     SIZE = 100
-    BELOW = 44
+    BELOW = 50
 
     def __init__(self, icon: str, label: str, hint: str = ""):
         super().__init__(self.SIZE + 12, self.SIZE)
@@ -188,6 +188,7 @@ class ActionCard(Card):
         self.icon_color = ui_theme.INK
         self.tint: QtGui.QColor | None = None
         self.badge = False      # a blue dot on the tile and a blue second line: something new waits there
+        self.hint_color: str | None = None     # the second line's colour when it's a state (Mic: On / Off)
 
     def tile(self) -> QtCore.QRectF:
         return QtCore.QRectF((self.width() - self.SIZE) / 2, self.PAD, self.SIZE, self.SIZE)
@@ -214,15 +215,16 @@ class ActionCard(Card):
         size = 32 * r.width() / self.SIZE
         p.drawPixmap(QtCore.QRectF(r.center().x() - size / 2, r.center().y() - size / 2, size, size).toRect(),
                      ui_theme.icon_pixmap(self.icon_name, 34, color))
-        text_r = QtCore.QRectF(0, self.tile().bottom() + 14, self.width(), 18)
-        p.setPen(QtGui.QColor(ui_theme.INK) if focused else QtGui.QColor(236, 240, 250, 205))
-        p.setFont(ui_theme.font(14, QtGui.QFont.DemiBold if focused else QtGui.QFont.Normal))
+        text_r = QtCore.QRectF(0, self.tile().bottom() + 13, self.width(), 21)
+        p.setPen(QtGui.QColor(ui_theme.INK) if focused else QtGui.QColor(236, 240, 250, 220))
+        p.setFont(ui_theme.font(16, QtGui.QFont.DemiBold if focused else QtGui.QFont.Normal))
         p.drawText(text_r, Qt.AlignHCenter | Qt.AlignVCenter,
                    p.fontMetrics().elidedText(language.tr(self.label), Qt.ElideRight, self.width()))
         if self.hint:
-            p.setPen(QtGui.QColor(ui_theme.BLUE) if self.badge else QtGui.QColor(236, 240, 250, 150))
-            p.setFont(ui_theme.font(13, QtGui.QFont.DemiBold if self.badge else QtGui.QFont.Normal))
-            p.drawText(text_r.translated(0, 17), Qt.AlignHCenter | Qt.AlignVCenter, language.tr(self.hint))
+            color = ui_theme.BLUE if self.badge else self.hint_color
+            p.setPen(QtGui.QColor(color) if color else QtGui.QColor(236, 240, 250, 175))
+            p.setFont(ui_theme.font(14, QtGui.QFont.DemiBold if color else QtGui.QFont.Normal))
+            p.drawText(text_r.translated(0, 20), Qt.AlignHCenter | Qt.AlignVCenter, language.tr(self.hint))
         if self.badge:
             p.setPen(QtGui.QPen(QtGui.QColor(ui_theme.DARK), 2))
             p.setBrush(QtGui.QColor(ui_theme.BLUE))
@@ -285,7 +287,7 @@ def draw_capture_tile(p: QtGui.QPainter, r: QtCore.QRectF, pixmap: QtGui.QPixmap
 class ThumbCard(Card):
     RADIUS = 14
     W, H = 178, 100
-    BELOW = 44
+    BELOW = 50
 
     def __init__(self):
         super().__init__(self.W, self.H)
@@ -306,15 +308,15 @@ class ThumbCard(Card):
         dim = int((50 if self.underMouse() else 100) * (1 - self.lit()))   # quieter until focused, like the PS5
         draw_capture_tile(p, self.shown(), self.pixmap, self.path, self.length, self.favorite, dim, self.radius())
         self.paint_ring(p)
-        if focused and self.path is not None:   # the focused capture says what it is, nothing else does
-            text = QtCore.QRectF(self.PAD, self.tile().bottom() + 14, self.width() - 2 * self.PAD, 18)
-            p.setPen(QtGui.QColor(ui_theme.INK))
-            p.setFont(ui_theme.font(14, QtGui.QFont.DemiBold))
+        if self.path is not None:   # every capture says what it is and when; the focused one in bold
+            text = QtCore.QRectF(self.PAD, self.tile().bottom() + 13, self.width() - 2 * self.PAD, 21)
+            p.setPen(QtGui.QColor(ui_theme.INK) if focused else QtGui.QColor(236, 240, 250, 220))
+            p.setFont(ui_theme.font(16, QtGui.QFont.DemiBold if focused else QtGui.QFont.Normal))
             p.drawText(text, language.lead() | Qt.AlignVCenter,
                        p.fontMetrics().elidedText(self.caption, Qt.ElideRight, int(text.width())))
-            p.setPen(QtGui.QColor(236, 240, 250, 165))
-            p.setFont(ui_theme.font(13))
-            p.drawText(text.translated(0, 19), language.lead() | Qt.AlignVCenter, self.when)
+            p.setPen(QtGui.QColor(236, 240, 250, 175))
+            p.setFont(ui_theme.font(14))
+            p.drawText(text.translated(0, 20), language.lead() | Qt.AlignVCenter, self.when)
 
 
 def chip_label(seconds: int | None) -> str:
