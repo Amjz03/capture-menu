@@ -63,6 +63,8 @@ pad(input_devices.A)
 assert calls[-1] in (("copy", a.name), ("share", a.name, "phone", False)) and not viewer.sharing, calls
 viewer.enter_share(); viewer._choose_dest("phone"); assert "QR code" in viewer.share_go.text()
 viewer._set_sharing(False)
+n = len(calls); viewer.enter_share(); viewer.dest_cards["discord"].activated.emit()    # a double click: straight away
+assert len(calls) == n + 1 and calls[-1][2] == "discord10" and not viewer.sharing, calls[-1]
 input_devices.input_mode().set("playstation"); app.processEvents()
 pad(input_devices.Y); pad(input_devices.A)                     # △ jumps to the small buttons, ✕ presses Favorite
 assert ctl.is_favorite(a) and "★" in viewer.title.text()

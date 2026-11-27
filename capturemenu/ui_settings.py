@@ -150,7 +150,6 @@ class Settings(QtWidgets.QWidget):
         if self.TABS:
             self._build_panel()
             self.details.hide()         # each row explains itself; the panel adds them up
-            self.back_btn.hide()        # ◯ / Esc, and Cancel
         else:
             self.side.hide()
             self.panel.hide()
@@ -239,7 +238,9 @@ class Settings(QtWidgets.QWidget):
                 item = self.pc_rows.takeAt(0)
                 lay = item.layout()
                 while lay is not None and lay.count():
-                    lay.takeAt(0).widget().deleteLater()
+                    w = lay.takeAt(0).widget()        # (the stretch at a line's end has no widget)
+                    if w is not None:
+                        w.deleteLater()
             best = obs_client.codec_of(self.encoder or "x264")
             codecs = {"av1": ["AV1", "HEVC", "H.264"], "hevc": ["HEVC", "H.264"]}.get(best, ["H.264"])
             extra = ["HDR"] if runtime.IS_WINDOWS and windows.windows_hdr() else []

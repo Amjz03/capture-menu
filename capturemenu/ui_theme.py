@@ -483,7 +483,7 @@ QWidget {{ font-family: {FONT}; }}
 QLabel {{ color: {INK}; background: transparent; }}
 #game {{ font-family: {DISPLAY}; font-size: 32px; font-weight: 600; }}
 #status {{ color: {INK}; font-size: 18px; background: rgba(255,255,255,26); border: 1px solid transparent; border-radius: 20px; padding: 7px 17px 7px 15px; }}
-#caption {{ color: {INK}; font-size: 24px; font-weight: 600; }}
+#caption {{ color: {INK}; font-size: 21px; font-weight: 600; }}
 #focusInfo {{ color: rgba(236,240,250,0.84); font-size: 17px; }}
 #storage {{ color: {AMBER}; font-size: 16px; }}
 QPushButton#update {{ color: {BLUE}; font-size: 15px; font-weight: 600; border: none; background: transparent; padding: 0; }}
@@ -500,10 +500,10 @@ VIEWER_STYLE = f"""
 QWidget {{ font-family: {FONT}; }}
 #viewer {{ background: transparent; border: none; }}
 QLabel {{ color: {INK}; background: transparent; }}
-#vTitle {{ font-family: {DISPLAY}; font-size: 32px; font-weight: 600; }}
+#vTitle {{ font-family: {DISPLAY}; font-size: 27px; font-weight: 600; }}
 #vSub, #vNote {{ color: {MUTED}; font-size: 15px; }}
 #hint {{ color: {MUTED}; font-size: 15px; }}
-#panelTitle {{ font-family: {DISPLAY}; font-size: 24px; font-weight: 600; }}
+#panelTitle {{ font-family: {DISPLAY}; font-size: 21px; font-weight: 600; }}
 #panelSub {{ color: {MUTED}; font-size: 15px; }}
 #info {{ color: {MUTED}; font-size: 14px; }}
 #vMsg {{ color: {MUTED}; font-size: 16px; }}
@@ -644,7 +644,7 @@ QPushButton#sideTab {{ text-align: left; min-height: 48px; padding: 0 14px; bord
     background: transparent; border: none; color: {INK}; }}
 QPushButton#sideTab:hover {{ background: rgba(255,255,255,14); }}
 QPushButton#sideTab[on="true"] {{ background: rgba(255,255,255,56); font-weight: 600; }}
-#panelTitle {{ color: {INK}; font-size: 21px; font-weight: 600; }}
+#panelTitle {{ color: {INK}; font-size: 19px; font-weight: 600; }}
 #statName {{ color: rgba(236,240,250,0.84); font-size: 17px; min-height: 52px; }}
 #statValue {{ color: {INK}; font-size: 17px; font-weight: 600; min-height: 52px; }}
 QPushButton#pcChip {{ min-height: 36px; padding: 0 12px 0 10px; border-radius: 14px; font-size: 15px; font-weight: 400;

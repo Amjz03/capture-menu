@@ -291,7 +291,7 @@ class Gallery(ui_widgets.Grow, QtWidgets.QWidget):
         head = QtWidgets.QHBoxLayout()
         head.setSpacing(12)
         self.back_btn = ui_widgets.back_button(self.go_back)
-        self.back_btn.hide()          # ◯ / Esc go back; the spec has no Back here
+        head.addWidget(self.back_btn)
         # find a capture by its title, note, file name or game; and show only one kind of capture
         self.search = QtWidgets.QLineEdit(placeholderText=language.tr("Search titles, notes, games"), objectName="search")
         self.search.setFixedWidth(420)

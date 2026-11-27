@@ -840,8 +840,13 @@ class DestCard(QtWidgets.QAbstractButton):
         self.setAttribute(Qt.WA_Hover)
         self.setFocusPolicy(Qt.StrongFocus)
 
+    activated = QtCore.Signal()     # a double click: choose it and go, no need for the button
+
     def keyPressEvent(self, e):
         e.ignore()        # the viewer moves between cards and chooses with Enter
+
+    def mouseDoubleClickEvent(self, e):
+        self.activated.emit()
 
     def paintEvent(self, _):
         p = QtGui.QPainter(self)
@@ -1384,7 +1389,7 @@ class SettingRow(HoverFocus, QtWidgets.QWidget):
             if self._below():
                 return QtCore.QRectF(left, segs[0].top() - 4, right - left, 50)
             return QtCore.QRectF(left, 0, right - left, self.height())
-        w = 420 if self.stacked else 284      # Settings' cards: room for a screen's or a microphone's name
+        w = 420 if self.stacked and self.kind == "choice" else 284      # Settings' cards: room for a screen's or a mic's name
         if language.is_rtl():    # mirrored: the value on the left, the name on the right
             return QtCore.QRectF(16, 0, w, self.height())
         return QtCore.QRectF(self.width() - 16 - w, 0, w, self.height())

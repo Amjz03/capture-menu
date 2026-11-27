@@ -285,6 +285,7 @@ class Viewer(QtWidgets.QWidget):
         }
         for c in self.dest_cards.values():
             c.clicked.connect(lambda _=False, k=c.key: self._choose_dest(k))
+            c.activated.connect(lambda k=c.key: (self._choose_dest(k), self._do_share()))
             dests.addWidget(c, 1)
         sl.addLayout(dests)
         self.dest = "discord"
@@ -1312,7 +1313,8 @@ class Viewer(QtWidgets.QWidget):
             elif k in (Qt.Key_Return, Qt.Key_Enter, Qt.Key_Space) and nav:
                 item = nav[i]
                 (item.next() if isinstance(item, ui_widgets.OptionCard) else
-                 self._choose_dest(item.key) if isinstance(item, ui_widgets.DestCard) else item.click())
+                 (self._do_share() if item.chosen else self._choose_dest(item.key))   # a second press on it: go
+                 if isinstance(item, ui_widgets.DestCard) else item.click())
             elif k in (Qt.Key_Escape, Qt.Key_Backspace):
                 self.go_back()
             return
