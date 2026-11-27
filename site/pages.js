@@ -1,3 +1,109 @@
+const SET_AR = {
+"Resolution": "الدقة",
+"Lower uses less space; Native looks sharpest": "الأقل يستهلك مساحة أقل، ودقة الشاشة هي الأوضح",
+"Native": "دقة الشاشة",
+"Frame rate": "عدد الفريمات",
+"60 is smooth for every game; 120 for fast shooters on a high-refresh screen": "60 سلسة في كل الألعاب، و120 لألعاب التصويب السريعة على شاشة عالية التحديث",
+"Quality": "الجودة",
+"Light": "خفيفة",
+"Balanced": "متوازنة",
+"High": "عالية",
+"Max": "قصوى",
+"Video format": "صيغة الفيديو",
+"Auto": "تلقائي",
+"Replay buffer": "مدة الاحتفاظ",
+"Voice on its own track": "صوتك في مسار منفصل",
+"So you can share a clip with or without your voice": "لتشارك المقطع بصوتك أو دونه",
+"HDR": "HDR",
+"HDR clips while Windows HDR is on. Shared copies get normal colours": "مقاطع HDR عندما يكون HDR مفعّلًا في ويندوز. نُسخ المشاركة بألوان عادية",
+"Always normal colours (SDR)": "ألوان عادية دائمًا (SDR)",
+"Off": "مغلق",
+"Colours": "الألوان",
+"Natural": "طبيعية",
+"Soft": "هادئة",
+"Vivid": "زاهية",
+"Colours exactly as Windows shows them": "الألوان كما يعرضها ويندوز بالضبط",
+"More colour and contrast when an HDR screen is recorded in normal colours": "ألوان وتباين أقوى عند تسجيل شاشة HDR بألوان عادية",
+"Recording indicator": "مؤشر التسجيل",
+"Top left": "أعلى اليسار",
+"Top right": "أعلى اليمين",
+"A small REC timer while you record by hand": "مؤقت REC صغير وقت التسجيل اليدوي",
+"Nothing on screen while recording": "لا يظهر شيء على الشاشة وقت التسجيل",
+"Recording screen": "شاشة التسجيل",
+"Follow the game": "اتباع اللعبة",
+"Records the monitor or TV the game is on": "يسجّل الشاشة أو التلفزيون الذي تعمل عليه اللعبة",
+"Always records this screen, wherever the game is": "يسجّل هذه الشاشة دائمًا، أينما كانت اللعبة",
+"Microphone": "المايك",
+"Default": "الافتراضي",
+"The microphone Windows uses. Your voice goes on its own track": "المايك الذي يستخدمه ويندوز. نسجّل صوتك في مسار منفصل",
+"Your voice is recorded from this microphone": "نسجّل صوتك من هذا المايك",
+"Record your microphone": "تسجيل صوت المايك",
+"Your voice goes into your clips. The menu's Mic button turns it off for now": "نحفظ صوتك مع مقاطعك. زر المايك في القائمة يغلقه مؤقتًا",
+"Clips have the game's sound only": "تحتوي المقاطع على صوت اللعبة فقط",
+"Keyboard shortcut": "اختصار الكيبورد",
+"Opens the menu. Press Enter, then the new keys": "يفتح القائمة. اضغط Enter ثم الأزرار الجديدة",
+"Screenshot shortcut": "اختصار لقطة الشاشة",
+"Takes a screenshot without opening the menu. Enter, then the keys; Backspace turns it off": "يأخذ لقطة شاشة بدون فتح القائمة. اضغط Enter ثم الأزرار، و Backspace يوقفه",
+"Record shortcut": "اختصار التسجيل",
+"Starts or stops a recording without opening the menu. Enter, then the keys; Backspace turns it off": "يبدأ التسجيل أو يوقفه بدون فتح القائمة. اضغط Enter ثم الأزرار، و Backspace يوقفه",
+"Controller button": "زر الكنترولر",
+"Create / View": "Create / View",
+"PS / Xbox button": "زر PS / Xbox",
+"Touchpad": "Touchpad",
+"Mute / Share": "Mute / Share",
+"The button that opens the menu, like Create on the PS5": "الزر الذي يفتح القائمة، مثل Create في PS5",
+"Open the menu with": "فتح القائمة بـ",
+"A press": "ضغطة",
+"A hold": "ضغطة مطوّلة",
+"Hold keeps a quick tap for the game, if it uses the same button": "مع الضغطة الطويلة تبقى الضغطة السريعة للعبة، إذا كانت تستخدم نفس الزر",
+"Double-press to save": "الضغط مرتين للحفظ",
+"Press twice quickly to save without opening the menu": "اضغط مرتين بسرعة لتحفظ بدون فتح القائمة",
+"Double-pressing does nothing extra": "الضغط مرتين لا يفعل شيئًا إضافيًا",
+"Rumble": "الاهتزاز",
+"A short buzz on the controller when something is saved": "اهتزاز قصير في الكنترولر عند الحفظ",
+"Sounds": "الأصوات",
+"A short sound when something is saved": "صوت قصير عند الحفظ",
+"Clips folder": "مجلد المقاطع",
+"New clips go here, a folder per game. The ones in the folder you used before stay there and stay in the gallery": "المقاطع الجديدة تُحفظ هنا، مجلد لكل لعبة. وما في المجلد السابق يبقى مكانه ويبقى ظاهرًا في المعرض",
+"Screenshots folder": "مجلد لقطات الشاشة",
+"A folder per game here too": "مجلد لكل لعبة هنا أيضًا",
+"Same as the clips folder": "مجلد المقاطع نفسه",
+"Warn me when captures pass": "نبّهني إذا تجاوزت المقاطع واللقطات",
+"Never": "أبدًا",
+"Only a notice. Nothing is ever deleted for you": "تنبيه فقط، ولا نحذف شيئًا بدلًا منك",
+"Warn me when the drive has less than": "نبّهني عندما تقل مساحة القرص عن",
+"A notice once a day while the clips drive is this low": "تنبيه مرة في اليوم ما دامت المساحة في قرص المقاطع بهذا القدر",
+"No notice when the clips drive runs low": "بدون تنبيه عند انخفاض مساحة قرص المقاطع",
+"Start with Windows": "التشغيل مع ويندوز",
+"Capture Menu and OBS start when you sign in": "يبدأ Capture Menu وOBS عند تسجيل الدخول إلى ويندوز",
+"Language": "اللغة",
+"Capture Menu restarts in the new language when you save": "يعيد Capture Menu تشغيل نفسه باللغة الجديدة عند الحفظ",
+"Updates": "التحديثات",
+"Press Enter to look for a new version. Nothing is installed unless you say so": "اضغط Enter للبحث عن إصدار جديد. لا نثبّت شيئًا بدون موافقتك",
+"Share Capture Menu": "شارك Capture Menu",
+"Opens the website, to send its link to anyone": "يفتح موقع البرنامج لترسل رابطه لأي شخص",
+"Open the website": "افتح الموقع",
+"Restore defaults": "استعادة الافتراضي",
+"Every setting back to how it came. Nothing changes until you save": "كل الإعدادات ترجع كما كانت. لا يتغير شيء حتى تحفظ",
+"Restore": "استعادة",
+"On": "مفعّل",
+"Press the new keys…": "اضغط الأزرار الجديدة…",
+"Up to date": "عندك أحدث إصدار",
+"Version {version}": "الإصدار {version}",
+"H.264 plays everywhere; AV1 and HEVC make smaller files": "يعمل H.264 في كل مكان، وملفات AV1 وHEVC أصغر",
+"Smaller files than H.264 at the same quality. Shared copies are always H.264": "ملفات أصغر من H.264 بالجودة نفسها. نُسخ المشاركة دائمًا H.264",
+"{codec}, the best your graphics card can record. Shared copies are always H.264": "{codec}، أفضل ما يسجّل به كرت الشاشة. نُسخ المشاركة دائمًا H.264",
+"The longest clip you can save. Takes up to {gb} GB on the drive, not RAM": "أطول مقطع يمكنك حفظه. يأخذ حتى {gb} جيجابايت من القرص، لا من الذاكرة",
+"About {kbps} Kbps. Higher is sharper in fast motion and makes bigger files": "حوالي {kbps} كيلوبت/ث. الأعلى أوضح في الحركة السريعة وملفاته أكبر",
+"{n} min": "{n} دقيقة",
+"{n} GB": "{n} جيجابايت",
+"Native  {w}×{h}": "دقة الشاشة  ⁦{w}×{h}⁩",
+"{n} FPS": "{n} فريم/ث",
+"{n} sec": "{n} ثانية",
+"Checking…": "جارٍ البحث…",
+"Press again to leave without saving your changes": "اضغط مرة أخرى للخروج بدون حفظ تغييراتك"
+};
+
 // The demo's pages, rebuilt from the app: Save recent (full screen), the viewer with its Share window,
 // Trim and Audio, the gallery and Settings. They sit on the same 1920 × 1080 screen as the bar
 // (demo.js) and work the way the app does, with the mouse, the keys and a controller.
@@ -125,8 +231,11 @@ function makePages(ctx) {
   function close(toBar = true) { page = null; root.className = "pg"; root.innerHTML = ""; if (toBar) ctx.back(); }   // a save closes everything, as the app
   function render() {
     if (!page) return;
+    const v = root.querySelector(".vw-video");
+    if (v && page === "viewer" && st.items) keep = { at: st.items[st.i] && v.dataset.at ? +v.dataset.at : null, time: v.currentTime, paused: v.paused };
     root.innerHTML = { save: saveHtml, viewer: viewerHtml, gallery: galleryHtml, settings: settingsHtml }[page]();
     if (page === "settings") { const r = root.querySelector(".set-row.on"); if (r) r.scrollIntoView({ block: "nearest" }); }
+    if (page === "viewer") { const v = root.querySelector(".vw-video"); if (v) v.dataset.at = st.items[st.i].at; wireVideo(); }
   }
 
   // ---------------------------------------------------------------- Save recent
@@ -174,7 +283,10 @@ function makePages(ctx) {
         <button class="pg-round" data-a="next">${svg(lang === "ar" ? "left" : "right", 20)}</button>
         <button class="pg-round" data-a="back">${svg("x", 20)}</button></div>
       <div class="vw-card${st.panel === "trim" || st.panel === "audio" ? " small" : ""}" style="background-image:url(${c.img})">
-        ${video ? `<div class="vw-ctl"><span>${svg("play", 18)}</span><i><b style="width:${st.panel === "trim" ? 45 : 30}%"></b></i><span class="vw-time">${short(c.secs * 0.3)} / ${short(c.secs)}</span></div>` : ""}</div>
+        ${video ? `<video class="vw-video" data-at="${c.at}" src="${clipOf(c)}" poster="${c.img}" muted playsinline preload="auto"></video>
+        <div class="vw-ctl"><button data-a="seek" data-v="-5">${svg("back5", 20)}<small>5</small></button><button class="vw-play" data-a="play">${svg("pause", 22)}</button>
+          <button data-a="seek" data-v="5">${svg("fwd5", 20)}<small>5</small></button><input class="vw-seek" type="range" min="0" max="1000" value="0">
+          <span class="vw-time">0:00 / ${short(c.secs)}</span><button data-a="mute-v">${svg("volume-off", 20)}</button></div>` : ""}</div>
       ${st.panel === "trim" ? trimHtml(c) : st.panel === "audio" ? audioHtml() : `<div class="vw-dock">
         ${tile("share", "share", t.share, "white")}${video ? tile("trim", "scissors", t.trim) + tile("audio", "audio", t.audio) : ""}
         ${tile("fav", "star", t.favorite, fav ? "fav" : "")}${tile("folder", "folder", t.folder)}${tile("player", "external", t.player)}
@@ -183,6 +295,31 @@ function makePages(ctx) {
       <div class="pg-hints">${st.panel === "trim" ? keyHint("I O", `${t.start} / ${t.end}`) + keyHint(", .", t.frame) + keyHint("Enter", t.save) + keyHint("Esc", t.cancel)
         : keyHint("← →", t.newer) + keyHint("E", t.share) + keyHint("T", t.trim) + keyHint("F", t.favorite) + keyHint("Del", t.del) + keyHint("Esc", t.back)}</div>
       ${share ? shareHtml(c) : ""}${st.qr ? qrHtml() : ""}`;
+  }
+  // a clip plays: the ride for Red Dead, a slow move over the rooftop for Call of Duty (the site has no more video);
+  // the time shown is the clip's own length, spread over the short video
+  const clipOf = (c) => c.game === RD ? "assets/hero-bg.mp4" : "assets/app/cod-clip.mp4";
+  let keep = null;                // where the video was, so a redraw (Favorite, a panel) doesn't start it over
+  function wireVideo() {
+    const v = root.querySelector(".vw-video"); if (!v) return;
+    const c = st.items[st.i], seek = root.querySelector(".vw-seek"), time = root.querySelector(".vw-time"), play = root.querySelector(".vw-play");
+    const show = () => { const f = v.duration ? v.currentTime / v.duration : 0; seek.value = Math.round(f * 1000);
+      time.textContent = `${short(f * c.secs)} / ${short(c.secs)}`; play.innerHTML = svg(v.paused ? "play" : "pause", 22); };
+    v.addEventListener("timeupdate", show); v.addEventListener("play", show); v.addEventListener("pause", show);
+    v.addEventListener("ended", () => { v.currentTime = 0; v.play(); });
+    seek.addEventListener("input", () => { if (v.duration) v.currentTime = (seek.value / 1000) * v.duration; });
+    v.addEventListener("click", (e) => { e.stopPropagation(); v.paused ? v.play() : v.pause(); });
+    v.addEventListener("loadedmetadata", () => { if (keep && keep.at === c.at) { v.currentTime = keep.time; if (!keep.paused) v.play(); } else v.play(); keep = null; show(); });
+    v.muted = !st.sound;
+  }
+  function videoAct(a, v) {
+    const vid = root.querySelector(".vw-video"); if (!vid) return false;
+    const c = st.items[st.i];
+    if (a === "play") vid.paused ? vid.play() : vid.pause();
+    else if (a === "seek") vid.currentTime = Math.max(0, Math.min(vid.duration || 0, vid.currentTime + (+v * (vid.duration || 1)) / c.secs));
+    else if (a === "mute-v") { st.sound = !st.sound; vid.muted = !st.sound; root.querySelector("[data-a=mute-v]").innerHTML = svg(st.sound ? "volume" : "volume-off", 20); }
+    else return false;
+    return true;
   }
   function shareHtml(c) {
     const s = st.share, video = c.kind !== "shot";
@@ -282,59 +419,127 @@ function makePages(ctx) {
         <div class="pg-hints">${keyHint("← → ↑ ↓", t.move)}${keyHint("Enter", t.open_k)}${keyHint("E", t.share)}${keyHint("[ ]", t.game_k)}${keyHint("Esc", t.back)}</div></div>`;
   }
 
-  // ---------------------------------------------------------------- settings
+  // ---------------------------------------------------------------- settings: every row the app has, in its words
+  const tr = (s, o) => { const x = lang === "ar" ? (SET_AR[s] || s) : s; return o ? fill(x, o) : x; };
+  const nmin = (n) => tr("{n} min", { n }), nsec = (n) => tr("{n} sec", { n }), ngb = (n) => tr("{n} GB", { n });
   const SET = () => [
     [t.recording, "video", [
-      ["res", lang === "ar" ? "الدقة" : "Resolution", lang === "ar" ? "الأقل يستهلك مساحة أقل، ودقة الشاشة هي الأوضح" : "Lower uses less space; Native looks sharpest",
-        [["n", lang === "ar" ? "دقة الشاشة  2560×1440" : "Native  2560×1440"], ["1080", "1080p"], ["720", "720p"]]],
-      ["fps", lang === "ar" ? "عدد الفريمات" : "Frame rate", lang === "ar" ? "60 سلسة في كل الألعاب، و120 لألعاب التصويب السريعة" : "60 is smooth for every game; 120 for fast shooters on a high-refresh screen",
-        [[30, "30 FPS"], [60, "60 FPS"], [120, "120 FPS"]]],
-      ["q", lang === "ar" ? "الجودة" : "Quality", lang === "ar" ? "الأعلى أوضح في الحركة السريعة وملفاته أكبر" : "Higher is sharper in fast motion and makes bigger files",
-        [["light", lang === "ar" ? "خفيفة" : "Light"], ["bal", lang === "ar" ? "متوازنة" : "Balanced"], ["high", lang === "ar" ? "عالية" : "High"], ["max", lang === "ar" ? "قصوى" : "Max"]]],
-      ["codec", lang === "ar" ? "صيغة الفيديو" : "Video format", lang === "ar" ? "AV1، أفضل ما يسجّل به كرت الشاشة. نُسخ المشاركة دائمًا H.264" : "AV1, the best your graphics card can record. Shared copies are always H.264",
-        [["auto", lang === "ar" ? "تلقائي" : "Auto"], ["av1", "AV1"], ["hevc", "HEVC"], ["h264", "H.264"]]],
-      ["buf", lang === "ar" ? "مدة الاحتفاظ" : "Replay buffer", lang === "ar" ? "أطول مقطع يمكنك حفظه، على القرص لا الذاكرة" : "The longest clip you can save. Kept on the drive, not RAM",
-        [5, 10, 15, 30, 60].map((n) => [n, fill(ctx.t().min, { n })])]]],
+      ["res", "Resolution", () => tr("Lower uses less space; Native looks sharpest"), "choice", [["n", tr("Native  {w}×{h}", { w: 2560, h: 1440 })], ["1080", "1080p"], ["720", "720p"]]],
+      ["fps", "Frame rate", () => tr("60 is smooth for every game; 120 for fast shooters on a high-refresh screen"), "choice", [30, 60, 120].map((n) => [n, tr("{n} FPS", { n })])],
+      ["q", "Quality", (v) => tr("About {kbps} Kbps. Higher is sharper in fast motion and makes bigger files", { kbps: Math.round(kbps(v)).toLocaleString("en") }), "choice",
+        [["light", tr("Light")], ["bal", tr("Balanced")], ["high", tr("High")], ["max", tr("Max")]]],
+      ["codec", "Video format", (v) => v.codec === "auto" ? tr("{codec}, the best your graphics card can record. Shared copies are always H.264", { codec: "AV1" })
+        : v.codec === "h264" ? tr("H.264 plays everywhere; AV1 and HEVC make smaller files") : tr("Smaller files than H.264 at the same quality. Shared copies are always H.264"), "choice",
+        [["auto", tr("Auto")], ["av1", "AV1"], ["hevc", "HEVC"], ["h264", "H.264"]]],
+      ["buf", "Replay buffer", (v) => tr("The longest clip you can save. Takes up to {gb} GB on the drive, not RAM", { gb: (sizes(v) * v.buf / 1024).toFixed(1) }), "choice", [5, 10, 15, 30, 60].map((n) => [n, nmin(n)])],
+      ["track", "Voice on its own track", () => tr("So you can share a clip with or without your voice"), "bool"],
+      ["hdr", "HDR", (v) => v.hdr === "auto" ? tr("HDR clips while Windows HDR is on. Shared copies get normal colours") : tr("Always normal colours (SDR)"), "choice", [["auto", tr("Auto")], ["off", tr("Off")]]],
+      ["col", "Colours", (v) => v.col === "natural" ? tr("Colours exactly as Windows shows them") : tr("More colour and contrast when an HDR screen is recorded in normal colours"), "choice",
+        [["natural", tr("Natural")], ["soft", tr("Soft")], ["vivid", tr("Vivid")], ["max", tr("Max")]]],
+      ["ind", "Recording indicator", (v) => v.ind === "off" ? tr("Nothing on screen while recording") : tr("A small REC timer while you record by hand"), "choice",
+        [["tl", tr("Top left")], ["tr", tr("Top right")], ["off", tr("Off")]]]]],
     [t.screen_mic, "monitor", [
-      ["mic", lang === "ar" ? "تسجيل صوت المايك" : "Record your microphone", lang === "ar" ? "صوتك يدخل في مقاطعك" : "Your voice goes into your clips",
-        [[true, lang === "ar" ? "يعمل" : "On"], [false, lang === "ar" ? "مغلق" : "Off"]]]]],
+      ["screen", "Recording screen", (v) => v.screen === "follow" ? tr("Records the monitor or TV the game is on") : tr("Always records this screen, wherever the game is"), "choice",
+        [["follow", tr("Follow the game")], ["main", "SDM27Q10S · 2560×1440"], ["tv", "VG28UQL1A · 3840×2160"], ["lg", "LG TV · 3840×2160"]]],
+      ["mic", "Microphone", (v) => v.mic === "default" ? tr("The microphone Windows uses. Your voice goes on its own track") : tr("Your voice is recorded from this microphone"), "choice",
+        [["default", tr("Default")], ["a50", "A50 X Mic"], ["ds", "DualSense Wireless Controller"], ["usb", "USB Microphone"]]],
+      ["micon", "Record your microphone", (v) => v.micon ? tr("Your voice goes into your clips. The menu's Mic button turns it off for now") : tr("Clips have the game's sound only"), "bool"]]],
     [t.controls, "gamepad", [
-      ["dbl", lang === "ar" ? "ضغطتين للحفظ" : "Double-press to save", lang === "ar" ? "اضغط مرتين بسرعة لتحفظ بدون فتح القائمة" : "Press twice quickly to save without opening the menu",
-        [[0, lang === "ar" ? "مغلق" : "Off"], [15, fill(ctx.t().sec, { n: 15 })], [30, fill(ctx.t().sec, { n: 30 })], [60, fill(ctx.t().min, { n: 1 })]]]]],
+      ["hk", "Keyboard shortcut", () => tr("Opens the menu. Press Enter, then the new keys"), "keys"],
+      ["hks", "Screenshot shortcut", () => tr("Takes a screenshot without opening the menu. Enter, then the keys; Backspace turns it off"), "keys"],
+      ["hkr", "Record shortcut", () => tr("Starts or stops a recording without opening the menu. Enter, then the keys; Backspace turns it off"), "keys"],
+      ["btn", "Controller button", () => tr("The button that opens the menu, like Create on the PS5"), "choice",
+        [["create", tr("Create / View")], ["ps", tr("PS / Xbox button")], ["touch", tr("Touchpad")], ["mute", tr("Mute / Share")]]],
+      ["hold", "Open the menu with", () => tr("Hold keeps a quick tap for the game, if it uses the same button"), "choice", [[0, tr("A press")], [400, tr("A hold")]]],
+      ["dbl", "Double-press to save", (v) => v.dbl ? tr("Press twice quickly to save without opening the menu") : tr("Double-pressing does nothing extra"), "choice",
+        [[0, tr("Off")], [15, nsec(15)], [30, nsec(30)], [60, nmin(1)], [120, nmin(2)]]],
+      ["rumble", "Rumble", () => tr("A short buzz on the controller when something is saved"), "bool"],
+      ["sounds", "Sounds", () => tr("A short sound when something is saved"), "bool"]]],
     [t.saving, "drive", [
-      ["warn", lang === "ar" ? "نبّهني لما تتعدى اللقطات" : "Warn me when captures pass", lang === "ar" ? "مجرد تنبيه. لا يُحذف شيء" : "Only a notice. Nothing is ever deleted for you",
-        [[100, "100 GB"], [200, "200 GB"], [500, "500 GB"]]]]],
+      ["clips", "Clips folder", () => tr("New clips go here, a folder per game. The ones in the folder you used before stay there and stay in the gallery"), "folder"],
+      ["shots", "Screenshots folder", () => tr("A folder per game here too"), "folder"],
+      ["warn", "Warn me when captures pass", () => tr("Only a notice. Nothing is ever deleted for you"), "choice",
+        [[0, tr("Never")], [50, ngb(50)], [100, ngb(100)], [200, ngb(200)], [500, ngb(500)], [1000, "1 TB"]]],
+      ["low", "Warn me when the drive has less than", (v) => v.low ? tr("A notice once a day while the clips drive is this low") : tr("No notice when the clips drive runs low"), "choice",
+        [[0, tr("Never")], [5, ngb(5)], [10, ngb(10)], [20, ngb(20)], [50, ngb(50)]]]]],
     [t.general, "settings", [
-      ["lang", lang === "ar" ? "اللغة" : "Language", lang === "ar" ? "يعيد البرنامج التشغيل باللغة الجديدة عند الحفظ" : "Capture Menu restarts in the new language when you save",
-        [["auto", lang === "ar" ? "الافتراضي" : "Default"], ["en", "English"], ["ar", "العربية"]]]]],
+      ["boot", "Start with Windows", () => tr("Capture Menu and OBS start when you sign in"), "bool"],
+      ["lang", "Language", () => tr("Capture Menu restarts in the new language when you save"), "choice", [["auto", tr("Default")], ["en", "English"], ["ar", "العربية"]]],
+      ["_upd", "Updates", () => st.upd ? tr("You have the newest version, {version}", { version: "0.0.45" }) : tr("Press Enter to look for a new version. Nothing is installed unless you say so"), "action",
+        () => st.upd ? tr("Up to date") : tr("Version {version}", { version: "0.0.45" })],
+      ["_share", "Share Capture Menu", () => tr("Opens the website, to send its link to anyone"), "action", () => tr("Open the website")],
+      ["_def", "Restore defaults", () => tr("Every setting back to how it came. Nothing changes until you save"), "action", () => tr("Restore")]]],
   ];
-  const SET_DEFAULT = { res: "n", fps: 60, q: "bal", codec: "auto", buf: 30, mic: true, dbl: 30, warn: 200, lang: "auto" };
-  function sizes(v) {
-    const px = { n: 3.69, 1080: 2.07, 720: 0.92 }[v.res], q = { light: 0.6, bal: 1, high: 1.5, max: 4 }[v.q];
-    const codec = v.codec === "h264" ? 1.6 : v.codec === "hevc" ? 1.2 : 1;
-    const kbps = 8000 * (px / 3.69) * (v.fps / 60) * q * codec;
-    return kbps * 60 / 8 / 1000 * 1.6;          // MB a minute
+  const SET_DEFAULT = { res: "n", fps: 60, q: "bal", codec: "auto", buf: 30, track: true, hdr: "auto", col: "natural", ind: "tl", screen: "follow",
+    mic: "default", micon: true, hk: "Alt + C", hks: "", hkr: "", btn: "create", hold: 0, dbl: 30, rumble: true, sounds: true,
+    clips: "C:\\Users\\You\\Videos\\Capture Menu Clips", shots: "", warn: 200, low: 10, boot: true, lang: "auto" };
+  const kbps = (v) => 8000 * ({ n: 3.69, 1080: 2.07, 720: 0.92 }[v.res] / 3.69) * (v.fps / 60) * { light: 0.6, bal: 1, high: 1.5, max: 4 }[v.q] * (v.codec === "h264" ? 1.6 : v.codec === "hevc" ? 1.2 : 1);
+  function sizes(v) { return kbps(v) * 60 / 8 / 1000 * (v.track ? 1.6 : 1.25); }       // MB a minute
+  const fits = (opts) => opts.length <= 6 && opts.reduce((s, o) => s + String(o[1]).length * 9.5 + 40, 0) < 760;
+  function rowHtml(r, i) {
+    const [k, label, desc, kind, opts] = r, v = st.vals, on = i === st.row ? " on" : "";
+    const head = `<b>${tr(label)}</b><span>${desc(v)}</span>`;
+    if (kind === "bool") return `<div class="set-row line${on}" data-a="row" data-i="${i}"><div>${head}</div><button class="st-sw${v[k] ? " on" : ""}" data-a="flip" data-k="${k}"></button></div>`;
+    if (kind === "keys" || kind === "folder" || kind === "action") {
+      const val = kind === "keys" ? (st.listen === k ? tr("Press the new keys…") : v[k] || tr("Off"))
+        : kind === "folder" ? (v[k] || tr("Same as the clips folder")) : opts();
+      return `<div class="set-row line${on}" data-a="row" data-i="${i}"><div>${head}</div><button class="st-val" data-a="act" data-k="${k}"><span>${esc(val)}</span>${svg(lang === "ar" ? "left" : "right", 18)}</button></div>`;
+    }
+    const cur = opts.findIndex((o) => String(o[0]) === String(v[k]));
+    if (fits(opts)) return `<div class="set-row${on}" data-a="row" data-i="${i}">${head}<div class="st-seg">${opts.map(([val, l]) =>
+      `<button data-a="opt" data-k="${k}" data-v="${val}" class="${String(v[k]) === String(val) ? "on" : ""}">${esc(l)}</button>`).join("")}</div></div>`;
+    return `<div class="set-row line${on}" data-a="row" data-i="${i}"><div>${head}</div><div class="st-pill">
+      <button data-a="step" data-k="${k}" data-v="-1" class="${cur > 0 ? "" : "dim"}">${svg(lang === "ar" ? "right" : "left", 18)}</button><span>${esc(opts[cur][1])}</span>
+      <button data-a="step" data-k="${k}" data-v="1" class="${cur < opts.length - 1 ? "" : "dim"}">${svg(lang === "ar" ? "left" : "right", 18)}</button></div></div>`;
   }
   function settingsHtml() {
     const secs = SET(), [name, , rows] = secs[st.sec], v = st.vals;
     const dirty = Object.keys(v).filter((k) => v[k] !== st.saved[k]).length;
     const perMin = sizes(v), before = sizes(st.saved);
     const badge = (a, b) => { const p = Math.round((a / b - 1) * 100); return p ? `<u>${p > 0 ? "+" : ""}${p}%</u>` : ""; };
-    const tag = `${v.res === "n" ? "1440p" : v.res + "p"}  ·  ${v.fps} FPS  ·  ${secs[0][2][2][3].find((o) => o[0] === v.q)[1]}  ·  ${v.codec === "auto" ? "AV1" : v.codec.toUpperCase().replace("H264", "H.264")}`;
+    const qname = secs[0][2][2][4].find((o) => o[0] === v.q)[1];
+    const tag = `${v.res === "n" ? "1440p" : v.res + "p"}  ·  ${v.fps} FPS  ·  ${qname}  ·  ${v.codec === "auto" ? "AV1" : v.codec.toUpperCase().replace("H264", "H.264")}`;
     return `<div class="st-rail"><h2>${t.settings}</h2>${secs.map(([n, icon], i) => `<button class="st-tab${i === st.sec ? " on" : ""}" data-a="sec" data-i="${i}">${svg(icon, 20)}<span>${n}</span></button>`).join("")}
         <i></i><button class="pg-btn" data-a="restore">${svg("back5", 18)}<span>${t.restore}</span></button></div>
       <div class="st-main"><div class="st-head"><button class="pg-btn" data-a="back">${svg(lang === "ar" ? "right" : "left", 18)}<span>${t.back}</span></button>
-        <div><b>${name}</b><span class="${dirty ? "warn" : ""}">${dirty ? (dirty === 1 ? t.unsaved1 : fill(t.unsavedN, { n: dirty })) : t.apply}</span></div><i></i>
-        <button class="pg-btn" data-a="back">${t.cancel}</button><button class="pg-btn main" data-a="st-save">${svg("check", 18)}<span>${t.save}</span></button></div>
-        <div class="st-rows">${rows.map(([k, label, desc, opts], i) => `<div class="set-row${i === st.row ? " on" : ""}" data-a="row" data-i="${i}"><b>${label}</b><span>${desc}</span>
-          <div class="st-seg">${opts.map(([val, l]) => `<button data-a="opt" data-k="${k}" data-v="${val}" class="${String(v[k]) === String(val) ? "on" : ""}">${l}</button>`).join("")}</div></div>`).join("")}</div>
-        <div class="pg-hints">${keyHint("↑ ↓", t.move)}${keyHint("← →", t.change_k)}${keyHint("S", t.save)}${keyHint("Esc", t.back)}</div></div>
+        <div><b>${name}</b><span class="${dirty ? "warn" : ""}">${st.leave ? tr("Press again to leave without saving your changes") : dirty ? (dirty === 1 ? t.unsaved1 : fill(t.unsavedN, { n: dirty })) : t.apply}</span></div><i></i>
+        <button class="pg-btn" data-a="cancel">${t.cancel}</button><button class="pg-btn main" data-a="st-save">${svg("check", 18)}<span>${t.save}</span></button></div>
+        <div class="st-rows">${rows.map(rowHtml).join("")}</div>
+        <div class="pg-hints">${keyHint("↑ ↓", t.move)}${keyHint("← →", t.change_k)}${keyHint("Enter", t.open_k)}${keyHint("S", t.save)}${keyHint("Esc", t.back)}</div></div>
       <div class="st-get"><h3>${t.get}</h3><div class="st-pic" style="background-image:url(${PICS.cod[0]})"><span>${tag}</span></div>
         <div class="st-sizes"><p><span>${t.kept_drive.replace("30", v.buf)}</span><b>${fill(t.up_to, { s: human(perMin * v.buf) })}${badge(perMin * v.buf, before * st.saved.buf)}</b></p>
           <p><span>${t.clip1}</span><b>${fill(t.about, { s: human(perMin) })}${badge(perMin, before)}</b></p><p><span>${t.dcopy}</span><b>${t.dcopy_v}</b></p></div>
         <small>${t.this_pc}</small><div class="st-pc"><span>${svg("monitor", 16)}NVIDIA GeForce RTX 4070</span></div>
         <div class="st-pc">${["AV1", "HEVC", "H.264", "HDR"].map((x) => `<span>${svg("check", 16)}${x}</span>`).join("")}</div></div>`;
   }
+  function settingStep(k, d) {
+    const row = SET().flatMap((s) => s[2]).find((r) => r[0] === k), opts = row[4], vals = opts.map((o) => o[0]);
+    const i = vals.findIndex((x) => String(x) === String(st.vals[k]));
+    st.vals[k] = vals[Math.max(0, Math.min(vals.length - 1, i + d))];
+  }
+  function settingActivate(k) {
+    const row = SET().flatMap((s) => s[2]).find((r) => r[0] === k), kind = row[3];
+    if (kind === "bool") st.vals[k] = !st.vals[k];
+    else if (kind === "choice") { const vals = row[4].map((o) => o[0]), i = vals.findIndex((x) => String(x) === String(st.vals[k])); st.vals[k] = vals[(i + 1) % vals.length]; }
+    else if (kind === "keys") st.listen = st.listen === k ? null : k;
+    else if (kind === "folder") ctx.message(lang === "ar" ? "اختيار مجلد · في البرنامج يفتح نافذة اختيار المجلد" : "Choose a folder · in the app this opens the folder picker");
+    else if (k === "_upd") st.upd = true;
+    else if (k === "_share") ctx.message(lang === "ar" ? "مشاركة Capture Menu · يفتح الموقع" : "Share Capture Menu · opens the website");
+    else if (k === "_def") st.vals = { ...SET_DEFAULT };
+  }
+  // a new shortcut: the next keys pressed (with Ctrl, Alt or Shift), Backspace turns the extra ones off, Esc keeps it
+  addEventListener("keydown", (e) => {
+    if (page !== "settings" || !st.listen) return;
+    e.preventDefault(); e.stopImmediatePropagation();
+    const k = st.listen;
+    if (e.key === "Escape") { st.listen = null; return render(); }
+    if ((e.key === "Backspace" || e.key === "Delete") && k !== "hk") { st.vals[k] = ""; st.listen = null; return render(); }
+    if (["Control", "Alt", "Shift", "Meta"].includes(e.key)) return;
+    const mods = [e.ctrlKey && "Ctrl", e.altKey && "Alt", e.shiftKey && "Shift"].filter(Boolean);
+    if (!mods.length && !/^F\d+$/.test(e.key)) return;           // a bare letter is refused, as in the app
+    const name = e.code.startsWith("Key") ? e.code.slice(3) : e.code.startsWith("Digit") ? e.code.slice(5) : e.key.length === 1 ? e.key.toUpperCase() : e.key;
+    st.vals[k] = [...mods, name].join(" + "); st.listen = null; render();
+  }, true);
   const parse = (s) => s === "true" ? true : s === "false" ? false : isNaN(+s) ? s : +s;
 
   // ---------------------------------------------------------------- mouse
@@ -346,8 +551,8 @@ function makePages(ctx) {
       if (a === "away") close();
       else if (a === "len") { const i = +el.dataset.i; if (st.armed === i) return saveNow(); st.len = i; st.armed = i; clampShift(); render(); }
       else if (a === "saveclip") saveNow();
-      else if (a === "strip") { const r = el.getBoundingClientRect(); let f = (e.clientX - r.left) / r.width; if (lang === "ar") f = 1 - f;
-        const len = LENS[st.len] ?? 1800; st.shift = Math.round(1800 - (f * 1800 + len / 2)); clampShift(); render(); }
+      else if (a === "strip") { }        // (pointerdown drags it, below)
+
       return;
     }
     if (page === "viewer") viewerAct(a, v, el);
@@ -375,8 +580,30 @@ function makePages(ctx) {
     addEventListener("pointermove", move); addEventListener("pointerup", up); e.preventDefault();
   });
 
+  // Save recent: press on the strip and drag, the clip follows the pointer (only what moves is redrawn)
+  root.addEventListener("pointerdown", (e) => {
+    const strip = e.target.closest(".sv-strip"); if (!strip || page !== "save") return;
+    const r = strip.getBoundingClientRect();
+    const at = (ev) => { let f = (ev.clientX - r.left) / r.width; if (lang === "ar") f = 1 - f;
+      const len = LENS[st.len] ?? 1800; st.shift = Math.round(1800 - (f * 1800 + len / 2)); clampShift(); st.armed = null; place(); };
+    at(e);
+    const up = () => { removeEventListener("pointermove", at); removeEventListener("pointerup", up); render(); };
+    addEventListener("pointermove", at); addEventListener("pointerup", up); e.preventDefault();
+  });
+  function place() {
+    const s = LENS[st.len], len = s ?? 1800, end = 1800 - st.shift, start = Math.max(0, end - len);
+    const q = (sel) => root.querySelector(sel);
+    q(".sv-dim").style.width = `${(start / 1800) * 100}%`;
+    q(".sv-dim.r").style.width = `${((1800 - end) / 1800) * 100}%`;
+    const sel = q(".sv-sel"); sel.style.left = `${(start / 1800) * 100}%`; sel.style.width = `${Math.max(0.7, ((end - start) / 1800) * 100)}%`;
+    q(".sv-preview").style.backgroundImage = `url(${STRIP[Math.min(29, Math.floor(start / 60))]})`;
+    q(".sv-preview span").textContent = fill(t.starts, { t: clock(1800 - start) });
+    q(".sv-top span:last-child").innerHTML = [st.shift ? fill(t.ends, { t: clock(st.shift) }) : "", fill(t.about, { s: human(MB(end - start)) })]
+      .filter(Boolean).join("&nbsp;&nbsp;·&nbsp;&nbsp;");
+  }
   function clampShift() { const len = LENS[st.len]; st.shift = len === null ? 0 : Math.max(0, Math.min(st.shift, 1800 - len)); }
   function viewerAct(a, v, el) {
+    if (videoAct(a, v)) return;
     const c = st.items[st.i];
     if (a !== "del") st.del = false;
     if (a === "back") { if (st.panel) st.panel = null; else return close(); }
@@ -420,10 +647,15 @@ function makePages(ctx) {
     render();
   }
   function settingsAct(a, v, el) {
-    if (a === "back") return close();
+    const dirty = Object.keys(st.vals).some((k) => st.vals[k] !== st.saved[k]);
+    if (a === "back") { if (dirty && !st.leave) { st.leave = true; return render(); } return close(); }    // unsaved: the first Back only asks
+    st.leave = false;
+    if (a === "cancel") return close();
     if (a === "sec") { st.sec = +el.dataset.i; st.row = 0; }
     else if (a === "row") st.row = +el.dataset.i;
     else if (a === "opt") st.vals[el.dataset.k] = parse(v);
+    else if (a === "step") settingStep(el.dataset.k, +v);
+    else if (a === "flip" || a === "act") settingActivate(el.dataset.k);
     else if (a === "restore") st.vals = { ...SET_DEFAULT };
     else if (a === "st-save") { close(false); ctx.message(t.saved_msg); return; }
     else return;
@@ -439,8 +671,8 @@ function makePages(ctx) {
     const enter = k === "Enter" || k === " " || k === "A";
     if (page === "save") {
       if (lr) { st.len = Math.max(0, Math.min(LENS.length - 1, st.len + lr)); st.armed = null; clampShift(); }
-      else if (k === "[" || k === "L1") { st.shift += 10 * fwd; clampShift(); }
-      else if (k === "]" || k === "R1") { st.shift -= 10 * fwd; clampShift(); }
+      else if (k === "[" || k === "L1") { st.shift += 10 * fwd; clampShift(); place(); return true; }
+      else if (k === "]" || k === "R1") { st.shift -= 10 * fwd; clampShift(); place(); return true; }
       else if (enter) return saveNow(), true;
       else if (/^[1-8]$/.test(k)) { st.len = +k - 1; return saveNow(), true; }
       else if (back || k === "ArrowDown") return close(), true;
@@ -465,7 +697,8 @@ function makePages(ctx) {
       }
       if (st.panel === "audio") { if (enter) return viewerAct("mix-save"), true; if (back) { st.panel = null; render(); } return true; }
       const map = { e: "share", Options: "share", t: "trim", X: "trim", f: "fav", Y: "fav", Delete: "del", a: "prev", d: "next", L1: "prev", R1: "next" };
-      if (lr) viewerAct(lr > 0 ? "next" : "prev");
+      if (k === " " && root.querySelector(".vw-video")) videoAct("play");
+      else if (lr) videoAct("seek", 5 * lr) || viewerAct(lr > 0 ? "next" : "prev");
       else if (enter) viewerAct("share");
       else if (map[k]) viewerAct(map[k]);
       else if (back) viewerAct("back");
@@ -492,10 +725,10 @@ function makePages(ctx) {
       const rows = SET()[st.sec][2];
       if (k === "ArrowDown") { if (st.row < rows.length - 1) st.row++; else if (st.sec < SET().length - 1) { st.sec++; st.row = 0; } }
       else if (k === "ArrowUp") { if (st.row > 0) st.row--; else if (st.sec > 0) { st.sec--; st.row = SET()[st.sec][2].length - 1; } }
-      else if (lr) { const [key_, , , opts] = rows[st.row], vals = opts.map((o) => o[0]); const i = vals.findIndex((x) => String(x) === String(st.vals[key_]));
-        st.vals[key_] = vals[Math.max(0, Math.min(vals.length - 1, i + lr))]; }
+      else if (lr) { const r = rows[st.row]; if (r[3] === "choice") settingStep(r[0], lr); else if (r[3] === "bool") st.vals[r[0]] = !st.vals[r[0]]; }
+      else if (enter) settingActivate(rows[st.row][0]);
       else if (k === "s" || k === "Y") return settingsAct("st-save"), true;
-      else if (back) return close(), true;
+      else if (back) return settingsAct("back"), true;
       else return false;
       render(); return true;
     }
