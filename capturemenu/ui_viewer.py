@@ -277,14 +277,11 @@ class Viewer(QtWidgets.QWidget):
         # where it goes, as big cards; then the choices that apply there
         dests = QtWidgets.QHBoxLayout()
         dests.setSpacing(10)     # the cards keep 5 px each for the ring: 20 between them
+        # three places, each a name and one short line: what happens there is the button's words
         self.dest_cards = {
-            "discord": ui_widgets.DestCard("discord", "share", "Discord", "", language.tr("Copied, paste it with Ctrl+V")),
-            "apps": ui_widgets.DestCard("apps", "phone", "WhatsApp & apps", language.tr("An MP4 that plays everywhere, full quality"),
-                                        language.tr("Copied, paste it with Ctrl+V")),
-            "phone": ui_widgets.DestCard("phone", "phone", "To your phone",
-                                         language.tr("Scan a code with your phone. It downloads over your Wi-Fi"),
-                                         language.tr("No cable, no app")),
-            "file": ui_widgets.DestCard("file", "copy", "Copy the file", "", language.tr("Paste it anywhere")),
+            "discord": ui_widgets.DestCard("discord", "share", "Discord", language.tr("Fits Discord's size")),
+            "phone": ui_widgets.DestCard("phone", "phone", "Your phone", language.tr("Scan a QR code")),
+            "copy": ui_widgets.DestCard("copy", "copy", "Copy", language.tr("Paste it anywhere")),
         }
         for c in self.dest_cards.values():
             c.clicked.connect(lambda _=False, k=c.key: self._choose_dest(k))
@@ -309,21 +306,33 @@ class Viewer(QtWidgets.QWidget):
                                     else language.tr("500 MB needs Discord Nitro") if v == 500
                                     else language.tr("Discord without Nitro allows 10 MB") if v == 10
                                     else language.tr("Made to fit, quality drops as needed")).as_row()
-        # Trim first: cut it shorter, then share what's left
-        self.trim_first = ui_widgets.OptionCard("scissors", language.tr("Trim first"),
-                                                [("trim", language.tr("Trim"))],
-                                                language.tr("Cut it shorter before it's sent")).as_row()
-        self.trim_first.picked.connect(lambda _: self._trim_from_share())
+        # the choices, said in one line ("With your voice · 10 MB"); Change opens them
+        line = QtWidgets.QFrame(objectName="optLine")
+        ll = QtWidgets.QHBoxLayout(line)
+        ll.setContentsMargins(20, 0, 12, 0)
+        ll.setSpacing(12)
+        mic = QtWidgets.QLabel()
+        mic.setPixmap(ui_theme.icon_pixmap("mic", 22))
+        ll.addWidget(mic)
+        self.opt_line = QtWidgets.QLabel(objectName="optText")
+        ll.addWidget(self.opt_line, 1)
+        self.opts_btn = QtWidgets.QPushButton(language.tr("Change"), objectName="link")
+        self.opts_btn.setCursor(Qt.PointingHandCursor)
+        self.opts_btn.clicked.connect(self._toggle_options)
+        ll.addWidget(self.opts_btn)
+        line.setFixedHeight(60)
+        share_cards.addWidget(line)
+        self._opts_open = False
         self.voice_card.divider_below = self.size_card.divider_below = True
-        for c in (self.format_card, self.voice_card, self.size_card, self.trim_first):
+        for c in (self.format_card, self.voice_card, self.size_card):
             share_cards.addWidget(c)
-        self.format_card.hide()           # the destination says it now: Copy the file is the original
+        self.format_card.hide()           # the destination says it: the phone takes the original
         self.size_card.choices = [(mb, f"{mb} {language.tr('MB')}") for mb in (10, 50, 500)]   # Discord's sizes
         self.format_card.picked.connect(lambda _: self._share_cards_state())
+        for c in (self.voice_card, self.size_card):
+            c.picked.connect(lambda _: self._share_cards_state())
         sl.addWidget(self.options_box)
         share_foot = QtWidgets.QHBoxLayout()
-        share_foot.addWidget(QtWidgets.QLabel(language.tr("The copy is made in the background, so you can keep playing."),
-                                              objectName="shareNote"))
         share_foot.addStretch()
         sl.addLayout(share_foot)
         lay.addWidget(self.share_panel, 1)
@@ -414,7 +423,7 @@ class Viewer(QtWidgets.QWidget):
         self.phone_panel = PhonePanel(self)
         for b in self.findChildren(QtWidgets.QPushButton):
             b.setFocusPolicy(Qt.NoFocus)  # keys go to the viewer, not to a button
-        for b in (self.share_cancel, self.phone_go, self.share_go):
+        for b in (self.share_cancel, self.phone_go, self.share_go, self.opts_btn):
             b.setFocusPolicy(Qt.StrongFocus)   # Share is walked with ← → like its cards
         input_devices.input_mode().changed.connect(lambda _: (self.update_hints(), self._pick_focus()) if self.items else None)
         QtWidgets.QApplication.instance().focusChanged.connect(self._keep_focus_off_video)
@@ -954,57 +963,55 @@ class Viewer(QtWidgets.QWidget):
             if not pm.isNull():
                 pm = ui_theme.rounded_pixmap(thumb, 176, 99, 14)
             self.share_thumb.setPixmap(pm)
-            self.dest_cards["discord"].detail = language.tr("Made to fit Discord's size, copied ready to paste")
-            self.dest_cards["file"].detail = (language.tr("Full quality, {size}, exactly as it was saved", size=size)
-                                              if not self._share_hdr else
-                                              language.tr("HDR goes over in normal colours, so apps don't show it grey"))
             for k, c in self.dest_cards.items():
-                c.setVisible(video or k in ("file", "phone"))
+                c.setVisible(video or k in ("copy", "phone"))
+            self._opts_open = False
             last = preferences.load_state().get("share_dest", "discord")
-            self._choose_dest(last if last in self.dest_cards and (video or last in ("file", "phone")) else "file")
+            last = "copy" if last in ("apps", "file") else last          # the old four places
+            self._choose_dest(last if last in self.dest_cards and (video or last in ("copy", "phone")) else "copy")
             self.share_go.setFocus()
         self._sync()
         if not on:
             self._pick_focus()
 
     def _choose_dest(self, key: str):
-        """Where the capture goes; the choices that apply there show under the cards."""
+        """Where the capture goes; the line under the cards says what goes with it."""
         self.dest = key
         for k, c in self.dest_cards.items():
             c.chosen = k == key
             c.update()
-        self.format_card.set_value("copy" if key in ("file", "phone") else "mp4")
-        video = self.is_video()
-        self.voice_card.setVisible(video and key != "file")
-        self.size_card.setVisible(video and key == "discord")
-        self.trim_first.setVisible(video and key != "file")      # the original goes as it is
+        self.format_card.set_value("copy" if key == "phone" else "mp4")     # the phone takes the original
         self._share_cards_state()
 
+    def _toggle_options(self):
+        """Change: the voice and the size as rows, to pick; again (Done) folds them back into the line."""
+        self._opts_open = not self._opts_open
+        self._share_cards_state()
+        if self._opts_open:
+            nxt = next((c for c in (self.voice_card, self.size_card) if c.isVisible() and c.isEnabled()), None)
+            (nxt or self.opts_btn).setFocus()
+
     def _share_cards_state(self):
-        """The original file is copied as it is: your voice and the size don't apply to it."""
-        original = not self.is_video() or self.format_card.value == "copy"
+        video = self.is_video()
+        key = getattr(self, "dest", "copy")
         split = getattr(self, "_split", False)
-        self.voice_card.setEnabled(split and not original)
-        self.voice_card.note = ("" if split and not original else
-                                language.tr("Not needed for the original file") if original else
-                                language.tr("This clip has your voice and the game together"))
-        self.size_card.setEnabled(not original)
-        self.size_card.note = language.tr("Not needed for the original file") if original else ""
+        self.voice_card.setEnabled(split)
+        self.voice_card.note = "" if split else language.tr("This clip has your voice and the game together")
+        self.size_card.setEnabled(True)
+        self.size_card.note = ""
+        self.options_box.setVisible(video)                  # a picture has nothing to choose
+        open_ = video and self._opts_open
+        self.voice_card.setVisible(open_)
+        self.size_card.setVisible(open_ and key == "discord")
         for card in (self.voice_card, self.size_card):
             card.update()
-        if getattr(self, "dest", None) == "phone":     # the phone takes the original, with or without the voice
-            self.voice_card.setEnabled(split)
-            self.voice_card.note = "" if split else language.tr("This clip has your voice and the game together")
-            self.voice_card.update()
-        label = {"discord": language.tr("Share to Discord"), "apps": language.tr("Export & copy"),
-                 "phone": language.tr("Show the code"), "file": language.tr("Copy file") if self.is_video() else language.tr("Copy")}
-        self.share_go.setText("  " + label.get(getattr(self, "dest", "file"), language.tr("Copy")).replace("&", "&&"))
-
-    def _trim_from_share(self):
-        """Trim first: the share window closes on the trim filmstrip; Share again once it's cut."""
-        self._set_sharing(False)
-        self.enter_trim()
-
+        voice = language.tr("Without your voice") if self.without_voice else language.tr("With your voice")
+        rest = {"discord": f"{self.size_card.value} {language.tr('MB')}", "phone": language.tr("original quality"),
+                "copy": language.tr("plays everywhere")}[key]
+        self.opt_line.setText(f"{voice}  ·  {rest}")
+        self.opts_btn.setText(language.tr("Done") if self._opts_open else language.tr("Change"))
+        label = {"discord": language.tr("Copy for Discord"), "phone": language.tr("Show the QR code"), "copy": language.tr("Copy")}
+        self.share_go.setText("  " + label[key])
     def _toggle_voice(self):
         self.voice_card.next()
 
@@ -1019,10 +1026,12 @@ class Viewer(QtWidgets.QWidget):
         self._set_sharing(False)
         if dest == "phone":
             self.send_to_phone(without_voice)
-        elif dest == "file" or not self.is_video():
-            self.ctl.copy(path)
+        elif dest == "discord" and self.is_video():
+            self.ctl.share(path, f"discord{size}", without_voice)
+        elif self.is_video() and (without_voice or media.video_codec(path) != "h264"):
+            self.ctl.share(path, "phone", without_voice)     # Copy: an MP4 that plays everywhere (AV1, HEVC don't)
         else:
-            self.ctl.share(path, f"discord{size}" if dest == "discord" else "phone", without_voice)
+            self.ctl.copy(path)                              # it already plays everywhere (HDR: copy() converts it)
 
     def send_to_phone(self, without_voice: bool | None = None):
         """A link to this capture, as it is, for a phone on the same Wi-Fi: shown as a QR code."""
@@ -1036,8 +1045,9 @@ class Viewer(QtWidgets.QWidget):
 
     def _share_nav(self) -> list[QtWidgets.QWidget]:
         dests = [c for c in self.dest_cards.values() if c.isVisible()]
-        cards = [c for c in (self.voice_card, self.size_card, self.trim_first) if c.isVisible() and c.isEnabled()]
-        return dests + cards + [self.share_cancel, self.share_go]
+        line = [self.opts_btn] if self.options_box.isVisible() else []
+        cards = [c for c in (self.voice_card, self.size_card) if c.isVisible() and c.isEnabled()]
+        return dests + line + cards + [self.share_cancel, self.share_go]
 
     def _all_nav(self) -> list[QtWidgets.QWidget]:
         return [self.back_btn, self.rename_btn, self.prev_btn, self.next_btn, self.close_btn,

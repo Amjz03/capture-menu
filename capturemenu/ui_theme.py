@@ -561,6 +561,12 @@ QPushButton#round {{ min-width: 52px; max-width: 52px; min-height: 52px; max-hei
 #vSub {{ font-size: 17px; }}
 #shareDialog {{ background: rgba(16,20,31,204); border: 1px solid rgba(255,255,255,36); border-radius: 32px; }}
 #optionsBox {{ background: rgba(255,255,255,26); border: none; border-radius: 22px; }}
+#optLine {{ background: transparent; border: none; }}
+#optText {{ color: {INK}; font-size: 18px; font-weight: 600; }}
+QPushButton#link {{ background: transparent; border: 2px solid transparent; border-radius: 14px; min-height: 36px;
+    padding: 0 12px; font-size: 17px; font-weight: 400; text-decoration: underline; color: {INK}; }}
+QPushButton#link:hover {{ background: rgba(255,255,255,18); }}
+QPushButton#link:focus {{ border: 2px solid {INK}; padding: 0 12px; }}
 #shareNote {{ color: rgba(236,240,250,0.66); font-size: 17px; }}
 #shareSub {{ color: rgba(236,240,250,0.84); font-size: 20px; }}
 #capsTitle {{ color: rgba(236,240,250,0.66); font-size: 15px; font-weight: 400; letter-spacing: 1px; padding-top: 6px; }}

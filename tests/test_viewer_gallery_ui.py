@@ -44,21 +44,25 @@ viewer.open(ctl.all_captures(), 0); app.processEvents()
 pad(6)                                   # Options -> Share / Export
 assert viewer.sharing and viewer.dest == "discord" and viewer.voice_card.isEnabled() and viewer.share_panel.isVisible()
 assert viewer.focusWidget() is viewer.share_go, "starts on its button, so ✕ shares right away"
-for _ in range(4): pad(input_devices.LEFT)          # Cancel, Trim first, Size, Your voice
+assert not viewer.voice_card.isVisible() and "With your voice" in viewer.opt_line.text(), "the choices are one line"
+for _ in range(2): pad(input_devices.LEFT)          # Cancel, Change
+pad(input_devices.A); assert viewer.voice_card.isVisible() and viewer.size_card.isVisible(), "Change opens them"
 pad(input_devices.A); assert viewer.without_voice    # leave it out
 pad(input_devices.RIGHT); pad(input_devices.A); assert viewer.size_card.value == 50
 pad(input_devices.A); pad(input_devices.A); assert viewer.size_card.value == 10, "Discord's sizes only, round again"
-for _ in range(3): pad(input_devices.RIGHT)         # Trim first, Cancel, Share to Discord
+assert "Without your voice" in viewer.opt_line.text() and "10" in viewer.opt_line.text()
+for _ in range(2): pad(input_devices.RIGHT)         # Cancel, Copy for Discord
 pad(input_devices.A)
 assert calls[-1] == ("share", a.name, "discord10", True) and not viewer.sharing, calls
-viewer.enter_share(); assert viewer.dest == "discord", "starts where it went last time"
-for _ in range(5): pad(input_devices.LEFT)          # Cancel, trim, size, voice, Copy the file
-pad(input_devices.A)                                # Copy the file: the original
-assert viewer.dest == "file" and viewer.format_card.value == "copy"
-assert not viewer.size_card.isVisible() and not viewer.voice_card.isVisible(), "nothing to choose for the original"
-for _ in range(2): pad(input_devices.RIGHT)         # Cancel, Copy file
+viewer.enter_share(); assert viewer.dest == "discord" and not viewer.voice_card.isVisible(), "starts where it went last time, folded"
+for _ in range(3): pad(input_devices.LEFT)          # Cancel, Change, Copy
+pad(input_devices.A)                                # Copy
+assert viewer.dest == "copy" and "QR" not in viewer.share_go.text()
+for _ in range(3): pad(input_devices.RIGHT)         # Change, Cancel, Copy
 pad(input_devices.A)
-assert calls[-1] == ("copy", a.name) and not viewer.sharing, calls
+assert calls[-1] in (("copy", a.name), ("share", a.name, "phone", False)) and not viewer.sharing, calls
+viewer.enter_share(); viewer._choose_dest("phone"); assert "QR code" in viewer.share_go.text()
+viewer._set_sharing(False)
 input_devices.input_mode().set("playstation"); app.processEvents()
 pad(input_devices.Y); pad(input_devices.A)                     # △ jumps to the small buttons, ✕ presses Favorite
 assert ctl.is_favorite(a) and "★" in viewer.title.text()

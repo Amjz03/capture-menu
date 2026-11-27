@@ -834,7 +834,7 @@ class DestCard(QtWidgets.QAbstractButton):
         super().__init__()
         self.key, self.icon_name, self.title, self.detail, self.foot = key, icon, title, detail, foot
         self.chosen = False
-        self.setFixedHeight(240)          # spec 230, plus 5 px each side for the chosen one's ring
+        self.setFixedHeight(170)          # a name and one line (160), plus 5 px each side for the chosen one's ring
         self.setMinimumWidth(220)
         self.setCursor(Qt.PointingHandCursor)
         self.setAttribute(Qt.WA_Hover)

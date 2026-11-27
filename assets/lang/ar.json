@@ -532,5 +532,13 @@
   "Press again": "اضغط مرة ثانية",
   "Search titles, notes, games": "ابحث في العناوين والملاحظات والألعاب",
   "{n} GB over your limit. Delete old clips or raise the limit in Settings.": "تعديت الحد بـ {n} GB. احذف مقاطع قديمة أو ارفع الحد من الإعدادات.",
-  "click again to save": "اضغط مرة ثانية للحفظ"
+  "click again to save": "اضغط مرة ثانية للحفظ",
+  "Fits Discord's size": "يناسب حجم ديسكورد",
+  "Your phone": "جوالك",
+  "Scan a QR code": "امسح رمز QR",
+  "With your voice": "مع صوتك",
+  "Without your voice": "بدون صوتك",
+  "original quality": "الجودة الأصلية",
+  "plays everywhere": "يشتغل في كل مكان",
+  "Show the QR code": "اعرض رمز QR"
 }
