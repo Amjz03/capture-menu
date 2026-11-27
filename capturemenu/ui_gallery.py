@@ -545,7 +545,7 @@ class Gallery(ui_widgets.Grow, QtWidgets.QWidget):
             threading.Thread(target=run, daemon=True).start()
 
     def _days(self, items: list[Path]) -> list[tuple[str | None, list[Path]]]:
-        """Newest first, in three groups: Today, This week (the 6 days before), Earlier. Sorted by size there
+        """Newest first, in three groups: Today, This week (the 6 days before), All earlier captures. Sorted by size there
         are no groups."""
         if self.by_size:
             return [(None, list(items))]
@@ -554,7 +554,7 @@ class Gallery(ui_widgets.Grow, QtWidgets.QWidget):
         for p in items:
             ago = (today - datetime.fromtimestamp(self.ctl.modified_of(p)).date()).days
             label = (language.tr("Today") if ago <= 0 else language.tr("This week") if ago < 7
-                     else language.tr("Earlier"))
+                     else language.tr("All earlier captures"))
             if groups and groups[-1][0] == label:
                 groups[-1][1].append(p)
             else:
