@@ -15,7 +15,7 @@ const DEMO = (() => {
       clip_saved: "Clip saved", shot_saved: "Screenshot saved", rec_saved: "Recording saved",
       last: "Last {l}", length: "Length {l}", everything: "Everything · {l}",
       sec: "{n} sec", min: "{n} min", one_min: "1 minute",
-      to_view: "{open}&nbsp; then &nbsp;{view}&nbsp; to view", trim: "Trim", view: "View", share: "Share",
+      to_view: "{open}&nbsp; then &nbsp;{view}&nbsp; to view", trim: "Trim", view: "View", share: "Share", trimmed: "Trimmed clip saved",
       rec_started: "Recording started · open the menu and choose Stop to finish",
       mic_msg_off: "Mic off · your voice won't be recorded", mic_msg_on: "Mic on · your voice is recorded",
       clip: "Clip", clip_len: "Clip · {l}", screenshot: "Screenshot", recording_kind: "Recording",
@@ -31,7 +31,7 @@ const DEMO = (() => {
       clip_saved: "حُفظ المقطع", shot_saved: "حُفظت لقطة الشاشة", rec_saved: "حُفظ التسجيل",
       last: "آخر {l}", length: "المدة {l}", everything: "كل اللعب المسجّل · {l}",
       sec: "{n} ثانية", min: "{n} دقيقة", one_min: "دقيقة واحدة",
-      to_view: "{open}&nbsp; ثم &nbsp;{view}&nbsp; للعرض", trim: "قص", view: "عرض", share: "مشاركة",
+      to_view: "{open}&nbsp; ثم &nbsp;{view}&nbsp; للعرض", trim: "قص", view: "عرض", share: "مشاركة", trimmed: "حُفظ المقطع المقصوص",
       rec_started: "بدأ التسجيل · افتح القائمة واختر «إيقاف» لإنهائه",
       mic_msg_off: "المايك مغلق · لن يُسجَّل صوتك", mic_msg_on: "المايك يعمل · صوتك يُسجَّل",
       clip: "مقطع", clip_len: "مقطع · {l}", screenshot: "لقطة شاشة", recording_kind: "تسجيل",
@@ -54,6 +54,25 @@ const DEMO = (() => {
     scissors: '<circle cx="6" cy="6" r="3"/><path d="M8.12 8.12 12 12"/><path d="M20 4 8.12 15.88"/><circle cx="6" cy="18" r="3"/><path d="M14.8 14.8 20 20"/>',
     play: '<path d="M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z"/>',
     share: '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/>',
+    "gamepad": '<line x1="6" x2="10" y1="11" y2="11"/><line x1="8" x2="8" y1="9" y2="13"/><line x1="15" x2="15.01" y1="12" y2="12"/><line x1="18" x2="18.01" y1="10" y2="10"/><path d="M17.32 5H6.68a4 4 0 0 0-3.978 3.59c-.006.052-.01.101-.017.152C2.604 9.416 2 14.456 2 16a3 3 0 0 0 3 3c1 0 1.5-.5 2-1l1.414-1.414A2 2 0 0 1 9.828 16h4.344a2 2 0 0 1 1.414.586L17 18c.5.5 1 1 2 1a3 3 0 0 0 3-3c0-1.545-.604-6.584-.685-7.258-.007-.05-.011-.1-.017-.151A4 4 0 0 0 17.32 5z"/>',
+    "file-video": '<path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M15.033 13.44a.647.647 0 0 1 0 1.12l-4.065 2.352a.645.645 0 0 1-.968-.56v-4.704a.645.645 0 0 1 .967-.56z"/>',
+    "copy": '<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',
+    "video": '<path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/>',
+    "star": '<path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/>',
+    "search": '<path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/>',
+    "select": '<path d="M21 10.656V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h12.344"/><path d="m9 11 3 3L22 4"/>',
+    "back5": '<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>',
+    "folder": '<path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>',
+    "monitor": '<rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/>',
+    "check": '<path d="M20 6 9 17l-5-5"/>',
+    "info": '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
+    "phone": '<rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/>',
+    "export": '<path d="M12 3v12"/><path d="m17 8-5-5-5 5"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>',
+    "trash": '<path d="M10 11v6"/><path d="M14 11v6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
+    "audio": '<path d="M2 10v3"/><path d="M6 6v11"/><path d="M10 3v18"/><path d="M14 8v7"/><path d="M18 5v13"/><path d="M22 10v3"/>',
+    "external": '<path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>',
+    "drive": '<path d="M10 16h.01"/><path d="M2.212 11.577a2 2 0 0 0-.212.896V18a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-5.527a2 2 0 0 0-.212-.896L18.55 5.11A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/><path d="M21.946 12.013H2.054"/><path d="M6 16h.01"/>',
+    "x": '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
     image: '<rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>',
   };
   const svg = (name, px) => `<svg width="${px}" height="${px}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICON[name]}</svg>`;
@@ -158,14 +177,16 @@ const DEMO = (() => {
     stage.classList.add("open"); render();
   }
   function hide() { open = false; picking = false; stage.classList.remove("open"); }
-  function toggle() { if (page) { closePage(); return; } open ? hide() : show(); }
-  function openPage(name) {
+  function toggle() { if (P.isOpen()) { P.close(); open = false; show(); return; } open ? hide() : show(); }
+  // the pages work as in the app (pages.js); Back from one comes to the bar
+  function openPage(name, opts = {}) {
     hide();
-    page = name;
-    $("cm-page").src = `assets/${name === "settings" ? "app/" : ""}${name}-${lang}.jpg`;
-    pc.classList.add("paging");
+    if (name === "library") P.open("gallery");
+    else if (name === "settings") P.open("settings");
+    else if (name === "save") P.open("save", { len: lastChoice });
+    else P.open("viewer", { i: opts.i || 0, panel: name === "trim" ? "trim" : opts.panel || null });
   }
-  function closePage() { pc.classList.remove("paging"); page = null; open = false; show(); }   // Back comes to the bar
+  function closePage() { P.close(); open = false; show(); }
 
   // ---------------------------------------------------------------- what the bar does
   function addCapture(c) { caps.unshift({ ...c, at: Date.now() }); }
@@ -216,7 +237,7 @@ const DEMO = (() => {
     toastMessage(micOn ? "mic_msg_on" : "mic_msg_off", false);
   }
   function activate(id) {
-    if (id === "save") { picking = true; armed = null; render(); setFocus(lastChoice); }
+    if (id === "save") openPage("save");
     else if (id === "shot") screenshot();
     else if (id === "rec") toggleRecord();
     else if (id === "mic") toggleMic();
@@ -224,7 +245,7 @@ const DEMO = (() => {
     else if (id === "settings") openPage("settings");
     else if (id === "back") closePicker();
     else if (id === "chip_save") saveClip(OPTIONS[lastChoice]);
-    else if (id.startsWith("thumb")) openPage("viewer");
+    else if (id.startsWith("thumb")) openPage("viewer", { i: +id.slice(5) });
     else if (/^chip\d$/.test(id)) saveClip(OPTIONS[+id.slice(4)]);
   }
   function closePicker() { picking = false; armed = null; render(); setFocus(0); }
@@ -261,7 +282,8 @@ const DEMO = (() => {
   $("cm-toast").addEventListener("click", (e) => {
     e.stopPropagation();
     $("cm-toast").classList.remove("in");
-    openPage(e.target.closest("[data-act=trim]") ? "trim" : "viewer");   // (Share opens the viewer here too)
+    const act = e.target.closest("[data-act]");
+    openPage(act && act.dataset.act === "trim" ? "trim" : "viewer", { panel: act && act.dataset.act === "share" ? "share" : null });
   });
 
   // ---------------------------------------------------------------- mouse: hover lends the highlight, like the app
@@ -295,7 +317,7 @@ const DEMO = (() => {
 
   // ---------------------------------------------------------------- keys and pad buttons
   function key(k) {
-    if (page) { if (k !== "Escape" && k !== "Backspace" && k !== "B") return false; closePage(); return true; }
+    if (P.isOpen()) return P.key(k);
     if (!open) return false;
     const fwd = lang === "ar" ? -1 : 1;           // right to left: the arrows follow the layout
     lent = null;
@@ -318,16 +340,29 @@ const DEMO = (() => {
   }
   function setMode(m) { if (m !== mode) { mode = m; if (open) render(); } }
 
+  let shareDest = "discord";
+  const P = makePages({
+    svg, t: () => t, caps: () => caps, duration, ago,
+    back: () => { open = false; show(); },
+    lastDest: () => shareDest, setDest: (d) => { shareDest = d; },
+    saved(len, secs, shift) {
+      addCapture({ kind: "clip", secs: len, img: "assets/game.jpg" });
+      toastCapture("clip_saved", () => secs === null ? fill(t.everything, { l: clock(1800e3) }) : fill(t.last, { l: duration(secs) }), true);
+    },
+    trimmed(len) { addCapture({ kind: "clip", secs: len, img: "assets/game.jpg" }); toastCapture("trimmed", () => fill(t.length, { l: clock(len * 1000) }), true); },
+    forget(c) { const i = caps.findIndex((x) => x.at === c.at); if (i >= 0) caps.splice(i, 1); },
+    message(text) { present(() => { const [a, b] = text.split(" · "); return `<div class="text"><b>${a}</b>${b ? `<span>${b}</span>` : ""}</div>`; }, 3500); },
+    notice(title, sub, img) { present(() => `<div class="thumbnail" style="background-image:url(${img})"></div><div class="text"><b>${title}</b><span>${sub}</span></div>`, 6000); },
+  });
   // the screen is 1920 wide, scaled to the stage
   new ResizeObserver(() => pc.style.setProperty("--k", stage.clientWidth / 1920)).observe(stage);
   setInterval(() => { if (open && !picking && !recStart) menu.querySelectorAll(".cm-thumb .sub").forEach((el, i) => { el.textContent = ago(caps[i]); }); }, 30e3);
 
   return {
-    toggle, key, setMode, isOpen: () => open || !!page,
-    saveLast30() { hide(); page = null; pc.classList.remove("paging"); addCapture({ kind: "clip", secs: 30, img: "assets/game.jpg" }); toastCapture("clip_saved", () => fill(t.last, { l: duration(30) }), true); },
+    toggle, key, setMode, isOpen: () => open || P.isOpen(),
+    saveLast30() { hide(); P.close(); addCapture({ kind: "clip", secs: 30, img: "assets/game.jpg" }); toastCapture("clip_saved", () => fill(t.last, { l: duration(30) }), true); },
     setLang(l) {
-      lang = l; t = W[l];
-      if (page) $("cm-page").src = $("cm-page").src.replace(/-(en|ar)\.jpg$/, `-${l}.jpg`);
+      lang = l; t = W[l]; P.setLang(l);
       if (open) render();                                  // focus, the picker and REC stay as they are
       if (toastHtml && $("cm-toast").classList.contains("in")) $("cm-toast").innerHTML = toastHtml();   // same notice, same time left
     },

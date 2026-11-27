@@ -514,3 +514,199 @@ html[dir="rtl"] .final::after { background: linear-gradient(270deg, var(--bg-2) 
   .reveal { opacity: 1; transform: none; }
   .hero-bg video { display: none; }
 }
+
+/* ---------------------------------------------------------------- the demo's pages (pages.js), at the app's sizes */
+.pg { position: absolute; inset: 0; display: none; z-index: 5; color: var(--ink); font-family: "Segoe UI Variable Text", "Segoe UI", "Geist", "IBM Plex Sans Arabic", sans-serif; font-size: 16px; text-align: start; }
+.pg.on { display: block; }
+.pg button { font: inherit; color: inherit; cursor: pointer; }
+.pg-viewer, .pg-gallery, .pg-settings { background: rgba(7, 10, 20, .86); backdrop-filter: blur(40px); }
+.pg-btn { display: inline-flex; align-items: center; gap: 8px; height: 46px; padding: 0 20px 0 18px; border-radius: 23px; background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.14); font-size: 16px; font-weight: 600; white-space: nowrap; }
+.pg-btn:hover { background: rgba(255,255,255,.18); }
+.pg-btn.main { background: var(--ink); color: var(--dark); border-color: var(--ink); }
+.pg-round { width: 46px; height: 46px; border-radius: 50%; background: rgba(255,255,255,.08); border: 0; display: grid; place-items: center; flex: none; }
+.pg-round:hover { background: rgba(255,255,255,.2); }
+.pg-hints { position: absolute; bottom: 28px; inset-inline-start: 120px; display: flex; gap: 28px; color: rgba(236,240,250,.84); font-size: 16px; }
+.pg-hint { display: inline-flex; align-items: center; gap: 8px; }
+.pg-hint kbd { font: 600 13px "Segoe UI", sans-serif; background: rgba(255,255,255,.9); color: var(--dark); border-radius: 5px; padding: 1px 7px; direction: ltr; }
+.pg .star { color: #ffd34d; }
+
+/* Save recent */
+.sv-scrim { position: absolute; inset: 0; background: rgba(4, 6, 12, .62); }
+.sv-preview { position: absolute; left: 448px; top: 56px; width: 1024px; height: 576px; border-radius: 28px; background: center / cover; border: 1px solid rgba(255,255,255,.14); box-shadow: 0 24px 64px rgba(0,0,0,.5); }
+.sv-preview span { position: absolute; top: 20px; inset-inline-start: 20px; padding: 8px 16px; border-radius: 18px; background: rgba(7,10,20,.78); font-size: 18px; }
+.sv-panel { position: absolute; left: 48px; right: 48px; bottom: 32px; height: 354px; border-radius: 32px; background: rgba(10,13,24,.6); border: 1px solid rgba(255,255,255,.14); padding: 26px 32px; box-sizing: border-box; backdrop-filter: blur(48px); }
+.sv-top { display: flex; align-items: baseline; gap: 16px; height: 32px; }
+.sv-top b { font-size: 21px; font-weight: 600; white-space: nowrap; }
+.sv-top span { color: rgba(236,240,250,.76); font-size: 17px; white-space: nowrap; }
+.sv-top i { flex: 1; }
+.sv-strip { position: relative; margin-top: 18px; height: 100px; border-radius: 16px; overflow: hidden; display: grid; grid-template-columns: repeat(30, 1fr); cursor: pointer; direction: ltr; }
+html[dir="rtl"] .sv-strip { transform: scaleX(-1); }
+html[dir="rtl"] .sv-strip em { transform: scaleX(-1) translateX(50%); }
+.sv-strip > i { background: center / cover; border-inline-end: 1px solid rgba(0,0,0,.35); }
+.sv-dim { position: absolute; top: 0; bottom: 0; left: 0; background: rgba(7,10,20,.55); }
+.sv-dim.r { left: auto; right: 0; }
+.sv-sel { position: absolute; top: 0; bottom: 0; border: 4px solid var(--ink); border-radius: 14px; box-sizing: border-box; min-width: 14px; }
+.sv-sel em { position: absolute; top: -32px; left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--dark); font: 700 13px "Segoe UI", sans-serif; padding: 4px 12px; border-radius: 10px; white-space: nowrap; }
+.sv-strip { overflow: visible; }
+.sv-strip > i:first-child { border-radius: 16px 0 0 16px; } .sv-strip > i:nth-child(30) { border-radius: 0 16px 16px 0; }
+.sv-ticks { position: relative; height: 22px; margin-top: 18px; color: rgba(236,240,250,.66); font-size: 15px; direction: ltr; }
+.sv-ticks span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+.sv-ticks span:first-child { transform: none; } .sv-ticks span:last-child { transform: translateX(-100%); }
+html[dir="rtl"] .sv-ticks { transform: scaleX(-1); } html[dir="rtl"] .sv-ticks span { display: inline-block; transform: scaleX(-1) translateX(50%); }
+.sv-chips { display: flex; gap: 10px; margin-top: 16px; }
+.sv-chip { height: 52px; padding: 0 22px; border-radius: 26px; background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.14); font-size: 18px; white-space: nowrap; }
+.sv-chip:hover { background: rgba(255,255,255,.2); }
+.sv-chip.on { background: var(--ink); color: var(--dark); box-shadow: 0 0 0 4px rgba(255,255,255,.28); }
+.sv-chip.save { margin-inline-start: auto; }
+.pg-save .pg-hints { inset-inline-start: 81px; bottom: 56px; }
+
+/* viewer */
+.vw-bg { position: absolute; inset: 0; background: center / cover; filter: blur(60px) saturate(1.2); opacity: .45; }
+.vw-shade { position: absolute; inset: 0; background: linear-gradient(rgba(7,10,20,.6), rgba(7,10,20,.3) 45%, rgba(7,10,20,.92)); }
+.vw-head { position: absolute; top: 36px; left: 120px; right: 120px; display: flex; align-items: flex-start; gap: 12px; }
+.vw-title { flex: 1; margin-inline-start: 10px; }
+.vw-title b { display: block; font: 600 27px "Segoe UI Variable Display", "Segoe UI", sans-serif; }
+.vw-chips { display: flex; gap: 8px; margin-top: 8px; }
+.vw-chips span { padding: 5px 12px; border-radius: 16px; background: rgba(255,255,255,.07); color: #dfe3ec; font-size: 15px; }
+.vw-count { color: rgba(236,240,250,.76); font-size: 18px; margin-top: 12px; margin-inline-end: 6px; }
+.vw-card { position: absolute; left: 50%; top: 136px; width: 1264px; height: 711px; transform: translateX(-50%); border-radius: 22px; background: #000 center / cover; border: 1px solid rgba(255,255,255,.12); overflow: hidden; }
+.vw-card.small { top: 128px; width: 1060px; height: 596px; }
+.vw-ctl { position: absolute; left: 0; right: 0; bottom: 0; height: 60px; background: rgba(24,29,44,.78); display: flex; align-items: center; gap: 16px; padding: 0 20px; direction: ltr; }
+.vw-ctl i { flex: 1; height: 4px; border-radius: 2px; background: rgba(255,255,255,.18); }
+.vw-ctl i b { display: block; height: 100%; background: var(--ink); border-radius: 2px; }
+.vw-time { font: 14px Consolas, monospace; color: rgba(236,240,250,.76); }
+.vw-dock { position: absolute; left: 50%; top: 868px; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; padding: 12px; border-radius: 28px; background: rgba(16,20,31,.8); border: 1px solid rgba(255,255,255,.12); }
+.vw-tile { width: 108px; height: 86px; border-radius: 20px; border: 0; background: rgba(255,255,255,.08); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; font-size: 16px; }
+.vw-tile:hover { background: rgba(255,255,255,.18); }
+.vw-tile.white { background: var(--ink); color: var(--dark); }
+.vw-tile.fav svg { color: #ffd34d; }
+.vw-tile.danger { color: #ff8a82; } .vw-tile.armed { background: rgba(255,69,58,.25); color: #ff8a82; }
+.vw-rule { width: 1px; height: 64px; background: rgba(255,255,255,.18); margin: 0 6px; }
+.vw-near { position: absolute; bottom: 22px; inset-inline-end: 120px; display: flex; gap: 8px; }
+.vw-near i { width: 80px; height: 45px; border-radius: 8px; background: center / cover; opacity: .5; cursor: pointer; }
+.vw-near i.on { opacity: 1; box-shadow: 0 0 0 2px var(--ink); }
+.vw-panel { position: absolute; left: 120px; right: 120px; top: 742px; height: 230px; border-radius: 32px; background: rgba(10,13,24,.6); border: 1px solid rgba(255,255,255,.14); padding: 22px 32px; box-sizing: border-box; }
+.tr-top { display: flex; justify-content: space-between; align-items: center; }
+.tr-top b { display: block; font-size: 21px; font-weight: 600; } .tr-top span { color: rgba(236,240,250,.76); font-size: 15px; }
+.tr-top em { font: 600 20px Consolas, monospace; font-style: normal; direction: ltr; }
+.tr-strip { position: relative; margin-top: 14px; height: 64px; border-radius: 12px; display: grid; grid-template-columns: repeat(12, 1fr); overflow: hidden; direction: ltr; }
+html[dir="rtl"] .tr-strip { transform: scaleX(-1); }
+.tr-strip > i { background: center / cover; }
+.tr-dim { position: absolute; top: 0; bottom: 0; left: 0; background: rgba(7,10,20,.6); } .tr-dim.r { left: auto; right: 0; }
+.tr-sel { position: absolute; top: 0; bottom: 0; border: 3px solid var(--ink); border-radius: 10px; box-sizing: border-box; }
+.tr-sel u { position: absolute; top: -3px; bottom: -3px; width: 14px; background: var(--ink); cursor: ew-resize; touch-action: none; }
+.tr-sel u[data-h=a] { left: -7px; border-radius: 7px 0 0 7px; } .tr-sel u[data-h=b] { right: -7px; border-radius: 0 7px 7px 0; }
+.tr-foot { display: flex; justify-content: flex-end; align-items: center; gap: 10px; margin-top: 18px; }
+.au-rows { display: flex; gap: 16px; margin-top: 12px; }
+.au-row { flex: 1; display: flex; align-items: center; gap: 14px; height: 72px; padding: 0 18px; border-radius: 18px; background: rgba(255,255,255,.06); }
+.au-row b { display: block; font-size: 16px; } .au-row span { color: rgba(236,240,250,.76); font-size: 13px; }
+.au-row input { flex: 1; accent-color: #fff; min-width: 80px; }
+.au-row em { font-style: normal; font-weight: 600; width: 60px; text-align: center; border: 1px solid rgba(255,255,255,.2); border-radius: 10px; padding: 6px 0; }
+.au-row em.muted { color: #ff8a82; border-color: rgba(255,105,97,.4); }
+.au-row label { display: flex; align-items: center; gap: 8px; color: rgba(236,240,250,.76); font-size: 13px; }
+.au-sw { width: 40px; height: 22px; border-radius: 11px; border: 1px solid rgba(255,255,255,.3); background: rgba(255,255,255,.08); position: relative; }
+.au-sw::after { content: ""; position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; border-radius: 50%; background: var(--ink); transition: left .15s; }
+.au-sw.on { background: var(--ink); } .au-sw.on::after { left: 21px; background: var(--dark); }
+.au-note { display: inline-flex; align-items: center; gap: 8px; color: rgba(236,240,250,.76); font-size: 14px; margin-inline-end: auto; }
+
+/* share */
+.sh-scrim { position: absolute; inset: 0; background: rgba(4,6,12,.62); }
+.sh-dialog { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 1200px; padding: 36px 40px; box-sizing: border-box; border-radius: 32px; background: rgba(16,20,31,.92); border: 1px solid rgba(255,255,255,.14); display: flex; flex-direction: column; gap: 22px; }
+.sh-top { display: flex; align-items: center; gap: 20px; }
+.sh-top > i { width: 176px; height: 99px; border-radius: 14px; background: center / cover; flex: none; }
+.sh-top div { flex: 1; } .sh-top b { display: block; font: 600 27px "Segoe UI Variable Display", "Segoe UI", sans-serif; }
+.sh-top span { color: rgba(236,240,250,.84); font-size: 17px; }
+.sh-dialog small { color: rgba(236,240,250,.66); font-size: 15px; letter-spacing: 1px; margin-bottom: -10px; }
+.sh-cards { display: flex; gap: 20px; }
+.sh-card { flex: 1; height: 134px; border-radius: 24px; background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.14); padding: 20px 22px; text-align: start; display: flex; flex-direction: column; gap: 6px; }
+.sh-card:hover { background: rgba(255,255,255,.16); }
+.sh-card b { font-size: 20px; margin-top: 6px; } .sh-card span { color: rgba(236,240,250,.84); font-size: 15px; }
+.sh-card.on { background: var(--ink); color: var(--dark); box-shadow: 0 0 0 5px rgba(255,255,255,.3); }
+.sh-card.on span { color: rgba(13,17,32,.8); }
+.sh-opts { border-radius: 22px; background: rgba(255,255,255,.1); }
+.sh-line { display: flex; align-items: center; gap: 12px; height: 52px; padding: 0 12px 0 20px; }
+.sh-line b { flex: 1; font-size: 16px; }
+.sh-link { background: none; border: 0; text-decoration: underline; font-size: 16px; padding: 6px 12px; border-radius: 12px; }
+.sh-link:hover { background: rgba(255,255,255,.1); }
+.sh-row { display: flex; align-items: center; gap: 16px; height: 72px; padding: 0 12px 0 24px; border-top: 1px solid rgba(255,255,255,.14); }
+.sh-row div:first-of-type { flex: 1; } .sh-row b { display: block; font-size: 17px; } .sh-row span { color: rgba(236,240,250,.84); font-size: 15px; }
+.sh-seg, .st-seg { display: flex; gap: 4px; padding: 4px; border-radius: 23px; background: rgba(255,255,255,.1); }
+.sh-seg button, .st-seg button { height: 42px; padding: 0 18px; border-radius: 19px; border: 0; background: none; font-size: 17px; color: rgba(236,240,250,.84); white-space: nowrap; }
+.sh-seg button.on, .st-seg button.on { background: var(--ink); color: var(--dark); font-weight: 600; }
+.sh-foot { display: flex; justify-content: flex-end; gap: 12px; }
+.qr-card { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 560px; padding: 32px 40px; box-sizing: border-box; border-radius: 30px; background: rgba(16,20,31,.95); border: 1px solid rgba(255,255,255,.14); display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.qr-card b { font: 600 27px "Segoe UI Variable Display", "Segoe UI", sans-serif; }
+.qr-card .qr { width: 280px; height: 280px; border-radius: 8px; }
+.qr-card p { display: flex; gap: 12px; margin: 0; font-size: 16px; align-self: stretch; } .qr-card p svg { flex: none; margin-top: 2px; }
+.qr-card small { color: rgba(236,240,250,.6); font-size: 14px; }
+
+/* gallery */
+.gl-rail { position: absolute; left: 40px; top: 40px; bottom: 40px; width: 300px; box-sizing: border-box; padding: 28px 20px 20px; border-radius: 28px; background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.07); display: flex; flex-direction: column; gap: 6px; }
+html[dir="rtl"] .gl-rail { left: auto; right: 40px; }
+.gl-rail h2 { margin: 0 8px; font: 600 27px "Segoe UI Variable Display", "Segoe UI", sans-serif; }
+.gl-rail p { margin: 2px 8px 14px; color: rgba(236,240,250,.76); font-size: 15px; }
+.gl-cat { display: flex; align-items: center; gap: 12px; height: 50px; padding: 0 14px 0 12px; border-radius: 14px; border: 0; background: none; text-align: start; }
+.gl-cat:hover { background: rgba(255,255,255,.08); } .gl-cat.on { background: rgba(255,255,255,.22); }
+.gl-cat b { flex: 1; font-size: 17px; font-weight: 400; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .gl-cat.on b { font-weight: 600; }
+.gl-cat span { color: rgba(236,240,250,.84); font-size: 15px; } .gl-cat i { width: 26px; height: 26px; border-radius: 50%; background: center / cover; flex: none; }
+.gl-store { margin-top: auto; padding: 18px; border-radius: 18px; background: rgba(255,255,255,.1); display: flex; flex-direction: column; gap: 10px; }
+.gl-store b { font-size: 17px; } .gl-store i { height: 8px; border-radius: 4px; background: rgba(255,255,255,.1); } .gl-store u { display: block; height: 100%; border-radius: 4px; background: rgba(255,255,255,.4); }
+.gl-store span { color: rgba(236,240,250,.84); font-size: 14px; }
+.gl-main { position: absolute; left: 380px; right: 40px; top: 44px; bottom: 0; }
+html[dir="rtl"] .gl-main { left: 40px; right: 380px; }
+.gl-top { display: flex; align-items: center; gap: 12px; }
+.gl-top > i { flex: 1; }
+.gl-search { display: flex; align-items: center; gap: 10px; width: 420px; height: 44px; padding: 0 18px; box-sizing: border-box; border-radius: 22px; background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.14); color: rgba(236,240,250,.76); }
+.gl-search input { flex: 1; background: none; border: 0; outline: 0; color: var(--ink); font: 16px "Segoe UI", sans-serif; }
+.gl-kind { height: 44px; padding: 0 18px; border-radius: 22px; background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.14); font-size: 16px; white-space: nowrap; }
+.gl-kind.on { background: var(--ink); color: var(--dark); font-weight: 600; }
+.gl-body { position: absolute; top: 76px; left: 0; right: 0; bottom: 70px; overflow: auto; padding: 8px 6px; scrollbar-width: thin; }
+.gl-body h3 { margin: 6px 6px 14px; font: 600 21px "Segoe UI Variable Display", "Segoe UI", sans-serif; display: flex; align-items: baseline; gap: 14px; }
+.gl-body h3 span { color: rgba(236,240,250,.66); font-size: 14px; font-weight: 400; }
+.gl-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px 24px; margin-bottom: 18px; }
+.gl-card { cursor: pointer; padding: 6px; border-radius: 22px; }
+.gl-card > i { display: block; position: relative; aspect-ratio: 16 / 9; border-radius: 20px; background: center / cover; filter: brightness(.75); transition: transform .18s, filter .18s; }
+.gl-card:hover > i { filter: none; }
+.gl-card.on > i { filter: none; transform: scale(1.04); box-shadow: 0 0 0 4px #fff, 0 0 0 10px rgba(255,255,255,.2); }
+.gl-card em { position: absolute; bottom: 8px; inset-inline-end: 8px; padding: 3px 8px; border-radius: 8px; background: rgba(7,10,20,.78); font: 700 13px "Segoe UI", sans-serif; font-style: normal; }
+.gl-card u { position: absolute; top: 8px; inset-inline-start: 8px; text-decoration: none; background: rgba(7,10,20,.7); border-radius: 8px; padding: 1px 6px; }
+.gl-card b { display: block; margin-top: 12px; font-size: 16px; font-weight: 400; } .gl-card.on b { font-size: 17px; font-weight: 600; }
+.gl-card span { color: rgba(236,240,250,.84); font-size: 14px; }
+.gl-acts { display: flex; gap: 8px; margin-top: 10px; }
+.gl-acts button { display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 14px 0 12px; border-radius: 18px; border: 0; background: rgba(255,255,255,.16); font-size: 15px; }
+.gl-acts button:hover { background: rgba(255,255,255,.28); }
+.pg-gallery .pg-hints { inset-inline-start: 0; bottom: 24px; }
+
+/* settings */
+.st-rail { position: absolute; left: 40px; top: 40px; bottom: 40px; width: 320px; box-sizing: border-box; padding: 28px 20px 22px; border-radius: 28px; background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.07); display: flex; flex-direction: column; gap: 6px; }
+html[dir="rtl"] .st-rail { left: auto; right: 40px; }
+.st-rail h2 { margin: 0 8px 18px; font: 600 27px "Segoe UI Variable Display", "Segoe UI", sans-serif; }
+.st-rail > i { flex: 1; } .st-rail .pg-btn { align-self: flex-start; }
+.st-tab { display: flex; align-items: center; gap: 14px; height: 48px; padding: 0 14px; border-radius: 12px; border: 0; background: none; font-size: 17px; text-align: start; }
+.st-tab:hover { background: rgba(255,255,255,.08); } .st-tab.on { background: rgba(255,255,255,.22); font-weight: 600; }
+.st-main { position: absolute; left: 400px; width: 820px; top: 40px; bottom: 0; }
+html[dir="rtl"] .st-main { left: auto; right: 400px; }
+.st-head { display: flex; align-items: center; gap: 16px; height: 60px; }
+.st-head div b { display: block; font: 600 27px "Segoe UI Variable Display", "Segoe UI", sans-serif; }
+.st-head div span { color: rgba(236,240,250,.84); font-size: 15px; } .st-head div span.warn { color: var(--amber, #ffb340); }
+.st-head > i { flex: 1; }
+.st-rows { position: absolute; top: 84px; left: 0; right: 0; bottom: 74px; overflow: auto; display: flex; flex-direction: column; gap: 10px; padding: 4px; scrollbar-width: thin; }
+.set-row { padding: 14px 24px; border-radius: 20px; background: rgba(255,255,255,.1); cursor: pointer; flex: none; }
+.set-row.on { box-shadow: 0 0 0 3px var(--ink), 0 0 0 7px rgba(255,255,255,.22); }
+.set-row b { display: block; font-size: 18px; } .set-row > span { display: block; color: rgba(236,240,250,.84); font-size: 15px; margin: 2px 0 10px; }
+.st-seg { display: inline-flex; }
+.st-get { position: absolute; right: 40px; top: 40px; bottom: 40px; width: 620px; box-sizing: border-box; padding: 28px; border-radius: 28px; background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.07); display: flex; flex-direction: column; gap: 18px; }
+html[dir="rtl"] .st-get { right: auto; left: 40px; }
+.st-get h3 { margin: 0; font-size: 19px; font-weight: 600; }
+.st-pic { height: 300px; border-radius: 18px; background: center / cover; position: relative; }
+.st-pic span { position: absolute; top: 14px; inset-inline-start: 14px; padding: 6px 12px; border-radius: 12px; background: rgba(7,10,20,.78); font-size: 17px; direction: ltr; }
+.st-sizes { border-radius: 18px; background: rgba(255,255,255,.1); padding: 0 20px; }
+.st-sizes p { display: flex; justify-content: space-between; align-items: center; height: 52px; margin: 0; font-size: 17px; }
+.st-sizes p span { color: rgba(236,240,250,.84); } .st-sizes b { display: inline-flex; gap: 8px; align-items: center; }
+.st-sizes u { text-decoration: none; background: #ffb340; color: var(--dark); font-size: 13px; padding: 1px 7px; border-radius: 7px; }
+.st-get small { color: rgba(236,240,250,.66); font-size: 14px; letter-spacing: 1px; }
+.st-pc { display: flex; flex-wrap: wrap; gap: 8px; } .st-pc span { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px 0 10px; border-radius: 14px; background: rgba(255,255,255,.1); font-size: 15px; }
+.st-pc span svg { color: #32d74b; } .st-pc:first-of-type span svg { color: var(--ink); }
+.pg-settings .pg-hints { inset-inline-start: 0; bottom: 24px; }
+.pg-viewer .pg-hints { bottom: 30px; }
+.pg-save .pg-hints { position: static; margin-top: 16px; }
