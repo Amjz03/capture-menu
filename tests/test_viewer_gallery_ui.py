@@ -106,13 +106,13 @@ assert gallery.cats[gallery.games.currentRow()][0] == "Frostfall", "opens on the
 assert [p.name for p in gallery.cats[1][1]] == [a.name]
 pad(input_devices.L1); pad(input_devices.L1); assert gallery.cats[gallery.games.currentRow()][0] == gallery.FAVORITES
 pad(input_devices.L1); assert gallery.items == ctl.all_captures()           # All
-pad(input_devices.RIGHT); assert gallery.grid.currentRow() == 1
-pad(input_devices.Y); assert ctl.is_favorite(b)
+pad(input_devices.RIGHT); assert gallery.current_path() == gallery.items[1]
+pad(7); assert ctl.is_favorite(b), "L3 is Favorite in the gallery (△ shares)"
 pad(input_devices.A); assert viewer.isVisible() and viewer.current == b
 viewer.folder_chip.click(); app.processEvents()
 assert viewer.isVisible() and gallery.isVisible(), "Show in folder keeps the viewer and the gallery behind it"
 pad(input_devices.B); assert not viewer.isVisible() and gallery.isVisible()
-gallery.grid.setCurrentRow(0); app.processEvents()   # ↑ from the top row reaches the buttons, and back down
+gallery.select_item(0); app.processEvents()   # ↑ from the top row reaches the buttons, and back down
 pad(input_devices.UP); assert gallery.focusWidget() in gallery._head_nav() and not gallery.grid_lit()
 pad(input_devices.DOWN); assert gallery.focusWidget() in (gallery.grid, gallery.games)
 gallery.grid.setFocus(); app.processEvents()

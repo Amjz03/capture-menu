@@ -26,8 +26,8 @@ def pump(n=8):
     for _ in range(n): app.processEvents()
 
 
-def click_tile(row, double=False):
-    rect = gallery.grid.visualItemRect(gallery.grid.item(row))
+def click_tile(i, double=False):     # the i-th capture (a day's heading is a row of the grid too)
+    rect = gallery.grid.visualItemRect(gallery.grid.item(gallery.rows.index(gallery.items[i])))
     (QTest.mouseDClick if double else QTest.mouseClick)(gallery.grid.viewport(), Qt.LeftButton, Qt.NoModifier,
                                                          rect.center())
     pump()
@@ -49,7 +49,7 @@ assert "2 selected" in gallery.info.text() and gallery.del_btn.isEnabled()
 click_tile(2); assert gallery.marked == {gallery.items[0]}, "a second click lets it go"
 click_tile(1, double=True); pump()
 assert not viewer.isVisible(), "while selecting a double click doesn't open the viewer"
-gallery.grid.setCurrentRow(3); input_devices.send_key(gallery.grid, Qt.Key_Return); pump()
+gallery.select_item(3); input_devices.send_key(gallery.grid, Qt.Key_Return); pump()
 assert gallery.items[3] in gallery.marked, "Enter picks while selecting"
 print("select with the mouse and Enter PASS")
 
@@ -75,7 +75,7 @@ assert viewer.isVisible(), "not selecting: Enter opens again"
 viewer.close_viewer(); pump()
 print("cancel and Esc PASS")
 
-gallery.grid.setCurrentRow(0); pad(input_devices.X)          # ▢ picks straight away and shows the selecting bar
+gallery.select_item(0); pad(input_devices.X)          # ▢ picks straight away and shows the selecting bar
 assert gallery.selecting and gallery.marked == {gallery.items[0]} and gallery.del_btn.isVisible()
 pad(input_devices.RIGHT); pad(input_devices.A); assert len(gallery.marked) == 2, "✕ picks while selecting"
 pad(input_devices.B); assert not gallery.selecting and gallery.isVisible()

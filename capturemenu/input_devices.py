@@ -284,8 +284,8 @@ def pad_key(button: int, menu: "Menu", viewer: "Viewer", gallery: "Gallery | Non
     if gallery is not None and gallery.isVisible():
         keys = {A: Qt.Key_Return, B: Qt.Key_Escape, UP: Qt.Key_Up, DOWN: Qt.Key_Down,
                 LEFT: Qt.Key_Left, RIGHT: Qt.Key_Right, L1: Qt.Key_BracketLeft,
-                R1: Qt.Key_BracketRight, Y: Qt.Key_F, X: Qt.Key_Space, OPTIONS: Qt.Key_Delete,
-                7: Qt.Key_S}
+                R1: Qt.Key_BracketRight, Y: Qt.Key_E, X: Qt.Key_Space, OPTIONS: Qt.Key_Delete,
+                7: Qt.Key_F}     # △: Share it; L3: Favorite
         return keys.get(button)
     if menu.isVisible():
         if menu.picking:       # Save recent: L1 / R1 move the clip earlier / later

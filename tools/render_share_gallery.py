@@ -76,7 +76,7 @@ t.show_shared("Discord · 10 MB · 9.1 MB · without your voice", str(items[0]))
 compose("n3_shared.png", (t.grab(), W - t.width() - 28, 28))
 # gallery
 gallery.open(game_name("Neon Highway")); GW, GH = W, H; gallery.resize(GW, GH); gallery._load(game_name("Neon Highway")); pump(10)
-gallery.grid.setCurrentRow(0); pump(5)
+gallery.select_item(0); pump(5)
 compose("n4_gallery.png", (gallery.grab(), (W - GW) // 2, (H - GH) // 2))
 gallery.games.setCurrentRow(1); pump(10)
 compose("n5_favorites.png", (gallery.grab(), (W - GW) // 2, (H - GH) // 2))

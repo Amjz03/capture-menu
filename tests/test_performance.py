@@ -31,9 +31,9 @@ viewer.open([clip], 0); assert not viewer._drop_timer.isActive(), "reopening kee
 p = viewer.player; viewer.close_viewer(); viewer._drop_player(); assert viewer.player is None and viewer.video is None
 viewer.open([clip], 0); app.processEvents(); assert viewer.player is not None and viewer.stage.currentWidget() is viewer.video, "comes back"
 viewer.close_viewer()
-gallery.open(); app.processEvents(); assert gallery.grid.count() == 1
+gallery.open(); app.processEvents(); assert len(gallery.items) == 1 and gallery.grid.count() == 2, "the capture under its day"
 gallery.close_gallery(); assert gallery.grid.count() == 0 and not gallery.tiles.cache
-gallery.open(); assert gallery.grid.count() == 1, "reopens fine"
+gallery.open(); assert len(gallery.items) == 1, "reopens fine"
 assert len(gallery.tiles.cache) <= gallery.tiles.limit() and gallery.tiles.limit() >= 2
 gallery.close_gallery()
 # hidden pages let their native window (and its screen-sized picture) go, and make a new one on opening
@@ -42,7 +42,7 @@ for w in (menu, gallery): ui_theme.release_window(w); assert not created(w) and 
 viewer._drop_player(); assert not created(viewer) and not viewer.dressed
 menu.show_menu(); app.processEvents(); assert menu.isVisible() and created(menu) and menu.dressed
 ui_theme.release_window(menu); assert created(menu), "never while it's open"
-menu.hide_menu(); gallery.open(); app.processEvents(); assert gallery.isVisible() and gallery.grid.count() == 1
+menu.hide_menu(); gallery.open(); app.processEvents(); assert gallery.isVisible() and len(gallery.items) == 1
 gallery.close_gallery()
 viewer.open([clip], 0); end = time.time() + 1
 while time.time() < end: app.processEvents()

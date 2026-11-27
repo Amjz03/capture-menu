@@ -82,7 +82,8 @@ print("trim from notification PASS")
 # 3: sizes + sort by size
 gallery.open("Neon Highway"); pump()
 assert "MB" in gallery.games.item(2).text() or "GB" in gallery.games.item(2).text()
-assert "·" in gallery.grid.item(0).text() and "Clutch 1v4" in "".join(gallery.grid.item(i).text() for i in range(gallery.grid.count()))
+tiles = [gallery.grid.item(i) for i in range(gallery.grid.count()) if gallery.grid.item(i).data(Qt.UserRole)]
+assert "·" in tiles[0].text() and "Clutch 1v4" in "".join(gallery.grid.item(i).text() for i in range(gallery.grid.count()))
 gallery.toggle_sort(); pump()
 assert gallery.sort_btn.text() == "Sort: Largest"
 sizes = [catalog.file_size(p) for p in gallery.items]; assert sizes == sorted(sizes, reverse=True), sizes

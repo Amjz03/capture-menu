@@ -8,6 +8,7 @@ if TYPE_CHECKING:
 
 from PySide6 import QtCore, QtGui, QtWidgets
 from PySide6.QtCore import Qt
+from datetime import date, datetime
 from pathlib import Path
 import threading
 
@@ -35,8 +36,9 @@ class TileDelegate(QtWidgets.QStyledItemDelegate):
 
     def limit(self) -> int:
         """Two screens of tiles (each 150-600 KB): scrolling back is instant, a long gallery costs no more."""
-        view, cell = self.g.grid.viewport().size(), self.g.grid.gridSize()
-        return 2 * max(1, view.width() // cell.width()) * (view.height() // cell.height() + 2)
+        view = self.g.grid.viewport().size()
+        cell = QtCore.QSize(self.g.TW + 2 * self.g.PAD, self.g.TH + self.g.PAD + 62 + self.g.ACTIONS_H)
+        return 2 * max(1, view.width() // cell.width()) * (max(0, view.height()) // cell.height() + 2)
 
     def pixmap(self, path: Path) -> QtGui.QPixmap:
         key = str(path)
@@ -57,9 +59,28 @@ class TileDelegate(QtWidgets.QStyledItemDelegate):
             self.cache.pop(path, None)
 
     def sizeHint(self, option, index):
-        return QtCore.QSize(self.g.TW + 2 * self.g.PAD, self.g.TH + self.g.PAD + 62)
+        hint = index.data(Qt.SizeHintRole)
+        return hint if hint else QtCore.QSize(self.g.TW + 2 * self.g.PAD, self.g.TH + self.g.PAD + 62 + self.g.ACTIONS_H)
+
+    def paint_header(self, p: QtGui.QPainter, r: QtCore.QRectF, index):
+        """A day's heading over its captures: Today, Yesterday, 23 Nov; with how many and how big."""
+        title, sub = index.data(Qt.DisplayRole), index.data(Qt.UserRole + 1) or ""
+        p.save()
+        box = r.adjusted(self.g.PAD, 14, -self.g.PAD, -4)
+        p.setPen(QtGui.QColor(ui_theme.INK))
+        p.setFont(ui_theme.font(22, QtGui.QFont.DemiBold, display=True))
+        w = p.fontMetrics().horizontalAdvance(title)
+        p.drawText(box, language.lead() | Qt.AlignVCenter, title)
+        p.setPen(QtGui.QColor(236, 240, 250, 150))
+        p.setFont(ui_theme.font(14))
+        rest = box.adjusted(0, 3, -(w + 14), 0) if language.is_rtl() else box.adjusted(w + 14, 3, 0, 0)
+        p.drawText(rest, language.lead() | Qt.AlignVCenter, sub)
+        p.restore()
 
     def paint(self, p: QtGui.QPainter, option, index):
+        if index.data(Qt.UserRole) is None:
+            self.paint_header(p, QtCore.QRectF(option.rect), index)
+            return
         path = Path(index.data(Qt.UserRole))
         r = QtCore.QRectF(option.rect)
         selected = bool(option.state & QtWidgets.QStyle.State_Selected) and self.g.grid_lit()
@@ -84,17 +105,54 @@ class TileDelegate(QtWidgets.QStyledItemDelegate):
         p.setPen(QtGui.QColor(236, 240, 250, 165))
         p.setFont(ui_theme.font(13))
         p.drawText(text.translated(0, 21), language.lead() | Qt.AlignVCenter, sub)
+        if selected and not self.g.selecting:     # what the current capture can do, right under it
+            self.g.quick_rects = self.paint_actions(p, rest, path, option.rect)
         p.restore()
+
+    def paint_actions(self, p: QtGui.QPainter, rest: QtCore.QRectF, path: Path, cell: QtCore.QRect) -> list:
+        """Play (or Open), Share and, for a clip, Trim: small buttons under the current tile, with the
+        key or controller button that does each. Returns their places, for clicks."""
+        mode = input_devices.input_mode().mode
+        pad = mode != "keyboard"
+        video = path.suffix.lower() != ".png"
+        acts = [("play" if video else "image", "Play" if video else "Open", "A" if pad else "k:Enter", "open"),
+                ("share", "Share", "Y" if pad else "k:E", "share")]
+        if video:
+            acts.append(("scissors", "Trim", None if pad else "k:R", "trim"))     # no button left for it on a pad
+        x, y = rest.left(), rest.bottom() + 58
+        out = []
+        p.setFont(ui_theme.font(13, QtGui.QFont.DemiBold))
+        order = list(reversed(acts)) if language.is_rtl() else acts
+        widths = [24 + 18 + p.fontMetrics().horizontalAdvance(language.tr(label)) + 4
+                  + (6 + ui_theme.glyph_width(token, mode) if token else 0) for _, label, token, _ in order]
+        if language.is_rtl():
+            x = rest.right() - sum(widths) - 8 * (len(widths) - 1)
+        for (icon, label, token, action), w in zip(order, widths):
+            chip = QtCore.QRectF(x, y, w, 32)
+            p.setPen(Qt.NoPen)
+            p.setBrush(QtGui.QColor(255, 255, 255, 34))
+            p.drawRoundedRect(chip, 16, 16)
+            gx = chip.left() + 10
+            if token:
+                gx += ui_theme.draw_glyph(p, gx, chip.center().y(), token, mode) + 6
+            p.drawPixmap(QtCore.QRectF(gx, chip.center().y() - 8, 16, 16).toRect(), ui_theme.icon_pixmap(icon, 16))
+            p.setFont(ui_theme.font(13, QtGui.QFont.DemiBold))
+            p.setPen(QtGui.QColor(ui_theme.INK))
+            p.drawText(QtCore.QRectF(gx + 22, chip.top(), w, chip.height()), Qt.AlignVCenter | Qt.AlignLeft, language.tr(label))
+            out.append((chip.translated(-cell.left(), -cell.top()), action))
+            x += w + 8
+        return out
 
 
 class CategoryDelegate(QtWidgets.QStyledItemDelegate):
     """Gallery sidebar rows: name on the left, count and size on the right; the current one is white."""
 
     def sizeHint(self, option, index):
-        return QtCore.QSize(option.rect.width(), 44)
+        return QtCore.QSize(option.rect.width(), 48)
 
     def paint(self, p: QtGui.QPainter, option, index):
-        name, count, size = index.data(Qt.UserRole)
+        name, count, size, *rest = index.data(Qt.UserRole)
+        lead = rest[0] if rest else None       # the game's latest capture, or the icon for All / Favorites
         r = QtCore.QRectF(option.rect).adjusted(12, 0, -12, 0)
         selected = bool(option.state & QtWidgets.QStyle.State_Selected)
         p.save()
@@ -114,6 +172,15 @@ class CategoryDelegate(QtWidgets.QStyledItemDelegate):
         rw = p.fontMetrics().horizontalAdvance(right)
         rtl = language.is_rtl()    # the count sits at the far end of the line from the name
         p.drawText(r, ((Qt.AlignLeft | Qt.AlignAbsolute) if rtl else Qt.AlignRight) | Qt.AlignVCenter, right)
+        if lead:      # a round picture of the game (its newest capture), or the row's icon
+            spot = QtCore.QRectF(r.right() - 28 if rtl else r.left(), r.center().y() - 14, 28, 28)
+            if isinstance(lead, str):
+                p.drawPixmap(spot.adjusted(4, 4, -4, -4).toRect(),
+                             ui_theme.icon_pixmap(lead, 20, ui_theme.DARK if selected else ui_theme.INK))
+            else:
+                pm = ui_theme.rounded_pixmap(lead, 28, 28, 14)
+                p.drawPixmap(spot.toRect(), pm)
+            r = r.adjusted(0, 0, -38, 0) if rtl else r.adjusted(38, 0, 0, 0)
         p.setFont(ui_theme.font(15, QtGui.QFont.DemiBold if selected else QtGui.QFont.Normal))
         p.setPen(QtGui.QColor(ui_theme.DARK) if selected else QtGui.QColor(236, 240, 250, 225))
         p.drawText(r.adjusted(rw + 12, 0, 0, 0) if rtl else r.adjusted(0, 0, -rw - 12, 0), language.lead() | Qt.AlignVCenter,
@@ -128,6 +195,8 @@ class Gallery(ui_widgets.Grow, QtWidgets.QWidget):
     deleted = QtCore.Signal(int, int)      # how many went to the Recycle Bin, of how many picked
     TW, TH = 256, 144        # set from the grid's width by _fit_tiles()
     PAD = 15                 # room around a tile to grow into when it's the current one
+    ACTIONS_H = 44           # room under each tile for the current one's Play / Share / Trim
+    HEADER_H = 60            # a day's heading
     FAVORITES = "★  Favorites"
     last_row = -1            # the tile that had the focus before; it settles back as the new one grows
     _row = -1
@@ -145,13 +214,24 @@ class Gallery(ui_widgets.Grow, QtWidgets.QWidget):
     def _fit_tiles(self):
         """As many columns as fit tiles of about 350 px, sharing the width evenly, so the grid
         fills the page edge to edge. The scroll bar's room is kept either way."""
-        room = self.grid.width() - 24     # the scroll bar, and the few px the list keeps at its edges
+        room = self.grid.viewport().width() - 6     # the few px the list keeps at its edges
         cell = room // max(2, round(room / 380))
         if cell - 2 * self.PAD != self.TW:
             self.TW = cell - 2 * self.PAD
             self.TH = round(self.TW * 9 / 16)
             self.tiles.forget()
-            self.grid.setGridSize(QtCore.QSize(cell, self.TH + self.PAD + 62))
+        self._size_rows(cell, room)
+
+    def _size_rows(self, cell: int | None = None, room: int | None = None):
+        """Tiles all one size; a day's heading as wide as the grid, so its captures start a new line."""
+        room = room if room is not None else self.grid.viewport().width() - 6
+        cell = cell if cell is not None else self.TW + 2 * self.PAD
+        tile, head = QtCore.QSize(cell, self.TH + self.PAD + 62 + self.ACTIONS_H), QtCore.QSize(max(cell, room - 2), self.HEADER_H)
+        for i in range(self.grid.count()):
+            item = self.grid.item(i)
+            want = head if item.data(Qt.UserRole) is None else tile
+            if item.sizeHint() != want:
+                item.setSizeHint(want)
 
     def __init__(self, ctl: capture_controller.Controller, viewer: "Viewer"):
         super().__init__(None, Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool)
@@ -196,11 +276,15 @@ class Gallery(ui_widgets.Grow, QtWidgets.QWidget):
         head.addWidget(self.search)
         head.addSpacing(4)
         self.kind = "all"
-        self.kind_btn = QtWidgets.QPushButton(language.tr("Show: Everything"))
-        self.kind_btn.setFocusPolicy(Qt.NoFocus)
-        self.kind_btn.setCursor(Qt.PointingHandCursor)
-        self.kind_btn.clicked.connect(self.next_kind)
-        head.addWidget(self.kind_btn)
+        self.kind_btns: dict[str, QtWidgets.QPushButton] = {}    # one button per kind, the shown one white
+        for kind, label in self.KIND_CHIPS:
+            b = QtWidgets.QPushButton(language.tr(label), objectName="kind")
+            b.setFocusPolicy(Qt.NoFocus)
+            b.setCursor(Qt.PointingHandCursor)
+            b.clicked.connect(lambda _=False, k=kind: self.show_kind(k))
+            head.addWidget(b)
+            self.kind_btns[kind] = b
+        self._mark_kind()
         head.addSpacing(4)
         self.sort_btn = QtWidgets.QPushButton(language.tr("Sort: Newest"))
         self.sort_btn.setFocusPolicy(Qt.NoFocus)
@@ -249,18 +333,26 @@ class Gallery(ui_widgets.Grow, QtWidgets.QWidget):
         self.games.setFixedWidth(240)
         self.games.setFocusPolicy(Qt.NoFocus)        # switch games with [ ] / L1 R1 or the mouse
         self.games.currentRowChanged.connect(self._fill)
-        body.addWidget(self.games)
+        side = QtWidgets.QVBoxLayout()
+        side.setSpacing(16)
+        side.addWidget(self.games, 1)
+        self.storage = StorageMeter()
+        side.addWidget(self.storage)
+        body.addLayout(side)
         self.grid = QtWidgets.QListWidget(objectName="grid")
         self.grid.setViewMode(QtWidgets.QListView.IconMode)
         self.tiles = TileDelegate(self)
         self.grid.setItemDelegate(self.tiles)
-        self.grid.setGridSize(QtCore.QSize(self.TW + 2 * self.PAD, self.TH + self.PAD + 62))
         self.grid.setResizeMode(QtWidgets.QListView.Adjust)
         self.grid.setMovement(QtWidgets.QListView.Static)
-        self.grid.setUniformItemSizes(True)
+        self.grid.setUniformItemSizes(False)     # a day's heading is a row of its own
         self.grid.setWordWrap(True)
-        self.grid.setSpacing(4)
-        self.grid.itemDoubleClicked.connect(lambda _: None if self.selecting else self.open_selected())
+        self.grid.setSpacing(0)
+        self.rows: list[Path | None] = []        # what each row of the grid is: a capture, or a day's heading
+        self.quick_rects: list = []              # where the current tile's Play / Share / Trim are drawn
+        self.grid.viewport().installEventFilter(self)
+        self.grid.itemDoubleClicked.connect(lambda item: None if self.selecting or item.data(Qt.UserRole) is None
+                                            else self.open_selected())
         self.grid.itemClicked.connect(self._clicked)
         self.grid.currentRowChanged.connect(lambda row: (self._update_info(), self._regrow(row)))
         self.grid.installEventFilter(self)
@@ -297,6 +389,7 @@ class Gallery(ui_widgets.Grow, QtWidgets.QWidget):
         ui_theme.dress(self)
         self.setGeometry(windows.ui_screen(fresh).geometry())
         self._load(select=game)
+        self.storage.set_storage(self.ctl.last_storage)
         self.show()
         ui_theme.set_on_top(self, True)
         ui_theme.bring_to_front(self)
@@ -341,8 +434,8 @@ class Gallery(ui_widgets.Grow, QtWidgets.QWidget):
 
     def refresh(self):
         name = self.cats[self.games.currentRow()][0] if self.cats and self.games.currentRow() >= 0 else None
-        row = self.grid.currentRow()
-        self._load(select=name, row=row)
+        current = self.current_path()
+        self._load(select=name, row=self.items.index(current) if current in self.items else 0)
 
     def _after_viewer(self):
         if self.isVisible():
@@ -371,7 +464,9 @@ class Gallery(ui_widgets.Grow, QtWidgets.QWidget):
         for name, items in self.cats:
             size = catalog.human_size(sum(self.ctl.size_of(p) for p in items))
             item = QtWidgets.QListWidgetItem(f"{name}   {len(items)}  ·  {size}")
-            item.setData(Qt.UserRole, (self._cat_name(name), len(items), size))
+            lead = ("gallery" if name == "All" else "star" if name == self.FAVORITES
+                    else (self.ctl.thumb(items[0]) if items else None))
+            item.setData(Qt.UserRole, (self._cat_name(name), len(items), size, lead))
             self.games.addItem(item)
         names = [c[0] for c in self.cats]
         self.games.setCurrentRow(names.index(select) if select in names else 0)
@@ -384,19 +479,35 @@ class Gallery(ui_widgets.Grow, QtWidgets.QWidget):
         self.items = self._shown(self.cats[cat_row][1])
         self._items_size = sum(self.ctl.size_of(p) for p in self.items)   # once, not at every move of the highlight
         self.grid.clear()
+        self.rows = []
+        self.quick_rects = []
         missing = []
-        for p in self.items:
-            title = self.ctl.title_of(p) or catalog.capture_kind(p)
-            title = title if len(title) <= 30 else title[:29] + "…"
-            item = QtWidgets.QListWidgetItem(f"{title}\n{catalog.time_ago(self.ctl.modified_of(p))}  ·  {catalog.human_size(self.ctl.size_of(p))}")
-            item.setData(Qt.UserRole, str(p))
-            item.setTextAlignment(Qt.AlignHCenter | Qt.AlignTop)
-            self.grid.addItem(item)
-            if (self.ctl.thumb(p) is None or (p.suffix.lower() != ".png" and self.ctl.length_of(p) is None)) \
-                    and p not in self._making:
-                missing.append(p)
+        all_cat = self.cats[cat_row][0] == "All"
+        for day, paths in self._days(self.items):
+            if day is not None:     # newest first: each day under its heading
+                head = QtWidgets.QListWidgetItem(day)
+                head.setFlags(Qt.NoItemFlags)
+                head.setData(Qt.UserRole, None)
+                count = language.tr("1 capture") if len(paths) == 1 else language.tr("{n} captures", n=len(paths))
+                head.setData(Qt.UserRole + 1, f"{count}  ·  {catalog.human_size(sum(self.ctl.size_of(x) for x in paths))}")
+                self.grid.addItem(head)
+                self.rows.append(None)
+            for p in paths:
+                title = self.ctl.title_of(p) or catalog.capture_kind(p)
+                title = title if len(title) <= 30 else title[:29] + "…"
+                game = f"{p.parent.name}  ·  " if all_cat else ""
+                item = QtWidgets.QListWidgetItem(f"{title}\n{game}{catalog.time_ago(self.ctl.modified_of(p))}  ·  "
+                                                 f"{catalog.human_size(self.ctl.size_of(p))}")
+                item.setData(Qt.UserRole, str(p))
+                item.setTextAlignment(Qt.AlignHCenter | Qt.AlignTop)
+                self.grid.addItem(item)
+                self.rows.append(p)
+                if (self.ctl.thumb(p) is None or (p.suffix.lower() != ".png" and self.ctl.length_of(p) is None)) \
+                        and p not in self._making:
+                    missing.append(p)
+        self._size_rows()
         if self.items:
-            self.grid.setCurrentRow(max(0, min(select_row, len(self.items) - 1)))
+            self.select_item(max(0, min(select_row, len(self.items) - 1)))
         self._update_info()
         if missing:
             self._making |= set(missing)       # a refresh meanwhile doesn't start them again
@@ -411,6 +522,33 @@ class Gallery(ui_widgets.Grow, QtWidgets.QWidget):
                     runtime.safe_emit(self.thumb_ready, str(p))
                 self.ctl.save_lengths()
             threading.Thread(target=run, daemon=True).start()
+
+    def _days(self, items: list[Path]) -> list[tuple[str | None, list[Path]]]:
+        """Newest first, the captures by day (Today, Yesterday, 23 Nov); sorted by size there are no days."""
+        if self.by_size:
+            return [(None, list(items))]
+        groups: list[tuple[str | None, list[Path]]] = []
+        today = date.today()
+        for p in items:
+            d = datetime.fromtimestamp(self.ctl.modified_of(p)).date()
+            ago = (today - d).days
+            label = (language.tr("Today") if ago <= 0 else language.tr("Yesterday") if ago == 1
+                     else f"{d.day} {language.tr(d.strftime('%b'))}")
+            if groups and groups[-1][0] == label:
+                groups[-1][1].append(p)
+            else:
+                groups.append((label, [p]))
+        return groups
+
+    def current_path(self) -> Path | None:
+        """The capture the highlight is on (never a day's heading)."""
+        row = self.grid.currentRow()
+        return self.rows[row] if 0 <= row < len(self.rows) else None
+
+    def select_item(self, i: int):
+        """Puts the highlight on the i-th capture shown (headings don't count)."""
+        if 0 <= i < len(self.items):
+            self.grid.setCurrentRow(self.rows.index(self.items[i]))
 
     def _on_thumb(self, path: str):
         self.tiles.forget(path)
@@ -429,10 +567,10 @@ class Gallery(ui_widgets.Grow, QtWidgets.QWidget):
                     f"{catalog.human_size(sum(self.ctl.size_of(p) for p in self.marked))}  ·  {text}")
         self.info.setText(text)
         picking = self.selecting
-        self.select_btn.setVisible(not picking)
+        self.select_btn.setVisible(not picking)     # search stays while picking; the rest makes room for its buttons
         self.sort_btn.setVisible(not picking)
-        self.kind_btn.setVisible(not picking)
-        self.search.setVisible(not picking)
+        for b in self.kind_btns.values():
+            b.setVisible(not picking)
         for b in (self.all_btn, self.del_btn, self.clear_btn):
             b.setVisible(picking)
         self.del_btn.setEnabled(bool(self.marked))
@@ -448,6 +586,7 @@ class Gallery(ui_widgets.Grow, QtWidgets.QWidget):
     # ---- search, show, sort, select, delete many
     KINDS = (("all", "Show: Everything"), ("clips", "Show: Clips"), ("shots", "Show: Screenshots"),
              ("recordings", "Show: Recordings"))
+    KIND_CHIPS = (("all", "All"), ("clips", "Clips"), ("shots", "Screenshots"), ("recordings", "Recordings"))
 
     @staticmethod
     def kind_of(path: Path) -> str:
@@ -473,9 +612,17 @@ class Gallery(ui_widgets.Grow, QtWidgets.QWidget):
 
     def next_kind(self):
         kinds = [k for k, _ in self.KINDS]
-        self.kind = kinds[(kinds.index(self.kind) + 1) % len(kinds)]
-        self.kind_btn.setText(language.tr(dict(self.KINDS)[self.kind]))
+        self.show_kind(kinds[(kinds.index(self.kind) + 1) % len(kinds)])
+
+    def show_kind(self, kind: str):
+        self.kind = kind
+        self._mark_kind()
         self._fill(self.games.currentRow())
+
+    def _mark_kind(self):
+        for k, b in self.kind_btns.items():
+            b.setProperty("on", k == self.kind)
+            ui_viewer.Viewer._repolish(b)
 
     def start_search(self):
         self.search.setFocus()
@@ -491,9 +638,8 @@ class Gallery(ui_widgets.Grow, QtWidgets.QWidget):
             self.toggle_mark()       # while selecting a click picks; Ctrl+click always does, like Explorer
 
     def toggle_mark(self):
-        row = self.grid.currentRow()
-        if 0 <= row < len(self.items):
-            p = self.items[row]
+        p = self.current_path()
+        if p is not None:
             self.marked.symmetric_difference_update({p})
             self.grid.viewport().update()
             self._reset_delete()
@@ -516,10 +662,10 @@ class Gallery(ui_widgets.Grow, QtWidgets.QWidget):
         if self._deleting:
             return
         if not self.marked:        # nothing picked: Del means the capture the highlight is on
-            row = self.grid.currentRow()
-            if not (0 <= row < len(self.items)) or not self.grid_lit():
+            p = self.current_path()
+            if p is None or not self.grid_lit():
                 return
-            self.marked = {self.items[row]}
+            self.marked = {p}
             self.grid.viewport().update()
             self._update_info()
         if not self.del_btn.property("danger"):   # first press arms, second press deletes
@@ -566,19 +712,23 @@ class Gallery(ui_widgets.Grow, QtWidgets.QWidget):
         self.del_btn.setText(language.tr("Delete {n}", n=len(self.marked)))
 
     # ---- actions
-    def open_selected(self):
-        row = self.grid.currentRow()
-        if 0 <= row < len(self.items):
-            self.viewer.open(self.items, row)
+    def open_selected(self, then: str | None = None):
+        """Opens the current capture; then: "share" or "trim" goes straight on to that."""
+        p = self.current_path()
+        if p is None:
+            return
+        self.viewer.open(self.items, self.items.index(p), trim=then == "trim" and p.suffix.lower() != ".png")
+        if then == "share":
+            self.viewer.enter_share()
 
     def step_game(self, delta: int):
         row = max(0, min(self.games.count() - 1, self.games.currentRow() + delta))
         self.games.setCurrentRow(row)
 
     def toggle_favorite(self):
-        row = self.grid.currentRow()
-        if 0 <= row < len(self.items):
-            self.ctl.toggle_favorite(self.items[row])
+        p = self.current_path()
+        if p is not None:
+            self.ctl.toggle_favorite(p)
             self.grid.viewport().update()
             if self.cats[self.games.currentRow()][0] == self.FAVORITES:
                 self.refresh()
@@ -592,10 +742,10 @@ class Gallery(ui_widgets.Grow, QtWidgets.QWidget):
                       ("k:Del", "Delete selected"), ("k:Esc", "Done")], input_devices.input_mode().mode)
             return
         self.hints.set_items(
-            [("DPAD", "Move"), ("A", "Open"), ("X", "Select"), ("OPT", "Delete"),
-             ("L1R1", "Game"), ("Y", "Favorite"), ("B", "Back")] if pad
-            else [("k:← →", "Move"), ("k:Enter", "Open"), ("k:Space", "Select"), ("k:Del", "Delete"),
-                  ("k:[ ]", "Game"), ("k:S", "Sort"), ("k:T", "Show"), ("k:/", "Search"), ("k:F", "Favorite"),
+            [("DPAD", "Move"), ("A", "Open"), ("Y", "Share"), ("X", "Select"), ("OPT", "Delete"),
+             ("L1R1", "Game"), ("B", "Back")] if pad
+            else [("k:← →", "Move"), ("k:Enter", "Open"), ("k:E", "Share"), ("k:Space", "Select"), ("k:Del", "Delete"),
+                  ("k:[ ]", "Game"), ("k:T", "Show"), ("k:/", "Search"), ("k:F", "Favorite"),
                   ("k:Esc", "Back")], input_devices.input_mode().mode)
 
     def eventFilter(self, obj, event):
@@ -653,6 +803,16 @@ class Gallery(ui_widgets.Grow, QtWidgets.QWidget):
             return True
         if obj is self.grid and event.type() == QtCore.QEvent.Resize:
             self._fit_tiles()
+        if (obj is self.grid.viewport() and event.type() == QtCore.QEvent.MouseButtonPress
+                and event.button() == Qt.LeftButton and not self.selecting):    # Play / Share / Trim under the tile
+            item = self.grid.itemAt(event.position().toPoint())
+            if item is not None and self.grid.row(item) == self.grid.currentRow():
+                cell = self.grid.visualItemRect(item)
+                spot = event.position() - QtCore.QPointF(cell.topLeft())
+                for rect, action in self.quick_rects:
+                    if rect.contains(spot):
+                        self.open_selected(None if action == "open" else action)
+                        return True
         return super().eventFilter(obj, event)
 
     def keyPressEvent(self, e):
@@ -661,8 +821,8 @@ class Gallery(ui_widgets.Grow, QtWidgets.QWidget):
 
     def _head_nav(self, all: bool = False) -> list[QtWidgets.QWidget]:
         """The buttons along the top; all: hidden ones too."""
-        head = [self.back_btn, self.kind_btn, self.sort_btn, self.select_btn, self.all_btn, self.del_btn, self.clear_btn,
-                self.folder_btn, self.close_btn]
+        head = [self.back_btn, *self.kind_btns.values(), self.sort_btn, self.select_btn, self.all_btn, self.del_btn,
+                self.clear_btn, self.folder_btn, self.close_btn]
         return head if all else [b for b in head if b.isVisible() and b.isEnabled()]
 
     def grid_lit(self) -> bool:
@@ -691,8 +851,56 @@ class Gallery(ui_widgets.Grow, QtWidgets.QWidget):
                    Qt.Key_Enter: open_or_pick, Qt.Key_BracketLeft: lambda: self.step_game(-1),
                    Qt.Key_BracketRight: lambda: self.step_game(1), Qt.Key_F: self.toggle_favorite,
                    Qt.Key_Space: self.toggle_mark, Qt.Key_Delete: self.delete_marked,
-                   Qt.Key_S: self.toggle_sort, Qt.Key_T: self.next_kind, Qt.Key_Slash: self.start_search}
+                   Qt.Key_S: self.toggle_sort, Qt.Key_T: self.next_kind, Qt.Key_Slash: self.start_search,
+                   Qt.Key_E: lambda: self.open_selected("share"), Qt.Key_R: lambda: self.open_selected("trim")}
         if k in actions:
             actions[k]()
             return True
         return False
+
+
+class StorageMeter(QtWidgets.QWidget):
+    """Under the games: how much the captures take, as a bar against the limit set in Settings.
+    Over the limit it turns amber and says by how much."""
+
+    def __init__(self):
+        super().__init__()
+        self.info: dict | None = None
+        self.setFixedHeight(96)
+        self.hide()
+
+    def set_storage(self, info: dict | None):
+        self.info = info if info and info.get("limit_gb") else None
+        self.setVisible(self.info is not None)
+        self.update()
+
+    def paintEvent(self, _):
+        if not self.info:
+            return
+        p = QtGui.QPainter(self)
+        p.setRenderHint(QtGui.QPainter.Antialiasing)
+        used, limit, over = self.info["used_gb"], self.info["limit_gb"], self.info.get("over")
+        r = QtCore.QRectF(self.rect()).adjusted(1, 1, -1, -1)
+        p.setPen(Qt.NoPen)
+        p.setBrush(QtGui.QColor(255, 255, 255, 18))
+        p.drawRoundedRect(r, 16, 16)
+        inner = r.adjusted(16, 14, -16, -14)
+        p.setPen(QtGui.QColor(ui_theme.AMBER if over else ui_theme.INK))
+        p.setFont(ui_theme.font(15, QtGui.QFont.DemiBold))
+        p.drawText(QtCore.QRectF(inner.left(), inner.top(), inner.width(), 22), language.lead() | Qt.AlignVCenter,
+                   language.tr("{used} of {limit} GB", used=f"{used:.0f}", limit=f"{limit:.0f}"))
+        bar = QtCore.QRectF(inner.left(), inner.top() + 30, inner.width(), 8)
+        p.setPen(Qt.NoPen)
+        p.setBrush(QtGui.QColor(255, 255, 255, 40))
+        p.drawRoundedRect(bar, 4, 4)
+        fill = QtCore.QRectF(bar)
+        fill.setWidth(bar.width() * min(1.0, used / max(1e-6, limit)))
+        if language.is_rtl():
+            fill.moveRight(bar.right())
+        p.setBrush(QtGui.QColor(ui_theme.AMBER if over else ui_theme.INK))
+        p.drawRoundedRect(fill, 4, 4)
+        p.setPen(QtGui.QColor(236, 240, 250, 165))
+        p.setFont(ui_theme.font(13))
+        text = (language.tr("{n} GB over the limit", n=f"{used - limit:.0f}") if over
+                else language.tr("{n} GB left before the limit", n=f"{limit - used:.0f}"))
+        p.drawText(QtCore.QRectF(inner.left(), bar.bottom() + 6, inner.width(), 20), language.lead() | Qt.AlignVCenter, text)
