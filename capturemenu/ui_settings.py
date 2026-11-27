@@ -562,11 +562,11 @@ class Settings(QtWidgets.QWidget):
     PANEL_W = 1000
 
     def place(self, screen: QtGui.QScreen):
-        """A panel along the side of the screen (the right; the left in Arabic), above the taskbar: the
-        rest of the screen stays visible and usable, the game or desktop keeps running beside it."""
+        """A panel along the side of the screen where a line starts (the left; the right in Arabic), above
+        the taskbar: the rest of the screen stays visible and usable, the game or desktop keeps running beside it."""
         g = screen.availableGeometry()
         w = min(self.PANEL_W, g.width())
-        self.setGeometry(g.left() if language.is_rtl() else g.right() - w + 1, g.top(), w, g.height())
+        self.setGeometry(g.right() - w + 1 if language.is_rtl() else g.left(), g.top(), w, g.height())
 
     def _on_encoder(self, enc: str):
         self.encoder = enc
@@ -604,7 +604,7 @@ class Settings(QtWidgets.QWidget):
         p = QtGui.QPainter(self)
         p.fillRect(self.rect(), ui_theme.sheet_color(self))
         p.setPen(QtGui.QColor(255, 255, 255, 26))      # the panel's edge toward the rest of the screen
-        x = self.width() - 1 if language.is_rtl() else 0
+        x = 0 if language.is_rtl() else self.width() - 1
         p.drawLine(x, 0, x, self.height())
 
     # ---- actions

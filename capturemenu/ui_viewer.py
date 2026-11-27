@@ -273,25 +273,31 @@ class Viewer(QtWidgets.QWidget):
         lay.addWidget(self.share_panel)
 
         # ---- the main actions, then the rest as small icon buttons (△ / M walks them)
+        # a glass panel of tiles under the picture, like the capture bar's: icon, name, and its button
         self.actions_row = QtWidgets.QWidget()
-        act = QtWidgets.QHBoxLayout(self.actions_row)
-        act.setContentsMargins(0, 4, 0, 0)
-        act.setSpacing(14)
-        act.addStretch()
-        self.trim_btn = ui_widgets.ActionButton(language.tr("Trim"), "scissors", "X", "k:T")
-        self.sound_btn = ui_widgets.ActionButton(language.tr("Adjust audio"), "audio", "L3", "k:V")
-        self.share_btn = ui_widgets.ActionButton(language.tr("Share / Export"), "export", "OPT", "k:E", primary=True)
-        for b, fn in ((self.trim_btn, self.enter_trim), (self.sound_btn, self.enter_sound),
-                      (self.share_btn, self.enter_share)):
+        outer_act = QtWidgets.QHBoxLayout(self.actions_row)
+        outer_act.setContentsMargins(0, 4, 0, 0)
+        outer_act.addStretch()
+        self.dock = QtWidgets.QFrame(objectName="dock")
+        outer_act.addWidget(self.dock)
+        outer_act.addStretch()
+        act = QtWidgets.QHBoxLayout(self.dock)
+        act.setContentsMargins(12, 12, 12, 12)
+        act.setSpacing(10)
+        self.trim_btn = ui_widgets.ActionButton(language.tr("Trim"), "scissors", "X", "k:T", tile=True)
+        self.sound_btn = ui_widgets.ActionButton(language.tr("Audio"), "audio", "L3", "k:V", tile=True)
+        self.share_btn = ui_widgets.ActionButton(language.tr("Share"), "export", "OPT", "k:E", primary=True, tile=True)
+        for b, fn in ((self.share_btn, self.enter_share), (self.trim_btn, self.enter_trim),
+                      (self.sound_btn, self.enter_sound)):
             b.clicked.connect(fn)
             act.addWidget(b)
         # the rest say what they are too (a controller can't hover for a tooltip); Delete stands apart
-        self.fav_btn = ui_widgets.ActionButton(language.tr("Favorite"), "star", "Y", "k:F", compact=True)
-        self.folder_chip = ui_widgets.ActionButton(language.tr("Show in folder"), "folder", compact=True)
-        self.external_chip = ui_widgets.ActionButton(language.tr("Open in player"), "external", compact=True)
-        self.del_btn = ui_widgets.ActionButton(language.tr("Delete"), "trash", None, "k:Del", compact=True)
-        self.del_gap = QtWidgets.QWidget()
-        self.del_gap.setFixedWidth(26)
+        self.fav_btn = ui_widgets.ActionButton(language.tr("Favorite"), "star", "Y", "k:F", tile=True)
+        self.folder_chip = ui_widgets.ActionButton(language.tr("Folder"), "folder", tile=True)
+        self.external_chip = ui_widgets.ActionButton(language.tr("Player"), "external", tile=True)
+        self.del_btn = ui_widgets.ActionButton(language.tr("Delete"), "trash", None, "k:Del", tile=True)
+        self.del_gap = QtWidgets.QFrame(objectName="dockRule")     # Delete stands apart, past a line
+        self.del_gap.setFixedSize(1, 64)
         for b, fn, tip in ((self.fav_btn, self.toggle_favorite, language.tr("Favorite")),
                            (self.folder_chip, self._show_in_folder, language.tr("Show in folder")),
                            (self.external_chip, lambda: self._step_out(self.ctl.open_external),
@@ -301,10 +307,11 @@ class Viewer(QtWidgets.QWidget):
             b.setToolTip(tip)
             b.setFocusPolicy(Qt.TabFocus)       # walked with ← →, chosen with ✕; a click leaves the keys alone
             if b is self.del_btn:
-                act.addWidget(self.del_gap)
+                act.addSpacing(8)
+                act.addWidget(self.del_gap, 0, Qt.AlignVCenter)
+                act.addSpacing(8)
                 b.quiet_danger = True           # red text from the start, all red once armed
             act.addWidget(b)
-        act.addStretch()
         self._named = True                      # the small buttons show their names (dropped when too narrow)
         lay.addWidget(self.actions_row)
 
@@ -560,7 +567,7 @@ class Viewer(QtWidgets.QWidget):
     def _fit_actions(self):
         """The small buttons keep their names while the row fits; on a narrow window they're icons again."""
         small = (self.fav_btn, self.folder_chip, self.external_chip, self.del_btn)
-        names = (language.tr("Favorite"), language.tr("Show in folder"), language.tr("Open in player"), language.tr("Delete"))
+        names = (language.tr("Favorite"), language.tr("Folder"), language.tr("Player"), language.tr("Delete"))
         for b, n in zip(small, names):
             b.setText(n)
         room = self.actions_row.width() or self.width() - 128

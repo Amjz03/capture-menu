@@ -505,5 +505,8 @@
   "General": "عام",
   "Restore": "استعادة",
   "Every setting back to how it came. Nothing changes until you save": "كل الإعدادات ترجع كما كانت. لا يتغير شيء حتى تحفظ",
-  "Recording {w}×{h} at {fps} FPS  ·  the last {minutes} min take up to {gb} GB on the drive": "التسجيل ⁦{w}×{h}⁩ بـ {fps} فريم/ث  ·  آخر {minutes} دقيقة تأخذ حتى {gb} جيجابايت من القرص"
+  "Recording {w}×{h} at {fps} FPS  ·  the last {minutes} min take up to {gb} GB on the drive": "التسجيل ⁦{w}×{h}⁩ بـ {fps} فريم/ث  ·  آخر {minutes} دقيقة تأخذ حتى {gb} جيجابايت من القرص",
+  "Audio": "الصوت",
+  "Folder": "المجلد",
+  "Player": "المشغّل"
 }

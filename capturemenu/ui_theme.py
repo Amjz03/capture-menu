@@ -512,6 +512,8 @@ QLabel {{ color: {INK}; background: transparent; }}
 #ctlBar {{ background: rgba(24,29,44,200); border-top: 1px solid rgba(255,255,255,14);
            border-bottom-left-radius: 19px; border-bottom-right-radius: 19px; }}
 #footer {{ border-top: 1px solid rgba(255,255,255,16); }}
+#dock {{ background: rgba(16,20,31,200); border: 1px solid rgba(255,255,255,22); border-radius: 28px; }}
+#dockRule {{ background: rgba(255,255,255,40); }}
 #rule {{ background: rgba(255,255,255,40); }}
 QPushButton {{
     color: {INK}; font-size: 15px; font-weight: 600;

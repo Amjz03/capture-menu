@@ -606,15 +606,18 @@ class ActionButton(QtWidgets.QAbstractButton):
 
     H = 64
 
+    TILE_W, TILE_H = 120, 96      # tile=True: icon over name, like the bar's tiles; the button that does it in a corner
+
     def __init__(self, text: str, icon: str, pad: str | None = None, key: str | None = None,
-                 primary: bool = False, compact: bool = False):
+                 primary: bool = False, compact: bool = False, tile: bool = False):
         super().__init__()
+        self.tile = tile
         self.icon_name, self.tokens, self.primary, self.danger = icon, (pad, key), primary, False
         self.icon_color: str | None = None     # e.g. a filled-in yellow star
         self.quiet_danger = False              # Delete: red words before it's armed, all red once it is
         self.setText(text)
-        self.setFont(ui_theme.font(15 if compact else 17, QtGui.QFont.DemiBold))
-        self.setFixedHeight(self.H)
+        self.setFont(ui_theme.font(14 if tile else 15 if compact else 17, QtGui.QFont.DemiBold))
+        self.setFixedHeight(self.TILE_H if tile else self.H)
         self.setCursor(Qt.PointingHandCursor)
         self.setAttribute(Qt.WA_Hover)
         self.setFocusPolicy(Qt.NoFocus)
@@ -633,6 +636,10 @@ class ActionButton(QtWidgets.QAbstractButton):
         return text_w, glyph_w, total
 
     def _fit(self):
+        if self.tile:
+            self.setFixedWidth(self.TILE_W if self.text() else self.TILE_H)
+            self.update()
+            return
         total = int(self._parts()[2])
         self.setMinimumWidth(total + 56 if self.text() else max(self.H, total + 40))
         self.update()
@@ -666,6 +673,9 @@ class ActionButton(QtWidgets.QAbstractButton):
             ui_theme.paint_card(p, r, ui_theme.focus_shown(self), hover, 20)
             ink = QtGui.QColor("#ff8a82" if self.quiet_danger else ui_theme.INK)
         p.setFont(self.font())
+        if self.tile:
+            self._paint_tile(p, r, ink)
+            return
         text_w, glyph_w, total = self._parts()
         x, cy = (self.width() - total) / 2, self.height() / 2
         icon = QtCore.QRectF(x, cy - 11, 22, 22)
@@ -679,6 +689,27 @@ class ActionButton(QtWidgets.QAbstractButton):
             faint = QtGui.QColor(ink)
             faint.setAlpha(150)
             ui_theme.draw_glyph(p, ui_theme.mirror(self, prompt).x(), cy, self._token(), input_devices.input_mode().mode, faint)
+
+
+    def _paint_tile(self, p: QtGui.QPainter, r: QtCore.QRectF, ink: QtGui.QColor):
+        """Tile: the icon, its name under it, and the button that does it small in the top corner."""
+        named = bool(self.text())
+        size = 26
+        top = r.top() + (18 if named else (r.height() - size) / 2)
+        icon = QtCore.QRectF(r.center().x() - size / 2, top, size, size)
+        p.drawPixmap(icon.toRect(), ui_theme.icon_pixmap(self.icon_name, size, self.icon_color or ink.name()))
+        if named:
+            p.setPen(ink)
+            p.drawText(QtCore.QRectF(r.left() + 6, r.bottom() - 40, r.width() - 12, 28), Qt.AlignCenter,
+                       QtGui.QFontMetrics(self.font()).elidedText(self.text(), Qt.ElideRight, int(r.width() - 12)))
+        token = self._token()
+        if token and named:
+            faint = QtGui.QColor(ink)
+            faint.setAlpha(130)
+            mode = input_devices.input_mode().mode
+            w = ui_theme.glyph_width(token, mode)
+            x = r.left() + 10 if language.is_rtl() else r.right() - w - 10
+            ui_theme.draw_glyph(p, x, r.top() + 18, token, mode, faint)
 
 
 class Switch(QtWidgets.QAbstractButton):

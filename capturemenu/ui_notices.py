@@ -369,7 +369,8 @@ class Toast(QtWidgets.QWidget):
         side = next((w.geometry() for w in QtWidgets.QApplication.topLevelWidgets() if w.isVisible()
                      and w.property("captureMenuPage") in ("settings", "welcome")), None)
         if side is not None and side.intersects(QtCore.QRect(x, y, self.width(), self.height())):
-            x = side.left() - self.width() - 28      # beside the Settings panel, not over its buttons
+            x = (side.left() - self.width() - 28 if side.center().x() > g.center().x()   # beside the Settings panel,
+                 else side.right() + 28)                                       # not over its buttons
         self._fade.stop()
         if self.isVisible() or not ui_theme.MOTION_MS:
             self._slide.stop()
