@@ -299,7 +299,7 @@ const DEMO = (() => {
     const el = e.target.closest("[data-id]");
     if (!el || (picking && !el.dataset.id.startsWith("chip"))) return;
     const i = navIds().indexOf(el.dataset.id);
-    if (i < 0 || i === focus) return;
+    if (i < 0 || (i === focus && (shown || lent !== null))) return;   // with nothing lit, the first tile lights too
     if (lent === null) lent = focus;
     setFocus(i);
   });

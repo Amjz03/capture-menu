@@ -740,4 +740,9 @@ html[dir="rtl"] .st-val span { direction: rtl; }
 .nofocus .gl-card.on:not(:hover) b { font-weight: 400; font-size: 16px; }
 .nofocus .gl-card.on:not(:hover) .gl-acts { visibility: hidden; }
 .nofocus .set-row.on:not(:hover) { box-shadow: none; }
-.nofocus .set-row:hover, .nofocus .gl-card:hover > i { box-shadow: 0 0 0 3px var(--ink); }
+/* with nothing lit, the mouse lights what it is on: the same highlight the keys give */
+.nofocus .sv-chip:hover { background: var(--ink); color: var(--dark); box-shadow: 0 0 0 4px rgba(255,255,255,.28); }
+.nofocus .gl-card:hover > i { filter: none; transform: scale(1.04); box-shadow: 0 0 0 4px #fff, 0 0 0 10px rgba(255,255,255,.2); }
+.nofocus .gl-card:hover b { font-size: 17px; font-weight: 600; }
+.nofocus .gl-card:hover .gl-acts { visibility: visible; }
+.nofocus .set-row:hover { box-shadow: 0 0 0 3px var(--ink), 0 0 0 7px rgba(255,255,255,.22); }
