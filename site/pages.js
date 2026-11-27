@@ -403,7 +403,7 @@ function makePages(ctx) {
         <div class="gl-grid">${g.map((c) => { const i = idx++, on = i === st.cur, video = c.kind !== "shot";
           return `<div class="gl-card${on ? " on" : ""}" data-a="pick" data-i="${i}"><i style="background-image:url(${c.img})">${favs.has(c.at) ? '<u class="star">★</u>' : ""}
             <em>${video ? short(c.secs) : svg("image", 16)}</em></i><b>${esc(kindName(c))}</b><span>${st.cat === "all" ? esc(c.game) + "&nbsp;&nbsp;·&nbsp;&nbsp;" : ""}${when(c)}&nbsp;&nbsp;·&nbsp;&nbsp;${human(sizeOf(c))}</span>
-            ${on ? `<div class="gl-acts"><button data-a="g-open">${svg(video ? "play" : "image", 16)}${video ? t.play : t.open}</button><button data-a="g-share">${svg("share", 16)}${t.share}</button>${video ? `<button data-a="g-trim">${svg("scissors", 16)}${t.trim}</button>` : ""}</div>` : ""}</div>`; }).join("")}</div>`;
+            ${1 ? `<div class="gl-acts"><button data-a="g-open">${svg(video ? "play" : "image", 16)}${video ? t.play : t.open}</button><button data-a="g-share">${svg("share", 16)}${t.share}</button>${video ? `<button data-a="g-trim">${svg("scissors", 16)}${t.trim}</button>` : ""}</div>` : ""}</div>`; }).join("")}</div>`;
     }).join("");
     const kinds = [["all", t.all], ["clip", t.clips], ["shot", t.screenshots], ["rec", t.recordings]];
     return `<div class="gl-rail"><h2>${t.captures}</h2><p>${fill(t.n_caps, { n: list.length })}&nbsp;&nbsp;·&nbsp;&nbsp;${fill(t.in_total, { s: human(total) })}</p>
@@ -543,8 +543,22 @@ function makePages(ctx) {
   const parse = (s) => s === "true" ? true : s === "false" ? false : isNaN(+s) ? s : +s;
 
   // ---------------------------------------------------------------- mouse
+  // as the app: the mouse lends the highlight to what it's on, and it goes back when the mouse leaves
+  const HOVER = { gallery: [".gl-card", "cur"], settings: [".set-row", "row"], save: [".sv-chip", "len"] };
+  let lent = null;
+  const paintOn = ([sel], i) => root.querySelectorAll(sel).forEach((el) => el.classList.toggle("on", +el.dataset.i === i));
+  root.addEventListener("mouseover", (e) => {
+    const h = HOVER[page], el = h && e.target.closest(h[0]); if (!el) return;
+    if (lent === null) lent = st[h[1]];
+    st[h[1]] = +el.dataset.i; paintOn(h, st[h[1]]);
+  });
+  root.addEventListener("mouseout", (e) => {
+    const h = HOVER[page], el = h && e.target.closest(h[0]);
+    if (!el || el.contains(e.relatedTarget) || lent === null) return;
+    st[h[1]] = lent; lent = null; paintOn(h, st[h[1]]);
+  });
   root.addEventListener("click", (e) => {
-    e.stopPropagation();
+    e.stopPropagation(); lent = null;
     const el = e.target.closest("[data-a]"); if (!el) return;
     const a = el.dataset.a, v = el.dataset.v;
     if (page === "save") {
@@ -665,6 +679,7 @@ function makePages(ctx) {
   // ---------------------------------------------------------------- keys and the controller (demo.js sends them here)
   function key(k) {
     if (!page) return false;
+    lent = null;                                  // a key moved on: the highlight stays where it is
     const fwd = lang === "ar" ? -1 : 1;
     const lr = k === "ArrowRight" ? fwd : k === "ArrowLeft" ? -fwd : 0;
     const back = k === "Escape" || k === "Backspace" || k === "B";
