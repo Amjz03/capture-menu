@@ -484,5 +484,8 @@
   "Play": "تشغيل",
   "{used} of {limit} GB": "{used} من {limit} جيجابايت",
   "{n} GB over the limit": "تجاوزت الحد بـ {n} جيجابايت",
-  "{n} GB left before the limit": "باقي {n} جيجابايت على الحد"
+  "{n} GB left before the limit": "باقي {n} جيجابايت على الحد",
+  "Start OBS": "تشغيل OBS",
+  "Restart OBS": "إعادة تشغيل OBS",
+  "{n} captures saved": "حُفظ {n} ملفات"
 }

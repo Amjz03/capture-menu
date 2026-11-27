@@ -344,3 +344,21 @@ assert (menu.mic_card.icon_name, menu.mic_card.hint, menu.mic_card.hint_color) =
 assert ui_theme.GREEN in menu.status.text(), "a green dot while the last minutes are kept"
 menu.hide_menu()
 print("bar glyphs and mic state PASS")
+
+# notices: an error has a warning sign and, when there is one, its fix; captures close together are counted
+from capturemenu import ui_notices
+from PySide6 import QtGui
+n = ui_notices.Toast(); n.thumbs_dir = tmp
+fixed = threading.Event()
+n.fixes = [("Can't reach OBS", "Start OBS", fixed.set)]
+n.show_message("Can't reach OBS · make sure it's running, then try again", "error")
+assert n.fix_btn.isVisible() and n.fix_btn.text() == "Start OBS" and n.thumb.isVisible() and "●" not in n.title.text()
+n.fix_btn.click(); assert fixed.wait(2) and not n.isVisible(), "the fix runs and the notice goes"
+n.show_message("Controller connected", "info"); assert not n.fix_btn.isVisible()
+n.show_message("Recording started · open the menu", "rec"); assert "●" in n.title.text(), "red is for recording"
+shot = tmp / "Game" / "Screenshot_x.png"; shot.parent.mkdir(exist_ok=True)
+QtGui.QImage(32, 18, QtGui.QImage.Format_RGB32).save(str(shot))
+n.show_capture("", str(shot)); assert n.title.text() == "Screenshot saved"
+n.show_capture("", str(shot)); assert n.title.text() == "2 captures saved"
+n.hide(); n.show_capture("", str(shot)); assert n.title.text() == "Screenshot saved", "a new notice starts over"
+print("notices: warnings with a fix, grouped captures PASS")

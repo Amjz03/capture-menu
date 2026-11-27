@@ -86,6 +86,12 @@ def main():
     ctl.status.connect(rec_dot.sync)
     toast.hotkey = cfg["hotkey"].upper()
     toast.pad_button = cfg["controller_button"]
+    def start_obs():           # "Can't reach OBS": start ours and its recording of the last minutes
+        if not obs_client.obs_running():
+            obs_client.start_obs()
+        ctl.heal_buffer()
+    toast.fixes = [("Can't reach OBS", "Start OBS", start_obs), ("OBS isn't running", "Start OBS", start_obs),
+                   ("OBS can't start recording", "Restart OBS", ctl.restart_obs)]
     app.installEventFilter(input_devices.input_mode())   # any real key press switches the hints back to the keyboard
     app.installEventFilter(ui_theme.focus_watch())   # the focus highlight shows only after a key or the controller
     ctl.toast.connect(toast.show_message)

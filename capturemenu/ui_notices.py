@@ -6,6 +6,8 @@ from PySide6.QtCore import Qt
 from pathlib import Path
 import time
 
+import threading
+
 from . import catalog, input_devices, language, media, ui_theme, windows
 
 
@@ -102,9 +104,13 @@ class Toast(QtWidgets.QWidget):
     hotkey = "ALT+C"
     pad_button = "create"
     thumbs_dir: Path | None = None
+    BURST_S = 8           # captures this close together share one notice: "3 captures saved"
+    # an error that has a fix gets its button: (words in the error, button, what it does in the background)
+    fixes: list[tuple[str, str, object]] = []
 
     def show_shared(self, detail: str, path: str):
         """The share copy is ready (and on the clipboard)."""
+        self._plain()
         self.path = self.action = None
         self.trim_btn.hide()
         self.unsetCursor()
@@ -128,10 +134,7 @@ class Toast(QtWidgets.QWidget):
         outer = QtWidgets.QHBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
         self.box = QtWidgets.QFrame(objectName="toastBox")
-        self.box.setStyleSheet(
-            f"#toastBox {{ background: {ui_theme.PANEL}; border-radius: 18px;"
-            f" border: 1px solid rgba(255,255,255,22); }}"
-            f"QLabel {{ background: transparent; border: none; }}")
+        self._frame()
         outer.addWidget(self.box)
         lay = QtWidgets.QHBoxLayout(self.box)
         lay.setContentsMargins(12, 12, 20, 12)
@@ -162,12 +165,22 @@ class Toast(QtWidgets.QWidget):
         self.trim_btn.setIcon(ui_theme.qicon("scissors"))
         self.trim_btn.setCursor(Qt.PointingHandCursor)
         self.trim_btn.setStyleSheet(
-            f"QPushButton {{ background: rgba(255,255,255,22); color: {ui_theme.INK}; border: none; border-radius: 17px;"
+            f"QPushButton {{ background: rgba(255,255,255,22); color: {ui_theme.INK}; border: none; border-radius: 15px;"
             f" padding: 8px 16px; font-size: 13px; font-weight: 600; }}"
             f"QPushButton:hover {{ background: rgba(255,255,255,44); }}")
         self.trim_btn.clicked.connect(lambda: self._open(trim=True))
         lay.addWidget(self.trim_btn, 0, Qt.AlignVCenter)
         self.trim_btn.hide()
+        self.fix_btn = QtWidgets.QPushButton()      # an error's own way out: "Start OBS"
+        self.fix_btn.setCursor(Qt.PointingHandCursor)
+        self.fix_btn.setStyleSheet(self.trim_btn.styleSheet())
+        self.fix_btn.clicked.connect(self._run_fix)
+        lay.addWidget(self.fix_btn, 0, Qt.AlignVCenter)
+        self.fix_btn.hide()
+        self._fix = None
+        self._spin = 0.0                            # "Saving…": a ring that turns while it works
+        self._spinner = QtCore.QTimer(self, interval=40, timeout=self._turn)
+        self._burst, self._burst_at = 0, 0.0
         self._hide = QtCore.QTimer(self, singleShot=True, timeout=self._fade_out)
         self._slide = QtCore.QPropertyAnimation(self, b"pos", self)
         self._slide.setDuration(260)
@@ -176,6 +189,53 @@ class Toast(QtWidgets.QWidget):
         self._fade.setDuration(220)
         self._fade.setEasingCurve(QtCore.QEasingCurve.OutCubic)
         self._fade.finished.connect(lambda: self.hide() if self.windowOpacity() < 0.05 else None)
+
+    def _frame(self, border: str = "rgba(255,255,255,22)"):
+        """The notice's card; an error has an amber edge."""
+        self.box.setStyleSheet(
+            f"#toastBox {{ background: {ui_theme.PANEL}; border-radius: 18px; border: 1px solid {border}; }}"
+            f"QLabel {{ background: transparent; border: none; }}")
+
+    def _badge(self, icon: str | None, color: str, spin: bool = False) -> QtGui.QPixmap:
+        """The round mark on the left of a notice without a picture: a warning, or the saving ring."""
+        dpr = 2.0
+        pm = QtGui.QPixmap(int(44 * dpr), int(44 * dpr))
+        pm.setDevicePixelRatio(dpr)
+        pm.fill(Qt.transparent)
+        p = QtGui.QPainter(pm)
+        p.setRenderHint(QtGui.QPainter.Antialiasing)
+        p.setPen(Qt.NoPen)
+        p.setBrush(QtGui.QColor(255, 255, 255, 22))
+        p.drawEllipse(QtCore.QRectF(0, 0, 44, 44))
+        if spin:
+            p.setPen(QtGui.QPen(QtGui.QColor(255, 255, 255, 50), 3))
+            p.drawEllipse(QtCore.QRectF(11, 11, 22, 22))
+            p.setPen(QtGui.QPen(QtGui.QColor(ui_theme.INK), 3, Qt.SolidLine, Qt.RoundCap))
+            p.drawArc(QtCore.QRectF(11, 11, 22, 22), int(-self._spin * 16), 100 * 16)
+        elif icon:
+            p.drawPixmap(QtCore.QRectF(11, 11, 22, 22).toRect(), ui_theme.icon_pixmap(icon, 22, color))
+        p.end()
+        return pm
+
+    def _turn(self):
+        self._spin = (self._spin + 12) % 360
+        if self.isVisible():
+            self.thumb.setPixmap(self._badge(None, ui_theme.INK, spin=True))
+        else:
+            self._spinner.stop()
+
+    def _run_fix(self):
+        fix, self._fix = self._fix, None
+        self.hide()
+        if fix:
+            threading.Thread(target=fix, daemon=True).start()
+
+    def _plain(self):
+        """Back to an ordinary notice before showing a new one."""
+        self._spinner.stop()
+        self.fix_btn.hide()
+        self._fix = None
+        self._frame()
 
     def _open(self, trim: bool = False):
         if self.path:
@@ -194,6 +254,11 @@ class Toast(QtWidgets.QWidget):
 
     def show_capture(self, detail: str, path: str):
         capture = Path(path)
+        now = time.monotonic()
+        # captures right after each other share this notice (it would only be replaced): it counts them
+        self._burst = self._burst + 1 if self.isVisible() and self.path and now - self._burst_at < self.BURST_S else 1
+        self._burst_at = now
+        self._plain()
         self.path, self.action = path, None
         self.setCursor(Qt.PointingHandCursor)
         self.trim_btn.setVisible(capture.suffix.lower() != ".png")
@@ -203,27 +268,30 @@ class Toast(QtWidgets.QWidget):
         thumb = media.make_thumb(capture, self.thumbs_dir or capture.parents[1] / ".thumbs")
         self.thumb.setPixmap(ui_theme.rounded_pixmap(thumb, 128, 72, 11))
         self.thumb.show()
-        self.title.setText(language.tr(self.TITLES.get(kind, "Saved")))
+        self.title.setText(language.tr(self.TITLES.get(kind, "Saved")) if self._burst == 1
+                           else language.tr("{n} captures saved", n=self._burst))
         self.sub.setText("  ·  ".join(x for x in (detail, capture.parent.name) if x))
         self.sub.show()
         if input_devices.input_mode().mode == "keyboard":
             keys = [f"keyboard-{ui_theme.KEY_NAMES.get(k.capitalize(), k.lower())}"
                     for k in self.hotkey.replace(" ", "").split("+")]
-            open_html, view_html = ui_theme.glyph_html(keys), ui_theme.glyph_html(["keyboard-v"])
+            open_html, view_html = ui_theme.glyph_html(keys, 22), ui_theme.glyph_html(["keyboard-v"], 22)
         else:
             try:
                 combo = sorted(input_devices.parse_pad_combo(self.pad_button))
             except ValueError:
                 combo = []
             names = ui_theme.PAD_GLYPHS[input_devices.input_mode().mode]
-            open_html = ui_theme.glyph_html([names.get(b, input_devices.PAD_NAMES[input_devices.input_mode().mode].get(b, "?")) for b in combo])
-            view_html = ui_theme.glyph_html([names[3]])
+            open_html = ui_theme.glyph_html([names.get(b, input_devices.PAD_NAMES[input_devices.input_mode().mode].get(b, "?"))
+                                             for b in combo], 22)
+            view_html = ui_theme.glyph_html([names[3]], 22)
         self.hint.setText(language.tr("{open}&nbsp; then &nbsp;{view}&nbsp; to view", open=open_html, view=view_html))
         self.hint.show()
         self._present(6000)
 
     def show_running(self, title: str, detail: str):
         """The start-up notice: app icon, "running", and how to open it."""
+        self._plain()
         self.path = self.action = None
         self.trim_btn.hide()
         self.unsetCursor()
@@ -253,14 +321,30 @@ class Toast(QtWidgets.QWidget):
             QtCore.QTimer.singleShot(int(left * 1000) + 300, lambda: self.show_message(text, kind))
             return
         self._error_until = time.monotonic() + self.ERROR_MS / 1000 if kind == "error" else 0
+        self._plain()
         self.path = self.action = None
         self.trim_btn.hide()
         self.unsetCursor()
         self.thumb.hide()
         title, _, sub = text.partition(" · ")
-        dot = self.DOTS.get(kind)
-        self.title.setText(f'<span style="color:{dot}">●</span>&nbsp;&nbsp;{title}'
-                           if kind in ("error", "rec") else title)
+        if kind == "rec":            # red means recording, and only that
+            self.title.setText(f'<span style="color:{ui_theme.RED}">●</span>&nbsp;&nbsp;{title}')
+        else:
+            self.title.setText(title)
+        if kind == "error":          # a warning sign and an amber edge; and its fix, when there is one
+            self.thumb.setPixmap(self._badge("warning", ui_theme.AMBER))
+            self.thumb.show()
+            self._frame("rgba(255,179,64,150)")
+            fix = next(((label, fn) for words, label, fn in self.fixes if words.casefold() in text.casefold()), None)
+            if fix:
+                self.fix_btn.setText(language.tr(fix[0]))
+                self._fix = fix[1]
+                self.fix_btn.show()
+        elif title.endswith("…"):    # "Saving…": it's working; the saved notice takes its place
+            self.thumb.setPixmap(self._badge(None, ui_theme.INK, spin=True))
+            self.thumb.show()
+            if ui_theme.MOTION_MS:
+                self._spinner.start()
         self.sub.setText(sub)
         self.sub.setVisible(bool(sub))
         self.hint.hide()
