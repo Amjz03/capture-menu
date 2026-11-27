@@ -259,7 +259,7 @@ function makePages(ctx) {
           <div class="sv-dim r" style="width:${((1800 - end) / 1800) * 100}%"></div>
           <div class="sv-sel" style="left:${(start / 1800) * 100}%;width:${Math.max(0.7, ((end - start) / 1800) * 100)}%"><em>${s === null ? clock(len) : lenLabel(s)}</em></div></div>
         <div class="sv-ticks">${ticks.map(([v, l]) => `<span style="left:${(v / 1800) * 100}%">${l}</span>`).join("")}</div>
-        <div class="sv-chips">${LENS.map((v, i) => `<button class="sv-chip${i === st.len ? " on" : ""}" data-a="len" data-i="${i}">${lenLabel(v)}</button>`).join("")}
+        <div class="sv-chips">${LENS.map((v, i) => `<button class="sv-chip${i === st.len ? " on" : ""}${i === st.armed ? " armed" : ""}" data-a="len" data-i="${i}">${lenLabel(v)}</button>`).join("")}
           <button class="sv-chip save" data-a="saveclip">${t.save_clip}</button></div>
         <div class="pg-hints">${keyHint("← →", t.length)}${keyHint("[ ]", t.earlier)}${keyHint("Enter", t.save)}${keyHint("1–8", t.pick)}${keyHint("Esc", t.back)}</div>
       </div>`;

@@ -733,3 +733,11 @@ html[dir="rtl"] .st-val span { direction: rtl; }
 .st-pill span { flex: 1; text-align: center; font-size: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .st-pill button { width: 42px; height: 42px; border: 0; border-radius: 50%; background: none; display: grid; place-items: center; }
 .st-pill button:hover { background: rgba(255,255,255,.14); } .st-pill button.dim { opacity: .25; pointer-events: none; }
+
+/* no highlight until a key or the controller is used (as the app); the mouse still lights what it's on */
+.nofocus .sv-chip.on:not(.armed):not(:hover) { background: rgba(255,255,255,.1); color: var(--ink); box-shadow: none; }
+.nofocus .gl-card.on:not(:hover) > i { transform: none; box-shadow: none; filter: brightness(.75); }
+.nofocus .gl-card.on:not(:hover) b { font-weight: 400; font-size: 16px; }
+.nofocus .gl-card.on:not(:hover) .gl-acts { visibility: hidden; }
+.nofocus .set-row.on:not(:hover) { box-shadow: none; }
+.nofocus .set-row:hover, .nofocus .gl-card:hover > i { box-shadow: 0 0 0 3px var(--ink); }

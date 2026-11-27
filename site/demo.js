@@ -163,9 +163,13 @@ const DEMO = (() => {
     paintFocus();
   }
   const navIds = () => picking ? [...OPTIONS.map((_, i) => `chip${i}`), "chip_save"] : items();
+  // as the app (v0.0.44): nothing lights up by itself when the bar or a page opens; the highlight shows once a
+  // key or the controller is used (the first arrow only shows where you are), and the mouse lights what it's on
+  let shown = false;
+  function reveal(on) { shown = on; pc.classList.toggle("nofocus", !on); }
   function paintFocus() {
     const id = navIds()[focus];
-    menu.querySelectorAll("[data-id]").forEach((el) => el.classList.toggle("focus", el.dataset.id === id));
+    menu.querySelectorAll("[data-id]").forEach((el) => el.classList.toggle("focus", el.dataset.id === id && (shown || lent !== null)));
     const info = $("cm-info");
     if (info) {
       const m = /^thumb(\d)$/.exec(id || "");
@@ -177,14 +181,14 @@ const DEMO = (() => {
   // ---------------------------------------------------------------- open, close, pages
   function show() {
     page = null; pc.classList.remove("paging");
-    if (!open) { open = true; picking = false; focus = 0; }
+    if (!open) { open = true; picking = false; focus = 0; reveal(false); }
     stage.classList.add("open"); render();
   }
   function hide() { open = false; picking = false; stage.classList.remove("open"); }
   function toggle() { if (P.isOpen()) { P.close(); open = false; show(); return; } open ? hide() : show(); }
   // the pages work as in the app (pages.js); Back from one comes to the bar
   function openPage(name, opts = {}) {
-    hide();
+    hide(); reveal(false);
     if (name === "library") P.open("gallery");
     else if (name === "settings") P.open("settings");
     else if (name === "save") P.open("save", { len: lastChoice });
@@ -302,7 +306,7 @@ const DEMO = (() => {
   menu.addEventListener("mouseout", (e) => {
     const el = e.target.closest("[data-id]");
     if (!el || el.contains(e.relatedTarget) || lent === null) return;
-    setFocus(lent); lent = null;
+    const back = lent; lent = null; setFocus(back);
   });
   menu.addEventListener("click", (e) => {
     e.stopPropagation();
@@ -321,6 +325,10 @@ const DEMO = (() => {
 
   // ---------------------------------------------------------------- keys and pad buttons
   function key(k) {
+    if ((open || P.isOpen()) && !shown) {          // the first key shows the highlight; an arrow does only that
+      reveal(true); if (open) paintFocus();
+      if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(k)) return true;
+    }
     if (P.isOpen()) return P.key(k);
     if (!open) return false;
     const fwd = lang === "ar" ? -1 : 1;           // right to left: the arrows follow the layout
