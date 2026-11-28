@@ -219,6 +219,10 @@
   "2026-11-26": {
    "count": 26,
    "uniques": 16
+  },
+  "2026-11-27": {
+   "count": 121,
+   "uniques": 35
   }
  },
  "downloads": {
@@ -1291,6 +1295,40 @@
    },
    "setup_exe": 19,
    "total": 27
+  },
+  "2026-11-28": {
+   "by_release": {
+    "v0.0.41": {
+     "CaptureMenu-Setup.exe": 5,
+     "CaptureMenu.zip": 3
+    },
+    "v0.0.42": {
+     "CaptureMenu-Setup.exe": 5,
+     "CaptureMenu.zip": 2
+    },
+    "v0.0.43": {
+     "CaptureMenu-Setup.exe": 3,
+     "CaptureMenu.zip": 1
+    },
+    "v0.0.44": {
+     "CaptureMenu-Setup.exe": 3,
+     "CaptureMenu.zip": 1
+    },
+    "v0.0.45": {
+     "CaptureMenu-Setup.exe": 9,
+     "CaptureMenu.zip": 1
+    },
+    "v0.0.46": {
+     "CaptureMenu-Setup.exe": 3,
+     "CaptureMenu.zip": 1
+    },
+    "v0.0.47": {
+     "CaptureMenu-Setup.exe": 5,
+     "CaptureMenu.zip": 1
+    }
+   },
+   "setup_exe": 33,
+   "total": 43
   }
  },
  "paths": {
@@ -3628,6 +3666,68 @@
     "title": "/security",
     "uniques": 1
    }
+  ],
+  "2026-11-28": [
+   {
+    "count": 11,
+    "path": "/Amjz03/capture-menu",
+    "title": "Overview",
+    "uniques": 4
+   },
+   {
+    "count": 3,
+    "path": "/Amjz03/capture-menu/releases/tag/v0.0.42",
+    "title": "/releases/tag/v0.0.42",
+    "uniques": 1
+   },
+   {
+    "count": 2,
+    "path": "/Amjz03/capture-menu/releases",
+    "title": "/releases",
+    "uniques": 2
+   },
+   {
+    "count": 1,
+    "path": "/Amjz03/capture-menu/blob/main/docs/screenshots/save-recent.jpg",
+    "title": "/blob/main/docs/screenshots/save-recent.jpg",
+    "uniques": 1
+   },
+   {
+    "count": 1,
+    "path": "/Amjz03/capture-menu/commits",
+    "title": "/commits",
+    "uniques": 1
+   },
+   {
+    "count": 1,
+    "path": "/Amjz03/capture-menu/deployments/github-pages",
+    "title": "/deployments/github-pages",
+    "uniques": 1
+   },
+   {
+    "count": 1,
+    "path": "/Amjz03/capture-menu/pulls",
+    "title": "/pulls",
+    "uniques": 1
+   },
+   {
+    "count": 1,
+    "path": "/Amjz03/capture-menu/pulse",
+    "title": "/pulse",
+    "uniques": 1
+   },
+   {
+    "count": 1,
+    "path": "/Amjz03/capture-menu/releases/tag/v0.0.45",
+    "title": "/releases/tag/v0.0.45",
+    "uniques": 1
+   },
+   {
+    "count": 1,
+    "path": "/Amjz03/capture-menu/releases/tag/v0.0.47",
+    "title": "/releases/tag/v0.0.47",
+    "uniques": 1
+   }
   ]
  },
  "referrers": {
@@ -4045,6 +4145,18 @@
     "referrer": "github.com",
     "uniques": 3
    }
+  ],
+  "2026-11-28": [
+   {
+    "count": 3,
+    "referrer": "github.com",
+    "uniques": 3
+   },
+   {
+    "count": 2,
+    "referrer": "amjz03.github.io",
+    "uniques": 1
+   }
   ]
  },
  "repo": {
@@ -4052,7 +4164,7 @@
   "stars": 2,
   "watchers": 0
  },
- "updated": "2026-11-27T12:35:08+00:00",
+ "updated": "2026-11-28T11:55:00+00:00",
  "views": {
   "2026-10-03": {
    "count": 0,
@@ -4273,6 +4385,10 @@
   "2026-11-26": {
    "count": 0,
    "uniques": 0
+  },
+  "2026-11-27": {
+   "count": 10,
+   "uniques": 1
   }
  }
 }
